@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GrandLab · Daily Task Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Newsreader:ital,opsz@0,6..72;1,6..72&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12100e;
+    --paper:#f4efe6;
+    --card:#fbf8f1;
+    --line:#d8cfbe;
+    --accent:#b4451f;     /* burnt orange */
+    --accent-soft:#e9d9c6;
+    --green:#3f6b3a;
+    --amber:#b9892a;
+    --muted:#7a7164;
+    --shadow:0 1px 0 #fff inset, 0 18px 40px -22px rgba(40,30,15,.55);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    font-family:'Bricolage Grotesque',sans-serif;
+    background:
+      radial-gradient(120% 60% at 100% 0%, #efe6d6 0%, transparent 55%),
+      radial-gradient(120% 70% at 0% 100%, #ece2cf 0%, transparent 50%),
+      var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    padding:22px 14px 80px;
+    line-height:1.4;
+  }
+  .wrap{max-width:680px;margin:0 auto}
+  .back-hub{display:inline-block;margin-bottom:14px;font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid var(--line);padding:7px 14px;border-radius:999px;background:var(--card)}
+  .back-hub:active{opacity:.7}
+
+  header.masthead{
+    display:flex;align-items:flex-end;justify-content:space-between;
+    border-bottom:3px solid var(--ink);
+    padding-bottom:10px;margin-bottom:6px;gap:12px;
+  }
+  .brand{display:flex;flex-direction:column;line-height:1}
+  .brand .kicker{
+    font-size:11px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--accent);font-weight:700;margin-bottom:7px;
+  }
+  .brand h1{
+    margin:0;font-size:clamp(30px,8vw,46px);font-weight:800;
+    letter-spacing:-.02em;
+  }
+  .brand h1 em{font-family:'Newsreader',serif;font-style:italic;font-weight:400;color:var(--accent)}
+  .stamp{
+    font-family:'Newsreader',serif;font-style:italic;font-size:13px;
+    color:var(--muted);text-align:right;flex-shrink:0;padding-bottom:3px;
+  }
+  .ruled{
+    font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+    color:var(--muted);margin:4px 0 22px;display:flex;justify-content:space-between;
+  }
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    box-shadow:var(--shadow);
+    padding:18px 16px;
+    margin-bottom:16px;
+    position:relative;
+  }
+  .sec-head{
+    display:flex;align-items:center;gap:9px;
+    font-weight:700;font-size:16px;margin:0 0 14px;
+    padding-bottom:9px;border-bottom:1px dashed var(--line);
+  }
+  .sec-head .num{
+    flex-shrink:0;width:26px;height:26px;border-radius:50%;
+    background:var(--ink);color:var(--paper);
+    display:grid;place-items:center;font-size:13px;font-weight:700;
+  }
+  .sec-head .emoji{font-size:18px}
+
+  label.fld{display:block;margin-bottom:13px}
+  label.fld:last-child{margin-bottom:0}
+  .lab{
+    font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);display:block;margin-bottom:5px;
+  }
+  .lab .hint{font-weight:400;text-transform:none;letter-spacing:0;font-style:italic;font-family:'Newsreader',serif;color:var(--muted)}
+  input,select,textarea{
+    width:100%;font-family:inherit;font-size:15px;color:var(--ink);
+    background:#fff;border:1px solid var(--line);border-radius:9px;
+    padding:10px 12px;outline:none;transition:border-color .15s,box-shadow .15s;
+  }
+  textarea{resize:vertical;min-height:62px;line-height:1.5}
+  input:focus,select:focus,textarea:focus{
+    border-color:var(--accent);box-shadow:0 0 0 3px rgba(180,69,31,.13);
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  @media(max-width:520px){.row3{grid-template-columns:1fr 1fr}}
+
+  /* dynamic list blocks */
+  .list .item{display:flex;gap:7px;margin-bottom:7px;align-items:flex-start}
+  .list .item input,.list .item textarea{flex:1}
+  .iconbtn{
+    flex-shrink:0;width:38px;height:38px;border-radius:9px;cursor:pointer;
+    border:1px solid var(--line);background:#fff;color:var(--muted);
+    font-size:18px;line-height:1;display:grid;place-items:center;transition:.15s;
+  }
+  .iconbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .addbtn{
+    margin-top:3px;background:none;border:1px dashed var(--line);color:var(--muted);
+    border-radius:9px;padding:8px 12px;font-family:inherit;font-size:13px;font-weight:600;
+    cursor:pointer;width:100%;transition:.15s;
+  }
+  .addbtn:hover{border-color:var(--accent);color:var(--accent);background:#fff}
+
+  /* task update cards */
+  .task-card{
+    border:1px solid var(--line);border-radius:11px;padding:12px;margin-bottom:11px;
+    background:#fff;position:relative;
+  }
+  .task-card .tc-head{
+    display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;
+    font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+  }
+  .status-pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{
+    flex:1;min-width:0;text-align:center;cursor:pointer;
+    border:1px solid var(--line);background:#fff;border-radius:8px;
+    padding:8px 4px;font-size:12px;font-weight:700;color:var(--muted);transition:.15s;
+  }
+  .pill.on[data-s="done"]{background:var(--green);border-color:var(--green);color:#fff}
+  .pill.on[data-s="progress"]{background:var(--amber);border-color:var(--amber);color:#fff}
+  .pill.on[data-s="pending"]{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .secret-note{
+    font-family:'Newsreader',serif;font-style:italic;font-size:13px;
+    color:var(--muted);margin:-4px 0 10px;line-height:1.5;
+  }
+  .secret-card{background:linear-gradient(180deg,#fbf3ea,#fbf8f1);border-color:var(--accent-soft)}
+
+  /* actions */
+  .actions{position:sticky;bottom:14px;z-index:5;margin-top:24px}
+  .actions-inner{
+    background:rgba(251,248,241,.86);backdrop-filter:blur(8px);
+    border:1px solid var(--line);border-radius:14px;padding:11px;
+    display:grid;grid-template-columns:1fr 1fr;gap:9px;
+    box-shadow:0 16px 36px -20px rgba(40,30,15,.5);
+  }
+  .btn{
+    border:none;border-radius:10px;padding:14px 12px;cursor:pointer;
+    font-family:inherit;font-size:15px;font-weight:700;letter-spacing:.01em;
+    display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn-wa{background:#25d366;color:#06351b}
+  .btn-wa:hover{background:#20bd5a}
+  .btn-sync{background:var(--ink);color:var(--paper)}
+  .btn-sync:hover{background:#000}
+  .btn-sync:disabled{opacity:.6;cursor:wait}
+  .btn-ghost{grid-column:1/-1;background:none;border:1px solid var(--line);color:var(--muted)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120%);
+    background:var(--ink);color:var(--paper);padding:12px 20px;border-radius:30px;
+    font-size:14px;font-weight:600;z-index:50;transition:transform .35s cubic-bezier(.2,.8,.2,1);
+    box-shadow:0 12px 30px -10px rgba(0,0,0,.5);max-width:90vw;text-align:center;
+  }
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--accent)}
+
+  .settings-line{
+    font-size:12px;color:var(--muted);text-align:center;margin-top:14px;
+  }
+  .settings-line a{color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+
+  dialog{
+    border:1px solid var(--line);border-radius:14px;padding:0;max-width:440px;width:92vw;
+    background:var(--card);color:var(--ink);box-shadow:0 30px 70px -20px rgba(0,0,0,.5);
+  }
+  dialog::backdrop{background:rgba(30,22,10,.45);backdrop-filter:blur(2px)}
+  .dlg-body{padding:20px}
+  .dlg-body h3{margin:0 0 4px;font-size:18px;font-weight:800}
+  .dlg-body p{margin:0 0 14px;font-size:13px;color:var(--muted);line-height:1.5}
+  .dlg-body code{background:#efe7d8;padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a href="index.html" class="back-hub">← Back to Hub</a>
+  <header class="masthead">
+    <div class="brand">
+      <span class="kicker">Grandpride &amp; Grandlab</span>
+      <h1>Daily <em>Task</em> Log</h1>
+    </div>
+    <div class="stamp" id="stamp">—</div>
+  </header>
+  <div class="ruled"><span>Petaling Jaya · Selangor</span><span id="dayName">—</span></div>
+
+  <!-- IDENTITY -->
+  <section class="card">
+    <div class="row2">
+      <label class="fld"><span class="lab">📅 Date</span><input type="date" id="f_date"></label>
+      <label class="fld"><span class="lab">🙋 Name</span><input id="f_name" placeholder="e.g. IFFAT"></label>
+    </div>
+    <div class="row2">
+      <label class="fld"><span class="lab">💼 Position</span><input id="f_position" placeholder="e.g. Videographer"></label>
+      <label class="fld"><span class="lab">🏢 Department</span><input id="f_dept" placeholder="Optional"></label>
+    </div>
+  </section>
+
+  <!-- 1. MORNING PLANNING -->
+  <section class="card">
+    <p class="sec-head"><span class="num">1</span><span class="emoji">🌅</span>Morning Planning <span style="font-weight:400;color:var(--muted);font-size:12px">· before 10AM</span></p>
+
+    <span class="lab">Pending Task <span class="hint">— carried forward</span></span>
+    <div class="list" id="list_pending"></div>
+    <button class="addbtn" data-add="list_pending">+ Add pending task</button>
+
+    <div style="height:14px"></div>
+
+    <span class="lab">Today's Planning <span class="hint">— min. 3 tasks</span></span>
+    <div class="list" id="list_today"></div>
+    <button class="addbtn" data-add="list_today">+ Add planned task</button>
+  </section>
+
+  <!-- 2. TASK UPDATES -->
+  <section class="card">
+    <p class="sec-head"><span class="num">2</span><span class="emoji">⏱</span>Daily Task Updates <span style="font-weight:400;color:var(--muted);font-size:12px">· during / end of day</span></p>
+    <div id="list_updates"></div>
+    <button class="addbtn" data-add-update>+ Add task update</button>
+  </section>
+
+  <!-- 3. END OF DAY -->
+  <section class="card">
+    <p class="sec-head"><span class="num">3</span><span class="emoji">🌆</span>End of Day Report <span style="font-weight:400;color:var(--muted);font-size:12px">· before 7PM</span></p>
+
+    <span class="lab">Resolved Task</span>
+    <div class="list" id="list_resolved"></div>
+    <button class="addbtn" data-add="list_resolved">+ Add resolved task</button>
+
+    <div style="height:14px"></div>
+    <label class="fld"><span class="lab">1% Improvement <span class="hint">— small win / learning</span></span><textarea id="f_improve" placeholder="Key small improvement, learning or contribution"></textarea></label>
+    <label class="fld"><span class="lab">Remark <span class="hint">— issues, blockers, follow-ups</span></span><textarea id="f_remark" placeholder="Any issue, blocker, delay or follow-up needed"></textarea></label>
+  </section>
+
+  <!-- SECRET BOX -->
+  <section class="card secret-card">
+    <p class="sec-head"><span class="emoji">🔒</span>Secret Box</p>
+    <p class="secret-note">A safe space to share honestly with management. Be brave and transparent — your input matters.</p>
+    <textarea id="f_secret" placeholder="Suggestions, concerns or feedback (private to management)"></textarea>
+  </section>
+
+  <!-- ACTIONS -->
+  <div class="actions">
+    <div class="actions-inner">
+      <button class="btn btn-wa" id="btnSend">📲 Sync &amp; Send to WhatsApp</button>
+      <button class="btn btn-ghost" id="btnClear">Clear form</button>
+    </div>
+  </div>
+
+  <p class="settings-line">Autosaves on this device · <a id="openSettings">Set Google Sheet link</a></p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- settings dialog -->
+<dialog id="dlg">
+  <div class="dlg-body">
+    <h3>Google Sheet sync</h3>
+    <p>Paste the <strong>Web App URL</strong> from your Apps Script deployment. Each staff name becomes its own tab automatically. Leave blank to use WhatsApp only.</p>
+    <label class="fld"><span class="lab">Apps Script Web App URL</span><input id="f_endpoint" placeholder="https://script.google.com/macros/s/.../exec"></label>
+    <div style="display:flex;gap:9px;margin-top:6px">
+      <button class="btn btn-ghost" style="grid-column:auto;flex:1" id="dlgCancel">Cancel</button>
+      <button class="btn btn-sync" style="flex:1" id="dlgSave">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+const $=s=>document.querySelector(s);
+const STORE='glab_dtl_v1', EP='glab_dtl_endpoint';
+// Default Google Sheet endpoint (baked in — staff don't need to set it).
+// Override anytime via "Set Google Sheet link". To change permanently, edit this line.
+const DEFAULT_EP='https://script.google.com/macros/s/AKfycbzu9ikbwwoEj8mjF6BJCEGmeAH55Y_lczWcp_Q-NlvGTD5WYsjpwNbiCmhsNO3mgq4/exec';
+const getEndpoint=()=>localStorage.getItem(EP)||DEFAULT_EP;
+
+/* ---------- dynamic simple lists ---------- */
+function addListItem(id,val='',ph='Task…'){
+  const box=document.getElementById(id);
+  const row=document.createElement('div');row.className='item';
+  row.innerHTML=`<input placeholder="${ph}" value="${val.replace(/"/g,'&quot;')}">
+    <button class="iconbtn" title="Remove">×</button>`;
+  row.querySelector('.iconbtn').onclick=()=>{row.remove();save()};
+  row.querySelector('input').oninput=save;
+  box.appendChild(row);
+}
+document.querySelectorAll('[data-add]').forEach(b=>{
+  b.onclick=()=>{addListItem(b.dataset.add);save()};
+});
+
+/* ---------- task update cards ---------- */
+const STATUSES=[['done','✅ Done'],['progress','🔄 In progress'],['pending','⏳ Pending']];
+function addUpdate(d={}){
+  const box=$('#list_updates');
+  const card=document.createElement('div');card.className='task-card';
+  card.innerHTML=`
+    <div class="tc-head"><span>Task update</span><button class="iconbtn" style="width:30px;height:30px;font-size:16px" title="Remove">×</button></div>
+    <div class="row2" style="margin-bottom:9px">
+      <label class="fld" style="margin:0"><span class="lab">Time</span><input class="u-time" type="time" value="${d.time||''}"></label>
+      <label class="fld" style="margin:0"><span class="lab">Duration</span><input class="u-dur" placeholder="e.g. 1h 30m" value="${(d.duration||'').replace(/"/g,'&quot;')}"></label>
+    </div>
+    <label class="fld"><span class="lab">Task</span><textarea class="u-task" placeholder="What did you work on?">${d.task||''}</textarea></label>
+    <span class="lab">Status</span>
+    <div class="status-pills">${STATUSES.map(([k,l])=>`<div class="pill ${d.status===k?'on':''}" data-s="${k}">${l}</div>`).join('')}</div>`;
+  card.querySelector('.iconbtn').onclick=()=>{card.remove();save()};
+  card.querySelectorAll('.pill').forEach(p=>p.onclick=()=>{
+    card.querySelectorAll('.pill').forEach(x=>x.classList.remove('on'));
+    p.classList.add('on');save();
+  });
+  card.querySelectorAll('input,textarea').forEach(el=>el.oninput=save);
+  box.appendChild(card);
+}
+$('[data-add-update]').onclick=()=>{addUpdate();save()};
+
+/* ---------- gather / restore ---------- */
+function listVals(id){return [...document.querySelectorAll('#'+id+' input')].map(i=>i.value.trim()).filter(Boolean)}
+function gather(){
+  return {
+    date:$('#f_date').value,name:$('#f_name').value.trim(),
+    position:$('#f_position').value.trim(),dept:$('#f_dept').value.trim(),
+    pending:listVals('list_pending'),today:listVals('list_today'),
+    updates:[...document.querySelectorAll('.task-card')].map(c=>({
+      time:c.querySelector('.u-time').value,duration:c.querySelector('.u-dur').value.trim(),
+      task:c.querySelector('.u-task').value.trim(),
+      status:(c.querySelector('.pill.on')||{}).dataset?.s||''
+    })).filter(u=>u.task||u.time),
+    resolved:listVals('list_resolved'),
+    improve:$('#f_improve').value.trim(),remark:$('#f_remark').value.trim(),
+    secret:$('#f_secret').value.trim()
+  };
+}
+function save(){localStorage.setItem(STORE,JSON.stringify(gather()))}
+['f_date','f_name','f_position','f_dept','f_improve','f_remark','f_secret']
+  .forEach(id=>$('#'+id).oninput=save);
+
+function restore(){
+  const raw=localStorage.getItem(STORE);
+  let d=raw?JSON.parse(raw):null;
+  const today=new Date().toISOString().slice(0,10);
+  if(d&&d.date===today){
+    $('#f_date').value=d.date;$('#f_name').value=d.name||'';
+    $('#f_position').value=d.position||'';$('#f_dept').value=d.dept||'';
+    (d.pending||[]).forEach(v=>addListItem('list_pending',v));
+    (d.today||[]).forEach(v=>addListItem('list_today',v));
+    (d.updates||[]).forEach(u=>addUpdate(u));
+    (d.resolved||[]).forEach(v=>addListItem('list_resolved',v));
+    $('#f_improve').value=d.improve||'';$('#f_remark').value=d.remark||'';
+    $('#f_secret').value=d.secret||'';
+  }else{
+    $('#f_date').value=today;
+    // New day: carry forward yesterday's unfinished work into Pending.
+    // Keep identity (name/position/dept) so staff don't retype it.
+    if(d){
+      $('#f_name').value=d.name||'';
+      $('#f_position').value=d.position||'';
+      $('#f_dept').value=d.dept||'';
+      const carried=[];
+      // 1) task updates marked In-progress or Pending
+      (d.updates||[]).forEach(u=>{
+        if((u.status==='progress'||u.status==='pending')&&u.task)carried.push(u.task.trim());
+      });
+      // 2) planned tasks not marked resolved
+      const resolvedSet=(d.resolved||[]).map(r=>r.trim().toLowerCase());
+      (d.today||[]).forEach(t=>{
+        const key=t.trim().toLowerCase();
+        if(!resolvedSet.includes(key))carried.push(t.trim());
+      });
+      // de-duplicate, then auto-fill Pending
+      [...new Set(carried.filter(Boolean))].forEach(v=>addListItem('list_pending',v));
+    }
+  }
+  // ensure starter rows
+  if(!$('#list_pending').children.length)addListItem('list_pending');
+  if($('#list_today').children.length<3)
+    for(let i=$('#list_today').children.length;i<3;i++)addListItem('list_today');
+  if(!$('#list_updates').children.length)addUpdate();
+  if(!$('#list_resolved').children.length)addListItem('list_resolved');
+  stampDate();
+}
+function stampDate(){
+  const v=$('#f_date').value;if(!v)return;
+  const dt=new Date(v+'T00:00');
+  $('#stamp').textContent=dt.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  $('#dayName').textContent=dt.toLocaleDateString('en-GB',{weekday:'long'}).toUpperCase();
+}
+$('#f_date').addEventListener('change',()=>{stampDate();save()});
+
+/* ---------- build message (matches your template) ---------- */
+const STATUS_TXT={done:'✅ Done',progress:'🔄 In Progress',pending:'⏳ Pending'};
+function fmtDate(v){if(!v)return'';const d=new Date(v+'T00:00');return d.toLocaleDateString('en-GB').replaceAll('/','/')}
+function bullets(arr){return arr.length?arr.map(t=>'- '+t).join('\n'):'- '}
+function buildMessage(){
+  const d=gather();const L=[];
+  L.push('📒 *DAILY TASK LOG*');
+  L.push('📅 Date: '+(fmtDate(d.date)));
+  L.push('💼 Position: '+(d.position||'').toUpperCase());
+  L.push('🙋‍♂️ Name: '+(d.name||'').toUpperCase());
+  L.push('🏢 Department: '+(d.dept||''));
+  L.push('');
+  L.push('🌅 *1. Morning Planning (Before Work Starts 10AM)*');
+  L.push('*Pending Task:* (carry forward from previous day)');
+  L.push(bullets(d.pending));
+  L.push('*Today Planning:* (minimum 3 tasks planned for the day)');
+  L.push(bullets(d.today));
+  L.push('');
+  L.push('⏱ *2. During / End of Day — Daily Task Updates*');
+  if(d.updates.length){
+    d.updates.forEach(u=>{
+      L.push('*Time:* '+(u.time||''));
+      L.push('*Task:* '+(u.task||''));
+      L.push('*Duration:* '+(u.duration||''));
+      L.push('*Status:* '+(STATUS_TXT[u.status]||''));
+      L.push('');
+    });
+  }else{
+    L.push('*Time:* ');L.push('*Task:* ');L.push('*Duration:* ');L.push('*Status:* ');L.push('');
+  }
+  L.push('🌆 *3. End of Day Report before 7pm*');
+  L.push('*Resolved Task:*');
+  L.push(bullets(d.resolved));
+  L.push('*1% Improvement:* (Key small improvement / learning / contribution)');
+  L.push('- '+(d.improve||''));
+  L.push('*Remark:* (Any issue, blockers, delay, or follow-up needed)');
+  L.push('- '+(d.remark||''));
+  L.push('*Secret Box:* (Anything you want to share privately with management – suggestions, concerns, or feedback)');
+  L.push('Secret Box is a safe space to share honestly with management. Be brave and transparent — your input matters.');
+  L.push('- '+(d.secret||''));
+  return L.join('\n');
+}
+
+/* ---------- toast ---------- */
+let tT;function toast(msg,err){const t=$('#toast');t.textContent=msg;t.className='toast show'+(err?' err':'');clearTimeout(tT);tT=setTimeout(()=>t.className='toast',2600)}
+
+/* ---------- Sync to Sheet (if configured) then open WhatsApp ---------- */
+$('#btnSend').onclick=async()=>{
+  const d=gather();
+  if(!d.name){toast('Add your name first',true);return}
+  const ep=getEndpoint();
+  const btn=$('#btnSend');
+
+  // 1) sync to sheet first, if a link is set
+  if(ep){
+    btn.disabled=true;btn.textContent='Syncing…';
+    try{
+      await fetch(ep,{method:'POST',mode:'no-cors',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify(d)});
+      toast('Synced to '+d.name+'\u2019s tab ✓ — opening WhatsApp');
+    }catch(e){toast('Sync failed — opening WhatsApp anyway',true)}
+    btn.disabled=false;btn.textContent='📲 Sync & Send to WhatsApp';
+  }
+
+  // 2) open WhatsApp with the message
+  const url='https://wa.me/?text='+encodeURIComponent(buildMessage());
+  window.open(url,'_blank');
+};
+
+/* ---------- clear ---------- */
+$('#btnClear').onclick=()=>{
+  if(!confirm('Clear the whole form?'))return;
+  localStorage.removeItem(STORE);location.reload();
+};
+
+/* ---------- settings dialog ---------- */
+$('#openSettings').onclick=()=>{$('#f_endpoint').value=getEndpoint();$('#dlg').showModal()};
+$('#dlgCancel').onclick=()=>$('#dlg').close();
+$('#dlgSave').onclick=()=>{
+  const v=$('#f_endpoint').value.trim();
+  if(v)localStorage.setItem(EP,v);else localStorage.removeItem(EP);
+  $('#dlg').close();toast(v?'Sheet link saved ✓':'Sheet link cleared');
+};
+
+restore();
+</script>
+</body>
+</html>
