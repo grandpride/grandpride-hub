@@ -93,12 +93,19 @@
     width:100%;font-family:inherit;font-size:15px;color:var(--ink);
     background:#fff;border:1px solid var(--line);border-radius:9px;
     padding:10px 12px;outline:none;transition:border-color .15s,box-shadow .15s;
+    box-sizing:border-box;min-width:0;
+  }
+  /* iOS renders type=time/date with an intrinsic min width that overflows grid cells */
+  input[type="time"],input[type="date"]{
+    -webkit-appearance:none;appearance:none;min-width:0;max-width:100%;
   }
   textarea{resize:vertical;min-height:62px;line-height:1.5}
   input:focus,select:focus,textarea:focus{
     border-color:var(--accent);box-shadow:0 0 0 3px rgba(180,69,31,.13);
   }
   .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row2>*{min-width:0}
+  .row3>*{min-width:0}
   .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
   @media(max-width:520px){.row3{grid-template-columns:1fr 1fr}}
 
