@@ -425,7 +425,7 @@ const APPS = [
   { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules' },
   { id:'reminders',  label:'Reminders',  svg:ICONS.reminders,  logo:'', cat:'modules' },
   { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', link:'daily-task-log.html' },
-  { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', link:'staff-manager.html', adminOnly:true },
+  { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', link:'staff-manager.html', adminOrManager:true },
   { id:'joborder',   label:'Job Order',  svg:ICONS.joborder,   logo:'', cat:'grandlab' },
   { id:'academy',    label:'Academy',    svg:ICONS.academy,    logo:'', cat:'grandlab' },
   { id:'dutyboard',  label:'DutyBoard',  svg:ICONS.dutyboard,  logo:'', cat:'grandlab' },
@@ -733,9 +733,14 @@ function renderTiles(cat){
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   let lockedCount = 0;
-  const apps = APPS.filter(a=>a.cat===cat).filter(a=>!a.adminOnly || current.role==='Admin');
+  const apps = APPS.filter(a=>a.cat===cat).filter(a=>{
+    if(a.adminOnly) return current.role==='Admin';
+    if(a.adminOrManager) return current.role==='Admin' || current.role==='Manager';
+    return true;
+  });
   apps.forEach(app=>{
-    const allowed = current.apps.includes(app.id) || current.role==='Admin' || app.id==='reminders';
+    const allowed = current.apps.includes(app.id) || current.role==='Admin' || app.id==='reminders'
+      || (app.adminOrManager && current.role==='Manager');
     if(!allowed) lockedCount++;
     const tile = document.createElement('div');
     tile.className = 'tile ' + (allowed?'allowed':'locked');
