@@ -324,6 +324,29 @@
   </div>
 </div>
 
+<!-- ============ SET PASSWORD (invite / reset landing) ============ -->
+<div id="setPwScreen" class="screen">
+  <div class="login-card">
+    <div class="crest" id="setPwCrest"></div>
+    <div class="brand-name display">Grandpride</div>
+    <div class="brand-sub" id="setPwSub">Set your password</div>
+    <div class="divider"></div>
+    <p style="font-size:12px;color:var(--grey);text-align:center;margin:0 0 14px;line-height:1.6">
+      Welcome aboard. Create a password to finish setting up your account.
+    </p>
+    <div class="field">
+      <label>New password</label>
+      <input id="spPass" type="text" style="-webkit-text-security:disc;text-security:disc" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="at least 8 characters">
+    </div>
+    <div class="field">
+      <label>Confirm password</label>
+      <input id="spPass2" type="text" style="-webkit-text-security:disc;text-security:disc" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="repeat password">
+    </div>
+    <button class="btn" id="btnSetPw">Save password</button>
+    <div class="err" id="spErr"></div>
+  </div>
+</div>
+
 <!-- ============ HUB ============ -->
 <div id="hubScreen" class="screen">
   <div class="topbar">
@@ -614,6 +637,55 @@ async function doLogin(){
   maybeShowPushBanner();
 }
 function logout(){ current=null; try{ SUPA.signOut(); }catch(e){} forgetUser(); show('loginScreen'); }
+
+/* ============ INVITE / SET-PASSWORD LANDING ============
+   If the user arrived via an invite or password-reset email, Supabase has already
+   exchanged the token into a temporary session. We must intercept that BEFORE
+   auto-login, show the set-password panel, and NOT drop them into the Hub. */
+async function handleInviteLanding(){
+  const type = SUPA.pendingInviteType();   // 'invite' | 'recovery' | null (captured at load)
+  if(!type) return false;
+  // Confirm the token actually produced a valid session (expired/garbage links won't).
+  const ok = await SUPA.hasInviteSession();
+  if(!ok){
+    // Bad/expired link — show login with a gentle note rather than a blank panel.
+    const e = document.getElementById('liErr');
+    if(e) e.textContent = 'That link has expired. Ask admin to resend your invite.';
+    show('loginScreen');
+    SUPA.clearAuthHash();
+    return true;
+  }
+  const sub = document.getElementById('setPwSub');
+  if(sub) sub.textContent = (type==='recovery') ? 'Reset your password' : 'Set your password';
+  const c = document.getElementById('setPwCrest'); if(c) c.innerHTML = `<img src="${LOGO}" alt="Grandpride">`;
+  show('setPwScreen');
+  return true;
+}
+
+async function doSetPassword(){
+  const p1 = document.getElementById('spPass').value.trim();
+  const p2 = document.getElementById('spPass2').value.trim();
+  const err = document.getElementById('spErr');
+  const btn = document.getElementById('btnSetPw');
+  err.textContent = '';
+  if(!p1 || !p2){ err.textContent = 'Enter your password twice.'; return; }
+  if(p1.length < 8){ err.textContent = 'Password must be at least 8 characters.'; return; }
+  if(p1 !== p2){ err.textContent = 'Passwords do not match.'; return; }
+  if(btn) btn.disabled = true;
+  err.textContent = 'Saving…';
+  const res = await SUPA.setMyPassword(p1);
+  if(btn) btn.disabled = false;
+  if(!res.ok){ err.textContent = res.error || 'Could not save password.'; return; }
+  // Password set. Sign out the temporary invite session and send them to a clean
+  // login screen to sign in fresh — confirms the new password works.
+  await SUPA.signOut();
+  SUPA.clearAuthHash();
+  document.getElementById('spPass').value = '';
+  document.getElementById('spPass2').value = '';
+  const le = document.getElementById('liErr');
+  if(le) le.textContent = 'Password set — please sign in.';
+  show('loginScreen');
+}
 
 /* Auto-login: restore an existing Supabase Auth session (stays signed in on device). */
 async function tryAutoLogin(){
@@ -1025,31 +1097,14 @@ function renderAdmin(){
     return o;
   };
 
-  // Add user
+  // Add user — moved to Staff Manager (secure invite flow)
   html += `<div class="panel">
-    <h3>Add New User</h3>
-    <div class="row2">
-      <input class="mini-input" id="nuName" placeholder="Full name">
-      <select class="mini-input" id="nuRole">
-        <option>Staff</option><option>HOD</option><option>Admin</option>
-      </select>
-    </div>
-    <div class="row2">
-      <input class="mini-input" id="nuUser" placeholder="username">
-      <input class="mini-input" id="nuPass" placeholder="password">
-    </div>
-    <div class="row2">
-      <select class="mini-input" id="nuCompany">
-        <option value="Grandpride">Grandpride</option>
-        <option value="Grandlab">Grandlab</option>
-      </select>
-      <select class="mini-input" id="nuTitle">${titleOpts('Grandpride','')}</select>
-    </div>
-    <select class="mini-input" id="nuReports" style="width:100%;margin-bottom:8px">
-      <option value="">Reports to… (optional)</option>
-      ${reportsOpts('','')}
-    </select>
-    <button class="btn" id="btnAddUser">Add User</button>
+    <h3>Add New Staff</h3>
+    <p class="small" style="color:var(--grey);line-height:1.6">
+      Adding staff now happens in <b>Staff Manager</b>, which sends a secure email
+      invite. The new staff member sets their own password from the email link —
+      no passwords are typed or stored here anymore.
+    </p>
   </div>`;
 
   // Managers picker
@@ -1100,13 +1155,13 @@ function renderAdmin(){
   });
   html += `</div>`;
 
-  // Change own password
+  // Password reset — now handled by the email link / set-password page
   html += `<div class="panel"><h3>Reset a Password</h3>
-    <div class="row2">
-      <select class="mini-input" id="rpUser">${DB.users.map(u=>`<option value="${u.username}">${u.name} (@${u.username})</option>`).join('')}</select>
-      <input class="mini-input" id="rpPass" placeholder="new password">
-    </div>
-    <button class="btn ghost" id="btnResetPass">Update Password</button>
+    <p class="small" style="color:var(--grey);line-height:1.6">
+      Staff reset their own password from the <b>“Forgot password”</b> email link,
+      which lands on the secure set-password page. To resend an invite or reset,
+      use <b>Staff Manager</b>. Passwords are never set or stored here.
+    </p>
   </div>`;
 
   html += `<div class="panel"><h3>Data Tools</h3>
@@ -1118,8 +1173,6 @@ function renderAdmin(){
   wrap.innerHTML = html;
 
   // bind dynamic buttons via delegation
-  const ab=document.getElementById('btnAddUser'); if(ab) ab.addEventListener('click', addUser);
-  const rb=document.getElementById('btnResetPass'); if(rb) rb.addEventListener('click', resetPass);
   const ca=document.getElementById('btnClearAtt'); if(ca) ca.addEventListener('click', clearAttData);
   const fr=document.getElementById('btnFullReset'); if(fr) fr.addEventListener('click', fullReset);
   wrap.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>delUser(+b.dataset.del)));
@@ -1231,31 +1284,12 @@ function togglePerm(idx, appId){
   else u.apps.push(appId);
   saveDB(); renderAdmin(); toast('Access updated');
 }
-function addUser(){
-  const name=document.getElementById('nuName').value.trim();
-  const role=document.getElementById('nuRole').value;
-  const user=document.getElementById('nuUser').value.trim().toLowerCase();
-  const pass=document.getElementById('nuPass').value;
-  const reportsTo=document.getElementById('nuReports').value||null;
-  const company=document.getElementById('nuCompany').value||'Grandpride';
-  let title=document.getElementById('nuTitle').value||null;
-  if(title==='__add__') title=null;
-  if(!name||!user||!pass){ toast('Fill all fields'); return; }
-  if(DB.users.find(x=>x.username===user)){ toast('Username taken'); return; }
-  const apps = role==='Admin'? APPS.map(a=>a.id) : (role==='HOD'? APPS.map(a=>a.id) : []);
-  DB.users.push({username:user,password:pass,name,role,apps,reportsTo,company,title});
-  saveDB(); renderAdmin(); toast('User added');
-}
+/* addUser() and resetPass() removed — staff onboarding and password resets now go
+   through Staff Manager (secure email invite) and the set-password page. No code
+   in the Hub writes plaintext passwords anymore. delUser stays for cleanup. */
 function delUser(idx){
   if(DB.users[idx].username==='admin'){ toast('Cannot delete admin'); return; }
   DB.users.splice(idx,1); saveDB(); renderAdmin(); toast('User removed');
-}
-function resetPass(){
-  const u=document.getElementById('rpUser').value;
-  const p=document.getElementById('rpPass').value;
-  if(!p){ toast('Enter a password'); return; }
-  const found=DB.users.find(x=>x.username===u);
-  found.password=p; saveDB(); toast('Password updated');
 }
 
 /* ================= ATTENDANCE ================= */
@@ -2820,6 +2854,15 @@ async function init(){
 
   const pw=document.getElementById('liPass');
   if(pw) pw.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+  bind('btnSetPw', doSetPassword);
+  const sp2=document.getElementById('spPass2');
+  if(sp2) sp2.addEventListener('keydown',e=>{ if(e.key==='Enter') doSetPassword(); });
+
+  // Invite/reset links must be caught BEFORE auto-login, or the invitee would be
+  // dropped straight into the Hub without ever setting their own password.
+  const landed = await handleInviteLanding();
+  if(landed) return;   // stop here — show set-password panel, skip auto-login
 
   // Remembered device: restore Supabase Auth session if still valid
   await tryAutoLogin();

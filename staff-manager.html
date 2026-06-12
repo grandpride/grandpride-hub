@@ -131,7 +131,7 @@ async function init(){
     const r = await SUPA.all('gp_staff');
     if(r.ok && r.data && r.data.length){
       staff = r.data.map(row=>({
-        username:row.username, password:row.password, name:row.name, role:row.role,
+        username:row.username, email:row.email||undefined, name:row.name, role:row.role,
         company:row.company||undefined, title:row.title||undefined, birthday:row.birthday||undefined,
         reportsTo: row.reports_to? (function(){ try{ const v=JSON.parse(row.reports_to); return Array.isArray(v)?v:[v]; }catch(e){ return [row.reports_to]; } })() : undefined,
         canPostNotice:!!row.can_post_notice,
@@ -149,7 +149,7 @@ async function init(){
 async function pushOne(s){
   if(!SUPA.isReady()) return;
   await SUPA.up('gp_staff', {
-    username:s.username, password:s.password, name:s.name, role:s.role,
+    username:s.username, email:s.email||null, name:s.name, role:s.role,
     company:s.company||null, title:s.title||null, birthday:s.birthday||null,
     reports_to: s.reportsTo? JSON.stringify(Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null, can_post_notice:!!s.canPostNotice,
     apps: s.apps||[], updated_at:new Date().toISOString()
@@ -184,7 +184,7 @@ function openForm(idx){
   const sApps = s && Array.isArray(s.apps) ? s.apps : APP_LIST.filter(a=>!OPT_IN_APPS.includes(a.key)).map(a=>a.key);
   let h='<button class="x" onclick="closeModal()">×</button><h3>'+(s?'Edit Staff':'Add Staff')+'</h3>';
   h+='<div class="row2"><div><label>Username</label><input id="fUser" value="'+(s?s.username:'')+'" autocapitalize="none"></div>'+
-     '<div><label>Password</label><input id="fPass" value="'+(s?s.password:'')+'"></div></div>';
+     '<div><label>Email '+(s?'':'<span style="text-transform:none;color:var(--grey)">(invite sent here)</span>')+'</label><input id="fEmail" type="email" value="'+(s&&s.email?s.email:'')+'" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="name@example.com"'+(s?' '+'':'')+'></div></div>';
   h+='<label>Full name</label><input id="fName" value="'+(s?s.name.replace(/"/g,'&quot;'):'')+'">';
   h+='<div class="row2"><div><label>Role</label><select id="fRole">'+ROLES.map(r=>'<option'+(s&&s.role===r?' selected':'')+'>'+r+'</option>').join('')+'</select></div>'+
      '<div><label>Company</label><select id="fCompany"><option value="">—</option>'+COMPANIES.map(c=>'<option'+(s&&s.company===c?' selected':'')+'>'+c+'</option>').join('')+'</select></div></div>';
@@ -205,16 +205,19 @@ function openForm(idx){
   document.getElementById('sheet').innerHTML=h;
   document.getElementById('modal').classList.add('show');
 }
-function saveStaff(idx){
+async function saveStaff(idx){
   const username=document.getElementById('fUser').value.trim().toLowerCase();
-  const password=document.getElementById('fPass').value.trim();
+  const email=document.getElementById('fEmail').value.trim().toLowerCase();
   const name=document.getElementById('fName').value.trim();
-  if(!username||!password||!name){ toast('Username, password and name are required'); return; }
+  const isNew = !(idx>=0);
+  if(!username||!name){ toast('Username and name are required'); return; }
+  if(isNew && !email){ toast('Email is required — the invite is sent there'); return; }
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('That email looks invalid'); return; }
   // unique username check
   const clash = staff.findIndex((x,i)=>x.username===username && i!==idx);
   if(clash>=0){ toast('That username already exists'); return; }
   const apps=[...document.querySelectorAll('.appChk')].filter(c=>c.checked).map(c=>c.value);
-  const obj={ username, password, name,
+  const obj={ username, email, name,
     role:document.getElementById('fRole').value,
     company:document.getElementById('fCompany').value||undefined,
     title:document.getElementById('fTitle').value||undefined,
@@ -222,8 +225,28 @@ function saveStaff(idx){
     reportsTo: (function(){ const a=[...document.querySelectorAll('.repChk')].filter(c=>c.checked).map(c=>c.value); return a.length?a:undefined; })(),
     canPostNotice:document.getElementById('fNotice').checked||undefined,
     apps };
-  if(idx>=0) staff[idx]=obj; else staff.push(obj);
-  persist(); pushOne(obj); closeModal(); render(); toast(idx>=0?'Staff updated':'Staff added');
+
+  if(isNew){
+    // NEW staff → send a secure email invite via the Edge Function. The function
+    // verifies this caller is an admin, creates the Auth user, emails the invite,
+    // and inserts the gp_staff row. No password is set here.
+    toast('Sending invite…');
+    const res = await SUPA.inviteStaff({
+      email, username, name,
+      role: obj.role, company: obj.company||null, title: obj.title||null,
+      birthday: obj.birthday||null,
+      reports_to: obj.reportsTo? (Array.isArray(obj.reportsTo)?obj.reportsTo:[obj.reportsTo]) : null,
+      can_post_notice: !!obj.canPostNotice,
+      apps: obj.apps||[]
+    });
+    if(!res.ok){ toast('Invite failed: '+(res.error||'unknown')); return; }
+    staff.push(obj); persist(); closeModal(); render();
+    toast('Invite sent to '+email);
+  } else {
+    // EDIT existing staff → just update their profile row (no invite, no password).
+    staff[idx]=obj; persist(); pushOne(obj); closeModal(); render();
+    toast('Staff updated');
+  }
 }
 function delStaff(idx){
   if(!confirm('Delete '+staff[idx].name+'?')) return;
@@ -245,7 +268,8 @@ function genFile(){
     if(hasAllBase && !extras.length)      appsStr = 'ALL_APPS';
     else if(hasAllBase && extras.length)  appsStr = "ALL_APPS.concat(["+extras.map(a=>"'"+a+"'").join(',')+"])";
     else                                  appsStr = '['+arr.map(a=>"'"+a+"'").join(',')+']';
-    let parts = "{ username:'"+s.username+"', password:'"+s.password+"', name:'"+s.name.replace(/'/g,"\\'")+"', role:'"+s.role+"'";
+    let parts = "{ username:'"+s.username+"', name:'"+s.name.replace(/'/g,"\\'")+"', role:'"+s.role+"'";
+    if(s.email) parts += ", email:'"+s.email+"'";
     if(s.company) parts += ", company:'"+s.company+"'";
     if(s.title) parts += ", title:'"+s.title.replace(/'/g,"\\'")+"'";
     if(s.birthday) parts += ", birthday:'"+s.birthday+"'";
