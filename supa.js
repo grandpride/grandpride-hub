@@ -36,6 +36,45 @@ var SUPA = (function(){
 
   function isReady(){ return ready && client; }
 
+  /* ===== AUTH ===== */
+  // sign in with a username (looks up email via RPC) + password
+  async function signInUsername(username, password){
+    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
+    try{
+      // 1) resolve username -> email (safe RPC, callable before login)
+      var er = await client.rpc('email_for_username', { p_username: username });
+      if(er.error) return { ok:false, error:er.error.message };
+      var email = er.data;
+      if(!email) return { ok:false, error:'Unknown user or no email set' };
+      // 2) real Supabase Auth sign-in
+      var ar = await client.auth.signInWithPassword({ email: email, password: password });
+      if(ar.error) return { ok:false, error:'Wrong username or password.' };
+      return { ok:true, user: ar.data.user };
+    }catch(e){ return { ok:false, error:String(e) }; }
+  }
+
+  async function signOut(){
+    try{ if(client) await client.auth.signOut(); }catch(e){}
+  }
+
+  // current Auth user (null if not signed in)
+  async function currentAuthUser(){
+    if(!isReady()){ var ok = await init(); if(!ok) return null; }
+    try{ var r = await client.auth.getUser(); return (r && r.data) ? r.data.user : null; }
+    catch(e){ return null; }
+  }
+
+  // fetch this logged-in user's gp_staff profile (by auth_id)
+  async function myProfile(){
+    if(!isReady()) return null;
+    try{
+      var u = await currentAuthUser(); if(!u) return null;
+      var r = await client.from('gp_staff').select('*').eq('auth_id', u.id).limit(1);
+      if(r.error || !r.data || !r.data.length) return null;
+      return r.data[0];
+    }catch(e){ return null; }
+  }
+
   // upsert one or many rows into a table
   async function up(table, rows, onConflict){
     if(!isReady()) return { ok:false, offline:true };
@@ -71,5 +110,6 @@ var SUPA = (function(){
     }catch(e){ return { ok:false, error:String(e) }; }
   }
 
-  return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;} };
+  return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;},
+           signInUsername:signInUsername, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile };
 })();

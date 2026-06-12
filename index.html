@@ -571,52 +571,69 @@ function rememberUser(username){ try{ localStorage.setItem(REMEMBER_KEY, usernam
 function forgetUser(){ try{ localStorage.removeItem(REMEMBER_KEY); }catch(e){} }
 function getRememberedUser(){ try{ return localStorage.getItem(REMEMBER_KEY); }catch(e){ return null; } }
 
-function doLogin(){
+async function doLogin(){
   const u = document.getElementById('liUser').value.trim().toLowerCase();
   const p = document.getElementById('liPass').value.trim();
   const err = document.getElementById('liErr');
+  const btn = document.getElementById('btnEnter');
 
-  // Failsafe: guarantee admin can always get in, even if DB failed to load
-  if(u==='admin' && p==='Gldetailing2019'){
-    if(!DB.users.find(x=>x.username==='admin')){
-      DB.users.push({username:'admin',password:'Gldetailing2019',name:'Administrator',role:'Admin',apps:APPS.map(a=>a.id)});
-    }
-    current = DB.users.find(x=>x.username==='admin');
-    rememberUser('admin');
-    err.textContent='';
-    document.getElementById('liPass').value='';
-    renderHub();
-    show('hubScreen');
-    maybeShowPushBanner();
+  if(!u || !p){ err.textContent = 'Enter username and password.'; return; }
+  err.textContent = 'Signing in…';
+  if(btn){ btn.disabled = true; }
+
+  // real Supabase Auth sign-in (username -> email -> password)
+  const res = await SUPA.signInUsername(u, p);
+  if(btn){ btn.disabled = false; }
+  if(!res.ok){
+    err.textContent = res.error || 'Wrong username or password.';
     return;
   }
 
-  const found = DB.users.find(x=>x.username.toLowerCase()===u && x.password.trim()===p);
-  if(!found){
-    err.textContent = 'Wrong username or password.';
+  // load this user's staff profile from the database
+  const prof = await SUPA.myProfile();
+  if(!prof){
+    err.textContent = 'Logged in, but no staff profile linked. Contact admin.';
+    await SUPA.signOut();
     return;
   }
-  err.textContent='';
-  current = found;
-  rememberUser(found.username);
-  document.getElementById('liPass').value='';
+
+  // map db profile -> the shape the app expects
+  current = {
+    username: prof.username, name: prof.name, role: prof.role,
+    company: prof.company, title: prof.title, birthday: prof.birthday,
+    canPostNotice: prof.can_post_notice || prof.canPostNotice,
+    apps: Array.isArray(prof.apps) ? prof.apps : (prof.apps ? JSON.parse(prof.apps) : [])
+  };
+
+  err.textContent = '';
+  document.getElementById('liPass').value = '';
+  // now authenticated — pull shared data (RLS allows it now)
+  try{ await pullHubDataFromCloud(); }catch(e){ console.warn('pullHubData failed', e); }
   renderHub();
   show('hubScreen');
   maybeShowPushBanner();
 }
-function logout(){ current=null; forgetUser(); show('loginScreen'); }
+function logout(){ current=null; try{ SUPA.signOut(); }catch(e){} forgetUser(); show('loginScreen'); }
 
-/* Auto-login the remembered user (this device stays signed in). */
-function tryAutoLogin(){
-  const un = getRememberedUser();
-  if(!un) return false;
-  const found = (DB.users||[]).find(x=>x.username===un);
-  if(!found) return false;
-  current = found;
-  renderHub();
-  show('hubScreen');
-  maybeShowPushBanner();
-  return true;
+/* Auto-login: restore an existing Supabase Auth session (stays signed in on device). */
+async function tryAutoLogin(){
+  try{
+    const u = await SUPA.currentAuthUser();
+    if(!u) return false;
+    const prof = await SUPA.myProfile();
+    if(!prof) return false;
+    current = {
+      username: prof.username, name: prof.name, role: prof.role,
+      company: prof.company, title: prof.title, birthday: prof.birthday,
+      canPostNotice: prof.can_post_notice || prof.canPostNotice,
+      apps: Array.isArray(prof.apps) ? prof.apps : (prof.apps ? JSON.parse(prof.apps) : [])
+    };
+    try{ await pullHubDataFromCloud(); }catch(e){ console.warn('pullHubData failed', e); }
+    renderHub();
+    show('hubScreen');
+    maybeShowPushBanner();
+    return true;
+  }catch(e){ return false; }
 }
 
 
@@ -2804,8 +2821,8 @@ async function init(){
   const pw=document.getElementById('liPass');
   if(pw) pw.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 
-  // Remembered device: auto-login the last user so they skip the login screen
-  tryAutoLogin();
+  // Remembered device: restore Supabase Auth session if still valid
+  await tryAutoLogin();
 }
 init();
 </script><script>
