@@ -1,0 +1,1127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP Agreement</title>
+<style>
+:root{
+  --ink:#141210; --panel:#1b1815; --panel2:#221e1a; --line:#2c2722;
+  --gold:#c9a24b; --gold-soft:#d8bd78; --grey:#9a8f7e; --text:#f5f0e6;
+  --red:#e05a54; --green:#3fae6b; --blue:#4a78c0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ink);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:1100px;margin:0 auto;padding:16px;padding-bottom:80px}
+
+/* ---- top bar ---- */
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 4px;position:sticky;top:0;background:var(--ink);z-index:30;border-bottom:1px solid var(--line)}
+.topbar h1{font-size:17px;font-weight:700;letter-spacing:.3px}
+.topbar .sub{font-size:11px;color:var(--gold-soft)}
+.back-btn{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:8px 12px;font-size:13px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.spacer{flex:1}
+
+/* ---- buttons ---- */
+.btn{background:linear-gradient(135deg,var(--gold),#8a5f1e);border:none;color:#1a1408;border-radius:10px;padding:11px 16px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sec{background:var(--panel2);border:1px solid var(--line);color:var(--text)}
+.btn.danger{background:var(--panel2);border:1px solid var(--red);color:var(--red)}
+.btn.ok{background:linear-gradient(135deg,var(--green),#247a47);color:#fff}
+.btn.full{width:100%}
+.mini{padding:7px 11px;font-size:12.5px;border-radius:8px}
+
+/* ---- chooser cards ---- */
+.chooser{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:18px}
+.type-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;cursor:pointer;transition:.15s;position:relative}
+.type-card:hover{border-color:var(--gold);box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.type-card .ico{font-size:30px;margin-bottom:10px}
+.type-card h3{font-size:16px;margin-bottom:5px}
+.type-card p{font-size:12.5px;color:var(--grey);line-height:1.5}
+.type-card.soon{opacity:.55}
+.type-card.soon::after{content:'Coming soon';position:absolute;top:14px;right:14px;font-size:10px;color:var(--gold-soft);border:1px dashed var(--gold);padding:3px 8px;border-radius:20px}
+
+/* ---- form ---- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px}
+.panel h3{font-size:14px;color:var(--gold-soft);margin-bottom:12px;letter-spacing:.4px;text-transform:uppercase}
+label{display:block;font-size:12px;color:var(--grey);margin:10px 0 4px;font-weight:600}
+input,textarea,select{width:100%;background:#13110e;border:1.5px solid var(--line);border-radius:9px;padding:10px 12px;color:var(--text);font-size:14px;font-family:inherit;outline:none}
+input[type="date"]{-webkit-appearance:none;appearance:none;min-height:44px;color-scheme:dark;position:relative}
+input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.8);opacity:1;cursor:pointer;font-size:18px;padding:0 2px}
+input[type="date"]::-webkit-date-and-time-value{text-align:left}
+input:focus,textarea:focus,select:focus{border-color:var(--gold)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.hint{font-size:11px;color:var(--grey);margin-top:3px}
+@media(max-width:640px){.row2,.row3{grid-template-columns:1fr}}
+
+/* ---- payment phases ---- */
+.phase-row{display:grid;grid-template-columns:1fr 1fr 1.4fr auto;gap:8px;align-items:end;margin-bottom:8px}
+.phase-row .x{background:var(--panel2);border:1px solid var(--red);color:var(--red);border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px}
+@media(max-width:640px){.phase-row{grid-template-columns:1fr 1fr;}.phase-row .x{grid-column:1/-1}}
+
+/* ---- toast ---- */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--text);padding:11px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:100;max-width:90%}
+#toast.show{opacity:1}
+
+/* ---- list ---- */
+.rec{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.rec:last-child{border-bottom:none}
+.rec .meta b{font-size:14px}
+.rec .meta small{color:var(--grey);font-size:12px}
+.pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.pill.draft{background:#3a332300;border:1px solid var(--grey);color:var(--grey)}
+.pill.lessor{background:#2a3550;border:1px solid var(--blue);color:#9cc0ff}
+.pill.done{background:#1f3a28;border:1px solid var(--green);color:#7be0a0}
+
+/* ---- signature pad ---- */
+.sigwrap{margin-top:8px}
+.sigpad{width:100%;height:150px;background:#fff;border:2px solid var(--line);border-radius:10px;touch-action:none;display:block}
+.sigpad.initial{height:90px}
+.sig-actions{display:flex;gap:8px;margin-top:6px}
+
+/* =========================================================
+   PRINTABLE AGREEMENT  (A4 pages)
+   ========================================================= */
+#doc{display:none}
+.doc-page{
+  width:210mm;min-height:297mm;background:#fff;color:#000;margin:0 auto 16px;
+  padding:20mm 18mm 24mm;position:relative;font-family:'Times New Roman',Georgia,serif;
+  font-size:11.2pt;line-height:1.5;box-shadow:0 4px 20px rgba(0,0,0,.4);box-sizing:border-box;overflow:hidden
+}
+.doc-page *{color:#000}
+.doc h1.title{font-size:12pt;text-align:center;font-weight:bold;text-decoration:underline;margin-bottom:14pt;letter-spacing:.3px}
+.doc p{margin:7pt 0;text-align:justify}
+.doc p.head{margin:13pt 0 6pt;font-weight:bold}
+.doc ol.num{margin:5pt 0;padding-left:22pt;list-style:decimal}
+.doc ol.alpha{margin:5pt 0;padding-left:22pt;list-style:lower-alpha}
+.doc ol li{margin:6pt 0;text-align:justify;padding-left:4pt}
+.doc .rng{color:#000}
+.doc table.vt{width:100%;border-collapse:collapse;margin:8pt 0}
+.doc table.vt td{border:1px solid #000;padding:5pt 8pt;vertical-align:top;font-size:10.8pt}
+.doc table.vt td.k{width:42%;font-weight:bold;background:#f4f4f4}
+.doc table.vt td.c{width:4%;text-align:center}
+.fill{font-weight:bold}
+.doc .sigrow{display:flex;justify-content:space-between;gap:20pt;margin-top:18pt}
+.doc .sigcol{width:46%}
+.doc .sigcol p{margin:4pt 0;text-align:left}
+.doc .sigline{border-bottom:1px solid #000;width:60mm;height:46px;display:flex;align-items:flex-end;margin:6pt 0}
+.doc .sigline img{max-height:44px;max-width:58mm}
+.doc .witness{margin-top:8pt;font-size:10.5pt}
+/* page initials bottom-right */
+.pg-initials{position:absolute;right:14mm;bottom:9mm;display:flex;flex-direction:column;gap:1.5mm;align-items:flex-end}
+.pg-initials .slot{width:28mm;text-align:center;font-size:6.5pt;color:#444}
+.pg-initials .slot .sig{height:7mm;display:flex;align-items:flex-end;justify-content:center}
+.pg-initials .slot .sig img{max-height:7mm;max-width:26mm;display:block}
+.pg-initials .slot .lbl{border-top:1px solid #000;padding-top:0.5mm;margin-top:0.5mm}
+.pg-num{position:absolute;left:0;right:0;bottom:6mm;text-align:center;font-size:8pt;color:#666}
+
+@media print{
+  html,body{background:#fff;margin:0;padding:0;width:210mm}
+  .wrap{display:none !important}
+  #doc{display:block !important}
+  .doc-page{
+    width:210mm;height:297mm;min-height:auto;box-shadow:none;margin:0;
+    padding:18mm 18mm 22mm;overflow:hidden;page-break-after:always;break-after:page
+  }
+  .doc-page:last-child{page-break-after:auto;break-after:auto}
+  .pg-initials{bottom:8mm}
+  .pg-num{bottom:5mm}
+  @page{size:A4 portrait;margin:0}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <a class="back-btn" href="index.html">‹ Hub</a>
+    <div>
+      <h1>GP Agreement</h1>
+      <div class="sub" id="sub">Choose agreement type</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn sec mini" id="listBtn" style="display:none" onclick="showList()">Saved</button>
+  </div>
+
+  <div id="view"></div>
+</div>
+
+<!-- printable doc renders here -->
+<div id="doc"></div>
+
+<div id="toast"></div>
+
+<script src="supa.js"></script>
+<script>
+/* ============================================================
+   GP AGREEMENT — Phase 1
+   Reuses the Hub's supa.js (same Supabase project).
+   Table: gp_agreements
+   ============================================================ */
+
+/* ---- Supabase REST (reuse Hub credentials from supa.js) ---- */
+var SB_URL = (typeof SUPABASE_URL!=='undefined' && SUPABASE_URL) || '';
+var SB_KEY = (typeof SUPABASE_ANON_KEY!=='undefined' && SUPABASE_ANON_KEY) ||
+             (typeof SUPABASE_KEY!=='undefined' && SUPABASE_KEY) ||
+             (typeof SUPABASE_ANON!=='undefined' && SUPABASE_ANON) || '';
+function sbBase(){ return (SB_URL||'').replace(/\/rest\/v1\/?$/,''); }
+function sbHeaders(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
+var CLOUD = !!(SB_URL && SB_KEY);
+
+/* Apps Script web app — fills the Google Doc template, exports PDF to Drive, logs to Sheet */
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyk5_ZQXyBomPQXRKZhrDkBWB5MpSapKqeNk16_y42aCFewORCQMx8aNltUL6nans/exec';
+
+async function sbUpsert(row){
+  if(!CLOUD) return false;
+  const r = await fetch(sbBase()+'/rest/v1/gp_agreements?on_conflict=id', {
+    method:'POST', headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+    body: JSON.stringify(row)
+  });
+  return r.ok;
+}
+async function sbList(){
+  if(!CLOUD) return [];
+  const r = await fetch(sbBase()+'/rest/v1/gp_agreements?select=*&order=created_at.desc', {headers:sbHeaders()});
+  if(!r.ok) return [];
+  return await r.json();
+}
+async function sbGet(id){
+  if(!CLOUD) return null;
+  const r = await fetch(sbBase()+'/rest/v1/gp_agreements?id=eq.'+encodeURIComponent(id)+'&select=*', {headers:sbHeaders()});
+  if(!r.ok) return null;
+  const rows = await r.json();
+  return rows[0]||null;
+}
+async function sbDelete(id){
+  if(!CLOUD) return false;
+  const r = await fetch(sbBase()+'/rest/v1/gp_agreements?id=eq.'+encodeURIComponent(id), {method:'DELETE', headers:sbHeaders({'Prefer':'return=minimal'})});
+  return r.ok;
+}
+
+/* ---- helpers ---- */
+function $(id){ return document.getElementById(id); }
+function nricFmt(el){
+  let v=el.value.replace(/[^0-9]/g,'').slice(0,12);
+  let out=v;
+  if(v.length>6) out=v.slice(0,6)+'-'+v.slice(6,8)+(v.length>8?'-'+v.slice(8):'');
+  el.value=out;
+}
+function upper(el){ el.value = el.value.toUpperCase(); }
+function money(el){
+  let v = el.value.replace(/[^0-9.]/g,'');
+  const firstDot = v.indexOf('.');
+  if(firstDot!==-1){ v = v.slice(0,firstDot+1) + v.slice(firstDot+1).replace(/\./g,''); }
+  el.value = v; // keep raw while typing
+}
+function moneyBlur(el){
+  let v = el.value.replace(/[^0-9.]/g,'');
+  if(v==='') { el.value=''; return; }
+  let [intp, decp=''] = v.split('.');
+  intp = intp.replace(/^0+(?=\d)/,'');
+  intp = (intp||'0').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  decp = (decp+'00').slice(0,2);
+  el.value = intp + '.' + decp;
+}
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
+function uid(){ return 'ag'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function todayISO(){ return new Date().toISOString(); }
+function curUser(){ try{ return new URLSearchParams(location.search).get('u')||'staff'; }catch(e){ return 'staff'; } }
+function ord(n){ const s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+function fmtDate(d){ if(!d) return ''; try{ const x=new Date(d+'T00:00:00'); const mon=['January','February','March','April','May','June','July','August','September','October','November','December'][x.getMonth()]; return ord(x.getDate())+' '+mon+' '+x.getFullYear(); }catch(e){ return d; } }
+
+/* ---- app state ---- */
+var STATE = { view:'chooser', current:null };
+
+function setSub(t){ $('sub').textContent=t; }
+
+/* ---- router ---- */
+function showChooser(){
+  STATE.view='chooser'; setSub('Choose agreement type'); $('listBtn').style.display='';
+  $('doc').style.display='none';
+  $('view').innerHTML = `
+    <div class="chooser">
+      <div class="type-card soon" onclick="toast('Lease to Own — temporarily hidden')">
+        <div class="ico">📄</div><h3>Lease to Own</h3>
+        <p>Vehicle lease where ownership transfers after full payment term.</p>
+      </div>
+      <div class="type-card" onclick="startNew('lease')">
+        <div class="ico">🚗</div><h3>Car Leasing</h3>
+        <p>Standard vehicle leasing agreement.</p>
+      </div>
+      <div class="type-card soon" onclick="toast('Subscription — coming soon')">
+        <div class="ico">🔁</div><h3>Subscription</h3>
+        <p>Recurring subscription-based vehicle plan.</p>
+      </div>
+    </div>
+    <div style="margin-top:14px"><div class="hint" style="margin-bottom:6px">Test fill:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn sec mini" onclick="fillSample('lease')">Car Leasing</button>
+      </div></div>`;
+}
+
+
+function fillSample(type){ if(type==='lease'){ fillLeaseSample(); return; } if(type&&type!=='lto'){ toast('Only these are ready'); return; }
+  STATE.current = Object.assign(blankLTO(), {
+    agreement_date:'2024-07-02',
+    lessee_name:'ONG YUNG TIAM', lessee_nric:'840604-14-5799',
+    lessee_address:'NO 4 JALAN PANDAN INDAH 12 TAMAN PANDAN INDAH 55100 KUALA LUMPUR W. PERSEKUTUAN (KL)',
+    v_make_model:'TOYOTA / ALPHARD DBA-AGH30W', v_year:'MOTOKAR / 2019',
+    v_reg:'PPM131', v_engine:'2AR2231837', v_chassis:'AGH30-0268877',
+    v_equip:'N/A', v_odo:'N/A',
+    commence_date:'2024-08-03', duration_months:'48',
+    vehicle_price:'302,000.02', upfront_sum:'35,000.00',
+    late_charge:'8', safety_fee_yearly:'600.00',
+    total_downpayment:'35,000.00', safety_fee_amount:'1,000.00',
+    appendix_from:'2024-08-03', appendix_to:'2028-08-02',
+    phases:[
+      {label:'1-6/48 (6 months)', amount:'10,341.67', range:'3rd Sep 2024 - 2nd Mar 2025'},
+      {label:'7-8/48 (2 months)', amount:'9,625.00', range:'3rd Mar 2025 - 2nd May 2025'},
+      {label:'9-23/48 (15 months)', amount:'6,000.00', range:'3rd May 2025 - 2nd Aug 2026'},
+      {label:'24-48/48 (25 months)', amount:'4,000.00', range:'3rd Aug 2026 - 2nd Sep 2028'}
+    ]
+  });
+  showForm();
+  toast('Sample data filled');
+}
+
+function startNew(type){
+  if(type==='lease'){ STATE.current = blankLEASE(); showLeaseForm(); return; }
+  if(type==='lto'){ STATE.current = blankLTO(); showForm(); return; }
+}
+function blankLTO(){
+  return {
+    id: uid(), type:'lto', status:'draft', created_at: todayISO(), created_by: curUser(),
+    agreement_date:'',
+    lessee_name:'', lessee_nric:'', lessee_address:'',
+    v_make_model:'', v_year:'', v_reg:'', v_engine:'', v_chassis:'', v_equip:'N/A', v_odo:'N/A',
+    commence_date:'', duration_months:'48', vehicle_price:'', upfront_sum:'',
+    late_charge:'8', safety_fee_yearly:'600',
+    total_downpayment:'', safety_fee_amount:'',
+    appendix_from:'', appendix_to:'',
+    phases:[ {label:'1-6/48 (6 months)', amount:'', range:''} ],
+    sig_lessor:'', sig_lessor_initial:'', sig_lessor_name:'', sig_lessor_date:'',
+    sig_lessee:'', sig_lessee_initial:'', sig_lessee_date:''
+  };
+}
+
+function blankLEASE(){
+  return {
+    id: uid(), type:'lease', status:'draft', created_at: todayISO(), created_by: curUser(),
+    agreement_date:'',
+    lessee_name:'', lessee_nric:'', lessee_address:'',
+    v_make_model:'', v_year:'', v_reg:'', v_engine:'', v_chassis:'', v_equip:'N/A', v_odo:'N/A',
+    lease_from:'', lease_to:'', duration_days:'', vehicle_price:'', leasing_price:'',
+    insurance_insured:'80', insurance_bear:'20', petrol_type:'RON97',
+    age:'21', late_charge:'8',
+    sig_lessor:'', sig_lessor_initial:'', sig_lessor_name:'', sig_lessor_date:'',
+    sig_lessee:'', sig_lessee_initial:'', sig_lessee_date:''
+  };
+}
+
+function showLeaseForm(){
+  const a=STATE.current; STATE.view='form';
+  setSub('Car Leasing — '+(a.status==='draft'?'New':'Edit'));
+  $('listBtn').style.display=''; $('doc').style.display='none';
+  $('view').innerHTML = `
+  <div class="panel"><h3>Agreement</h3>
+    <label>Agreement date</label>
+    <input type="date" id="f_agreement_date" value="${esc(a.agreement_date)}" onclick="try{this.showPicker()}catch(e){}">
+  </div>
+  <div class="panel"><h3>Lessee Details</h3>
+    <label>Lessee name (UPPERCASE)</label>
+    <input id="f_lessee_name" value="${esc(a.lessee_name)}" oninput="upper(this)" placeholder="DICKSON CHEN DI SHAN">
+    <label>NRIC / Passport No.</label>
+    <input id="f_lessee_nric" value="${esc(a.lessee_nric)}" inputmode="numeric" oninput="nricFmt(this)" placeholder="970515-23-5237">
+    <label>Address</label>
+    <textarea id="f_lessee_address" rows="2" placeholder="Full address">${esc(a.lessee_address)}</textarea>
+  </div>
+  <div class="panel"><h3>2 · Description of Vehicle</h3>
+    <div class="row2">
+      <div><label>Make and Model</label><input id="f_v_make_model" value="${esc(a.v_make_model)}" oninput="upper(this)" placeholder="LAMBORGHINI URUS"></div>
+      <div><label>Year of Manufacture</label><input id="f_v_year" value="${esc(a.v_year)}" oninput="upper(this)" placeholder="2020"></div>
+    </div>
+    <div class="row2">
+      <div><label>Registration No.</label><input id="f_v_reg" value="${esc(a.v_reg)}" oninput="upper(this)" placeholder="VNS31"></div>
+      <div><label>Engine No.</label><input id="f_v_engine" value="${esc(a.v_engine)}" oninput="upper(this)" placeholder="DHUO15343"></div>
+    </div>
+    <div class="row2">
+      <div><label>Chassis No.</label><input id="f_v_chassis" value="${esc(a.v_chassis)}" oninput="upper(this)" placeholder="ZPBEA1ZL0MLA11261"></div>
+      <div><label>Equipment / modification</label><input id="f_v_equip" value="${esc(a.v_equip)}" oninput="upper(this)" placeholder="N/A"></div>
+    </div>
+    <label>Odometer reading</label>
+    <input id="f_v_odo" value="${esc(a.v_odo)}" placeholder="N/A">
+  </div>
+  <div class="panel"><h3>3.2 · Particulars of Lease</h3>
+    <div class="row2">
+      <div><label>Lease period from</label><input type="date" id="f_lease_from" value="${esc(a.lease_from)}" onclick="try{this.showPicker()}catch(e){}"></div>
+      <div><label>Lease period to</label><input type="date" id="f_lease_to" value="${esc(a.lease_to)}" onclick="try{this.showPicker()}catch(e){}"></div>
+    </div>
+    <div class="row2">
+      <div><label>Duration (e.g. 1 DAYS)</label><input id="f_duration_days" value="${esc(a.duration_days)}" oninput="upper(this)" placeholder="1 DAYS"></div>
+      <div><label>Vehicle price (RM)</label><input id="f_vehicle_price" value="${esc(a.vehicle_price)}" inputmode="decimal" oninput="money(this)" onblur="moneyBlur(this)" placeholder="1,600,000.00"></div>
+    </div>
+    <label>Leasing price (RM)</label>
+    <input id="f_leasing_price" value="${esc(a.leasing_price)}" inputmode="decimal" oninput="money(this)" onblur="moneyBlur(this)" placeholder="Payment lease amount">
+    <div class="row2">
+      <div><label>Insurance insured (%)</label><input id="f_insurance_insured" value="${esc(a.insurance_insured)}" inputmode="numeric" placeholder="80"></div>
+      <div><label>Customer bears (%)</label><input id="f_insurance_bear" value="${esc(a.insurance_bear)}" inputmode="numeric" placeholder="20"></div>
+    </div>
+    <label>Petrol type</label>
+    <select id="f_petrol_type">
+      <option ${a.petrol_type==='RON95'?'selected':''}>RON95</option>
+      <option ${a.petrol_type==='RON97'?'selected':''}>RON97</option>
+      <option ${a.petrol_type==='RON100'?'selected':''}>RON100</option>
+      <option ${a.petrol_type==='Diesel'?'selected':''}>Diesel</option>
+    </select>
+    <div class="row2">
+      <div><label>Minimum age</label><input id="f_age" value="${esc(a.age)}" placeholder="21"></div>
+      <div><label>Late payment charge (%)</label><input id="f_late_charge" value="${esc(a.late_charge)}" placeholder="8"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+    <button class="btn" onclick="saveDraft()">Save draft</button>
+    <button class="btn ok" onclick="previewDoc()">Preview &amp; Sign ›</button>
+    <button class="btn sec" onclick="showChooser()">Cancel</button>
+  </div>`;
+}
+
+function readLeaseForm(){
+  const a=STATE.current; const g=id=>{const e=$('f_'+id);return e?e.value:undefined;};
+  ['agreement_date','lessee_name','lessee_nric','lessee_address','v_make_model','v_year','v_reg','v_engine','v_chassis','v_equip','v_odo','lease_from','lease_to','duration_days','vehicle_price','leasing_price','insurance_insured','insurance_bear','petrol_type','age','late_charge'].forEach(k=>{const v=g(k); if(v!==undefined) a[k]=v;});
+  return a;
+}
+
+function fillLeaseSample(){
+  STATE.current = Object.assign(blankLEASE(), {
+    agreement_date:'2026-04-30',
+    lessee_name:'DICKSON CHEN DI SHAN', lessee_nric:'970515-23-5237',
+    lessee_address:'NO 25 JALAN BUNGA MATAHARI 86100',
+    v_make_model:'LAMBORGHINI URUS', v_year:'2020', v_reg:'VNS31',
+    v_engine:'DHUO15343', v_chassis:'ZPBEA1ZL0MLA11261', v_equip:'N/A', v_odo:'N/A',
+    lease_from:'2026-05-02', lease_to:'2026-05-02', duration_days:'1 DAYS',
+    vehicle_price:'1,600,000.00', leasing_price:'2,500.00',
+    insurance_insured:'80', insurance_bear:'20', petrol_type:'RON97',
+    age:'21', late_charge:'8'
+  });
+  showLeaseForm(); toast('Sample data filled');
+}
+
+function showForm(){
+  const a = STATE.current; STATE.view='form';
+  setSub('Lease to Own \u2014 '+(a.status==='draft'?'New':'Edit'));
+  $('listBtn').style.display=''; $('doc').style.display='none';
+  const ph = a.phases.map((p,i)=>phaseRow(p,i)).join('');
+  $('view').innerHTML = `
+  <div class="panel">
+    <h3>Agreement</h3>
+    <label>Agreement date</label>
+    <input type="date" id="f_agreement_date" value="${esc(a.agreement_date)}" onclick="try{this.showPicker()}catch(e){}">
+  </div>
+  <div class="panel">
+    <h3>Lessee Details</h3>
+    <label>Lessee name (UPPERCASE)</label>
+    <input id="f_lessee_name" value="${esc(a.lessee_name)}" oninput="upper(this)" placeholder="ONG YUNG TIAM">
+    <label>NRIC / Passport No.</label>
+    <input id="f_lessee_nric" value="${esc(a.lessee_nric)}" inputmode="numeric" oninput="nricFmt(this)" placeholder="840604-14-5799">
+    <label>Address</label>
+    <textarea id="f_lessee_address" rows="2" placeholder="Full address">${esc(a.lessee_address)}</textarea>
+  </div>
+  <div class="panel">
+    <h3>2 \u00b7 Description of Vehicle</h3>
+    <div class="row2">
+      <div><label>Make and Model</label><input id="f_v_make_model" value="${esc(a.v_make_model)}" oninput="upper(this)" placeholder="TOYOTA / ALPHARD DBA-AGH30W"></div>
+      <div><label>Year of Manufacture</label><input id="f_v_year" value="${esc(a.v_year)}" oninput="upper(this)" placeholder="MOTOKAR / 2019"></div>
+    </div>
+    <div class="row2">
+      <div><label>Registration No.</label><input id="f_v_reg" value="${esc(a.v_reg)}" oninput="upper(this)" placeholder="PPM131"></div>
+      <div><label>Engine No.</label><input id="f_v_engine" value="${esc(a.v_engine)}" oninput="upper(this)" placeholder="2AR2231837"></div>
+    </div>
+    <div class="row2">
+      <div><label>Chassis No.</label><input id="f_v_chassis" value="${esc(a.v_chassis)}" oninput="upper(this)" placeholder="AGH30-0268877"></div>
+      <div><label>Equipment / modification</label><input id="f_v_equip" value="${esc(a.v_equip)}" oninput="upper(this)" placeholder="N/A"></div>
+    </div>
+    <label>Odometer reading</label>
+    <input id="f_v_odo" value="${esc(a.v_odo)}" placeholder="N/A">
+  </div>
+  <div class="panel">
+    <h3>3.2 \u00b7 Particulars of Lease</h3>
+    <div class="row2">
+      <div><label>Lease commencement date</label><input type="date" id="f_commence_date" value="${esc(a.commence_date)}" onclick="try{this.showPicker()}catch(e){}"></div>
+      <div><label>Duration (months)</label><input id="f_duration_months" value="${esc(a.duration_months)}" placeholder="48"></div>
+    </div>
+    <div class="row2">
+      <div><label>Vehicle price (RM)</label><input id="f_vehicle_price" value="${esc(a.vehicle_price)}" inputmode="decimal" oninput="money(this)" onblur="moneyBlur(this)" placeholder="302,000.02"></div>
+      <div><label>Total upfront sum (RM)</label><input id="f_upfront_sum" value="${esc(a.upfront_sum)}" inputmode="decimal" oninput="money(this)" onblur="moneyBlur(this)" placeholder="35,000"></div>
+    </div>
+    <div class="row2">
+      <div><label>Late payment charge (%)</label><input id="f_late_charge" value="${esc(a.late_charge)}" placeholder="8"></div>
+      <div><label>Safety fee yearly (RM)</label><input id="f_safety_fee_yearly" value="${esc(a.safety_fee_yearly)}" inputmode="decimal" oninput="money(this)" onblur="moneyBlur(this)" placeholder="600"></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Appendix A \u00b7 Payment Structure</h3>
+    <div class="row2">
+      <div><label>Total downpayment (RM)</label><input id="f_total_downpayment" value="${esc(a.total_downpayment)}" inputmode="decimal" oninput="money(this)" onblur="moneyBlur(this)" placeholder="35,000"></div>
+      <div><label>Safety fee (RM)</label><input id="f_safety_fee_amount" value="${esc(a.safety_fee_amount)}" inputmode="decimal" oninput="money(this)" onblur="moneyBlur(this)" placeholder="1,000"></div>
+    </div>
+    <div class="row2">
+      <div><label>Term from</label><input type="date" id="f_appendix_from" value="${esc(a.appendix_from)}" onclick="try{this.showPicker()}catch(e){}"></div>
+      <div><label>Term to</label><input type="date" id="f_appendix_to" value="${esc(a.appendix_to)}" onclick="try{this.showPicker()}catch(e){}"></div>
+    </div>
+    <label style="margin-top:14px">Monthly payment phases</label>
+    <div class="hint">e.g. "1-6/48 (6 months)" \u00b7 amount \u00b7 date range</div>
+    <div id="phases">${ph}</div>
+    <button class="btn sec mini" style="margin-top:8px" onclick="addPhase()">+ Add phase</button>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+    <button class="btn" onclick="saveDraft()">Save draft</button>
+    <button class="btn ok" onclick="previewDoc()">Preview &amp; Sign \u203a</button>
+    <button class="btn sec" onclick="showChooser()">Cancel</button>
+  </div>`;
+}
+
+function phaseRow(p,i){
+  return `<div class="phase-row" data-i="${i}">
+    <div><label>Label</label><input class="p_label" value="${esc(p.label)}" placeholder="1-6/48 (6 months)"></div>
+    <div><label>Amount RM</label><input class="p_amount" value="${esc(p.amount)}" inputmode="decimal" oninput="money(this)" onblur="moneyBlur(this)" placeholder="10,341.67"></div>
+    <div><label>Date range</label><input class="p_range" value="${esc(p.range)}" placeholder="3rd Sep 2024 \u2013 2nd Mar 2025"></div>
+    <button class="x" onclick="delPhase(${i})">\u2715</button>
+  </div>`;
+}
+function readPhases(){
+  return [...document.querySelectorAll('#phases .phase-row')].map(r=>({
+    label:r.querySelector('.p_label').value, amount:r.querySelector('.p_amount').value, range:r.querySelector('.p_range').value
+  }));
+}
+function addPhase(){ STATE.current.phases=readPhases(); STATE.current.phases.push({label:'',amount:'',range:''}); refreshPhases(); }
+function delPhase(i){ STATE.current.phases=readPhases(); STATE.current.phases.splice(i,1); if(!STATE.current.phases.length) STATE.current.phases.push({label:'',amount:'',range:''}); refreshPhases(); }
+function refreshPhases(){ $('phases').innerHTML = STATE.current.phases.map((p,i)=>phaseRow(p,i)).join(''); }
+
+function readForm(){
+  const a=STATE.current; const g=id=>{const e=$('f_'+id);return e?e.value:undefined;};
+  ['agreement_date','lessee_name','lessee_nric','lessee_address','v_make_model','v_year','v_reg','v_engine','v_chassis','v_equip','v_odo','commence_date','duration_months','vehicle_price','upfront_sum','late_charge','safety_fee_yearly','total_downpayment','safety_fee_amount','appendix_from','appendix_to'].forEach(k=>{ const v=g(k); if(v!==undefined) a[k]=v; });
+  if(document.getElementById('phases')) a.phases=readPhases();
+  return a;
+}
+async function saveDraft(){ if(STATE.current.type==='lease') readLeaseForm(); else readForm(); const ok=await sbUpsert(rowFor(STATE.current)); toast(ok?'Draft saved':'Saved (cloud off)'); }
+
+
+/* ============================================================
+   DOCUMENT RENDER  (faithful to the Word template)
+   ============================================================ */
+function F(v){ return v ? '<span class="fill">'+esc(v)+'</span>' : '<span class="fill">[ &nbsp;&nbsp; ]</span>'; }
+function rm(v){ if(!v) return '[ &nbsp; ]'; v=String(v).trim(); return v.toUpperCase().indexOf('RM')===0?esc(v):'RM'+esc(v); }
+
+function buildDoc(a){
+  const vt = `
+    <table class="vt">
+      <tr><td class="k">Make and Model</td><td class="c">:</td><td>${F(a.v_make_model)}</td></tr>
+      <tr><td class="k">Year of Manufacture</td><td class="c">:</td><td>${F(a.v_year)}</td></tr>
+      <tr><td class="k">Registration No.</td><td class="c">:</td><td>${F(a.v_reg)}</td></tr>
+      <tr><td class="k">Engine No.</td><td class="c">:</td><td>${F(a.v_engine)}</td></tr>
+      <tr><td class="k">Chassis No.</td><td class="c">:</td><td>${F(a.v_chassis)}</td></tr>
+      <tr><td class="k">Equipment/modification installed</td><td class="c">:</td><td>${F(a.v_equip)}</td></tr>
+      <tr><td class="k">Odometer reading</td><td class="c">:</td><td>${F(a.v_odo)}</td></tr>
+    </table>`;
+  const pt = `
+    <table class="vt">
+      <tr><td class="k">Lease commencement date</td><td class="c">:</td><td>${F(fmtDate(a.commence_date))}</td></tr>
+      <tr><td class="k">Duration of lease to own</td><td class="c">:</td><td>${F((a.duration_months||'')+' MONTHS')}</td></tr>
+      <tr><td class="k">Vehicle price</td><td class="c">:</td><td>${F(rm(a.vehicle_price))}</td></tr>
+      <tr><td class="k">Total upfront sum payable as per Confirmation Agreement</td><td class="c">:</td><td>${F(rm(a.upfront_sum))}</td></tr>
+      <tr><td class="k">Payment structure terms</td><td class="c">:</td><td>Payment structure refer to last page of agreement \u201cAPPENDIX A\u201d</td></tr>
+      <tr><td class="k">Mode of Payment</td><td class="c">:</td><td>Bank transfer to <b>GRANDPRIDE LUXURY TRAVEL SDN BHD</b> by the 3rd of each month, unless otherwise specified by the Lessor.</td></tr>
+      <tr><td class="k">Transfer of ownership of Vehicle</td><td class="c">:</td><td>Subject to the Lessor receiving all sums payable under this Agreement, the Lessor shall transfer the ownership of the Vehicle to the Lessee within thirty (30) business days upon the completion of the Duration of lease to own.</td></tr>
+    </table>`;
+  const phaseLines = (a.phases||[]).filter(p=>p.label||p.amount).map(p=>
+    `${esc(p.label)} : ${rm(p.amount)}<br><span class="rng">[ ${esc(p.range)} ]</span>`).join('<br><br>');
+
+  // PAGE 1
+  const p1 = `
+    <h1 class="title">LEASE TO OWN AGREEMENT</h1>
+    <p>This AGREEMENT is made on ${F(fmtDate(a.agreement_date))}</p>
+    <p><b>Between:</b></p>
+    <p><b>GRANDPRIDE LUXURY TRAVEL SDN BHD</b> (Company No. 1297143-K), a company incorporated in Malaysia (\u201c<b>Lessor</b>\u201d) and having its place of business at <b>5, Jalan 13/2, Pjs 13, 46200 Petaling Jaya, Selangor, Malaysia;</b> and</p>
+    <p>[ <b>${esc(a.lessee_name)||'&nbsp;'}</b> ] (NRIC/Passport No. ${F(a.lessee_nric)}) (\u201c<b>Lessee</b>\u201d) with an address at [ <b>${esc(a.lessee_address)||'&nbsp;'}</b> ].</p>
+    <p>Now it is HEREBY AGREED as follows:</p>
+    <p class="head"><b>INTERPRETATIONS</b></p>
+    <p>In this Agreement, except where the context requires otherwise:</p>
+    <ol class="alpha">
+      <li>Any reference to a clause is to the relevant clause of or to this Agreement and any reference to a sub-clause or paragraph is to the relevant sub-clause or paragraph of the clause in which it appears;</li>
+      <li>The clause headings are included for convenience only and shall not affect the interpretation of this Agreement;</li>
+      <li>Use of the singular includes the plural and vice versa;</li>
+      <li>Use of any gender includes the other genders; and</li>
+      <li>Any phrase introduced by the terms \u201cincluding\u201d, \u201cinclude\u201d, \u201cin particular\u201d or any similar expression shall be construed as illustrative and shall not limit the sense of the words preceding those terms.</li>
+    </ol>`;
+
+  // PAGE 2
+  const p2 = `
+    <p class="head"><b>DESCRIPTION OF VEHICLE</b></p>
+    <p>The Lessor will lease and the Lessee will take the following vehicle (hereinafter referred to as \u201c<b>Vehicle</b>\u201d) upon the terms as set out in this Agreement:</p>
+    ${vt}
+    <p class="head"><b>PARTICULARS OF LEASE AND STRUCTURE OF PAYMENTS</b></p>
+    <p>The Lessor shall let to the Lessee and the Lessee shall take on lease the Vehicle describe at clause 2 above in view of owning the Vehicle subject to the terms and conditions stated in this Agreement. Further the Vehicle shall be delivered in accordance to the Delivery Certificate.</p>
+    <p>The Lessee agrees as follows:</p>
+    ${pt}
+    <p>Failure by the Lessee to make any Payment as set out at clause 3.2. above shall entitle the Lessor to, among others, repossess the Vehicle at any location or from whom so ever may be in possession of the Vehicle, of which costs incurred by the Lessor for this purpose shall be borne by the Lessee.</p>
+    <p>The charge for late payment of any payments under this Agreement is ${F((a.late_charge||'8')+'%')} [ Monthly Instalment ]</p>
+    <p>Deposit non-refundable if breach the contract</p>`;
+
+  // PAGE 3
+  const p3 = `
+    <p class="head"><b>OBLIGATION OF THE LESSEE</b></p>
+    <ol class="num">
+      <li>The Lessee warrant that he is above the age of [18] and that he has the necessary power and approval to enter into this Agreement.</li>
+      <li>The Lessee shall obtain all necessary licenses, permits and permissions for the use of the Vehicle.</li>
+      <li>The Lessee shall upon taking delivery of the Vehicle examine the Vehicle to ensure the Vehicle is free from defects and acknowledge that the Vehicle is free from defects by signing the Delivery Certificate. The Lessor shall assume that the Vehicle is free from defects unless the Lessee informs the Lessor in writing of any defects at the time of taking delivery of the Vehicle.</li>
+      <li>The Lessee shall punctually pay the Payment as set out under this Agreement irrespective of whether, <i>inter alia</i>, the Lessee is able or unable to use the Vehicle during the duration of this Agreement.</li>
+      <li>The Lessee shall punctually pay the Payment as set out under this Agreement irrespective of any early termination of this Agreement.</li>
+      <li>The Lessee shall ensure that the Vehicle is at all times within the possession and control of the Lessee.</li>
+      <li>The Lessee shall at his own cost and expense keep the Vehicle in good order, repair and condition to the satisfaction of the Lessor.</li>
+      <li>The Lessee shall not sub-lease the Vehicle.</li>
+      <li>The Lessee shall bare all costs stated below : Road Tax; Insurance; Service / maintenance; Wear and tear; Safety fee (<b>YEARLY RENEWAL FEE ${rmPlain(a.safety_fee_yearly)}</b>).</li>
+      <li>The Lessee shall pay all fuel costs.</li>
+      <li>The Lessee shall immediately inform the Lessor of any change of the Lessee\u2019s address.</li>
+      <li>The Lessee shall on the request of the Lessor, produce the Vehicle for inspection and test by the Lesson, its agent or servant.</li>
+      <li>The Lessee shall be responsible for all loss and damages to the Vehicle as set out in the Confirmation Agreement agreed and acknowledged by the Lessee, a copy of which is provided to the Lessee, including collision/accident damage(s) and/or fire and/or theft and/or unreasonable or excess wear and use of the Vehicle. Further, the Lessee shall be fully responsible to restore the Vehicle to the delivery condition as set out by the Lessor.</li>
+      <li>The Lessee shall meet the costs of all routine maintenance and repairs of the Vehicle due to normal wear and tear.</li>
+      <li>The Lessee shall be liable for fine and/or summons and/or penalty issued by any government, local authority and statutory and non-statutory body during the duration under this Agreement.</li>
+    </ol>`;
+
+  // PAGE 4
+  const p4 = `
+    <ol class="num" start="16">
+      <li>The Lessee shall be liable for and responsible of any seizure and/or confiscation and/or forfeiture of the Vehicle by any government, local authority and statutory and non-statutory body. Further, the Lessee shall continue to make the Payment as set out in this Agreement irrespective of whether the Lessee is able or unable to use the Vehicle during such seizure and/or confiscation and/or detention of the Vehicle.</li>
+      <li>In the event of any collision/accident, the Lessee shall contact the Lessor immediately upon the said collision. Where the Vehicle requires towing for any reason, this shall be arranged by the Lessor. The Lessee shall bear a penalty sum and costs incurred in full for any towing and/or garage services and/or repairs in the event the Lessee fails its obligations herein.</li>
+      <li>The Lessee shall inform the Lessor immediately if the Vehicle is stolen or is suspected of being stolen.</li>
+      <li>The Lessee shall hold harmless, to indemnify and to keep indemnified the Lessor its employees, agents, servants, contractors or affiliates against loss of or damage to the Vehicle or any part thereof including seizure and/or confiscation and/or forfeiture of the Vehicle.</li>
+      <li>The Lessee shall hold harmless, to indemnify and to keep indemnified the Lessor its employees, agents, servants, contractors or affiliates for all losses howsoever arising in connection with injury, death and damage to property caused by the Vehicle.</li>
+      <li>The Lessee agrees to hold harmless, to indemnify and to keep indemnified the Lessor its employees, agents, servants, contractors or affiliates for all losses howsoever arising due to late payment or non-payment of the Payment or repossession of the Vehicle.</li>
+    </ol>
+    <p>The Lessee shall not for the duration of this Agreement:</p>
+    <ol class="alpha">
+      <li>Use the Vehicle or permit the same to be used contrary to any law or regulation for the time being in force;</li>
+      <li>Conceal the Vehicle or alter any identifying number or mark thereon;</li>
+      <li>Modify the engine number and/or change of registration number without the Lessor\u2019s prior written consent;</li>
+      <li>Make any alterations or add any accessories to the Vehicle without the Lessor\u2019s prior written consent;</li>
+      <li>Move the Vehicle out of Malaysia without the Lessor\u2019s prior written consent;</li>
+      <li>Sell, transfer, dispose of or encumber the Vehicle in any manner whatsoever.</li>
+    </ol>`;
+
+  // PAGE 5
+  const p5 = `
+    <p class="head"><b>TERMS AND CONDITIONS</b></p>
+    <ol class="num">
+      <li>In any case of any breach by the Lessee relating to the Payment of installments, the Lessor shall, in addition to the Lessor\u2019s right to take repossession of the Vehicle, be entitled to recover from the Lessee as liquidated damages all sums payable under this Agreement including all costs and expenses incurred by the Lessor in taking possession of the Vehicle in tracing and/or endeavoring to take possession of the Vehicle or in attempting to recover payment of any sums payable under this Agreement and where the Lessor resumes possession of the Vehicle all storage, repair and maintenance charges incurred in respect of the Vehicle and expenses of leasing/selling or otherwise disposing or the Vehicle or attempting to do so.</li>
+      <li>A statement signed by an officer of the Lessor or the Lessor\u2019s agent or solicitor as to the balance outstanding under this Agreement at the date stated in such statement shall be conclusive evidence that the amount so stated was in fact due from the Lessee to the Lessor at the date specified in such statement.</li>
+      <li>The Lessor shall not be responsible for any articles left or found in the Vehicle repossessed by or surrendered to the Lessor.</li>
+      <li>Where the Lessee comprises of two or more persons then each and every person shall be severally as well as jointly liable to the Lessor for the observance of all the obligations, terms and conditions and the payment of all the sums payable under this Agreement.</li>
+      <li>Time whenever mention in this Agreement shall be the essence of this Agreement.</li>
+      <li>Reference to any party in this Agreement includes the party\u2019s personal representatives, successors-in-title and permitted assigns.</li>
+      <li>This Agreement shall be deemed to come into force on the date stated at clause 3.2. above irrespective of the diverse dates upon which the parties may have each signed this Agreement respectively.</li>
+      <li>No change whatsoever in the constitution of the Lessor or the Lessee shall impair or discharge the Lessee\u2019s liability under this Agreement.</li>
+    </ol>
+    <p class="head"><b>TERMINATION</b></p>
+    <p>The Lessor reserve the right to terminate this Agreement by giving notice to the Lessee in the event that:</p>
+    <ol class="alpha">
+      <li>The Lessee has committed a breach of its obligations here under which cannot be remedied;</li>
+      <li>The Lessee has committed a repeated breach (capable of remedy) and has not remedied such breach within seven (7) days of being required by written notice to do so;</li>
+      <li>The Lessee goes into insolvency/liquidation (whether compulsory or voluntary) or an administrator or receiver is appointed over the whole or any part of its assets or if the other party enters any arrangement for the benefit of or compounds with its creditors generally or threatens to do any of these things or any judgment is made against the Lessee or any similar occurrence under any jurisdiction that affects the Lessee.</li>
+    </ol>
+    <p>Save where expressly stated otherwise, the termination of the Agreement shall not absolve the Lessee from making the Payment under this Agreement.</p>`;
+
+  const sigL = a.sig_lessor ? `<img src="${a.sig_lessor}">` : '';
+  const sigE = a.sig_lessee ? `<img src="${a.sig_lessee}">` : '';
+  // PAGE 6
+  const p6 = `
+    <p class="head"><b>NOTICES</b></p>
+    <p>Any account, demand, notice or document required or authorized to be given by the Lessor to the Lessee under this Agreement shall be deemed to have been served if it is handed to the Lessee in person or sent to the Lessee by e-mail to the e-mail address or by post to or left at the Lessee\u2019s address stated in this Agreement or at the Lessee\u2019s usual or last known business or private address. Any such account, demand, notice or document sent by e-mail or by post shall be conclusively deemed to have been received by and validly served on the Lessee forty-eight (48) hours after the time of such sending or posting despite any evidence to the contrary.</p>
+    <p class="head"><b>VARIATION</b></p>
+    <p>No variation or amendments or modifications to the clauses in this Agreement shall be binding upon the parties unless effected in writing and duly signed by the Lessee and authorised representative of the Lessor.</p>
+    <p class="head"><b>ENTIRE AGREEMENT</b></p>
+    <p>This Agreement constitutes the entire agreement between the parties and supersedes all prior quotations, proposals, agreements, undertakings and representations, whether written or oral, with respect thereto.</p>
+    <p>Nothing in this clause operates to limit or exclude any liability for fraud, fraudulent misrepresentation or fraudulent misstatement.</p>
+    <p>Nothing in this Agreement shall be construed as intending to create third party beneficiary rights in any third party.</p>
+    <p class="head"><b>SEVERANCE</b></p>
+    <p>Each provision of this Agreement is independent and severable from the remaining provisions and enforceable accordingly.</p>
+    <p>If any provision of this Agreement shall be unenforceable for any reason, but would be enforceable if part of the wording thereof is deleted, it shall apply with such deletions as may be necessary to make it enforceable.</p>
+    <p class="head"><b>GOVERNING LAW</b></p>
+    <p>This Agreement shall be governed and construed in accordance with the laws of Malaysia, without regard to the conflicts of law rules of such jurisdiction.</p>
+    <p>Lessee agrees to amicably resolve any disagreement that may arise between the parties, failing which, the parties agree to submit to the exclusive jurisdiction of the courts of Malaysia.</p>
+    <p style="margin-top:14pt"><b>IN WITNESS WHEREOF</b> this Agreement has been entered into on the date stated at the beginning.</p>
+    <div class="sigrow">
+      <div class="sigcol">
+        <p>Signed by</p>
+        <div class="sigline">${sigL}</div>
+        <p>For and on behalf of<br><b>GRANDPRIDE LUXURY TRAVEL SDN BHD</b><br>Company No. [ 1297143-K ]</p>
+        <p class="witness">In the presence of:</p>
+      </div>
+      <div class="sigcol">
+        <p>Signed by</p>
+        <div class="sigline">${sigE}</div>
+        <p>[ <b>${esc(a.lessee_name)||'&nbsp;'}</b> ]<br>NRIC No.: [ ${esc(a.lessee_nric)||'&nbsp;'} ]</p>
+        <p class="witness">In the presence of:</p>
+      </div>
+    </div>`;
+
+  // PAGE 7 - Appendix
+  const p7 = `
+    <h1 class="title">APPENDIX A</h1>
+    <p>Duration/term of this Agreement: [ <b>${esc(a.duration_months)||''} months contract starting from ${esc(fmtDate(a.appendix_from))} to ${esc(fmtDate(a.appendix_to))}</b> ]</p>
+    <p>Payment structure:</p>
+    <table class="vt">
+      <tr><td class="k">Total downpayment / Safety fee</td><td class="c">:</td><td>${rmPlain(a.total_downpayment)} / ${rmPlain(a.safety_fee_amount)}</td></tr>
+      <tr><td class="k">Monthly Payment pay by terms</td><td class="c">:</td><td>${phaseLines||'&nbsp;'}</td></tr>
+      <tr><td class="k">Safety fee yearly renewal</td><td class="c">:</td><td>${rmPlain(a.safety_fee_yearly)}/year</td></tr>
+    </table>`;
+
+  const pages=[p1,p2,p3,p4,p5,p6,p7];
+  const initL = a.sig_lessor_initial ? `<img src="${a.sig_lessor_initial}">` : '';
+  const initE = a.sig_lessee_initial ? `<img src="${a.sig_lessee_initial}">` : '';
+  const initials = `<div class="pg-initials"><div class="slot"><div class="sig">${initL}</div><div class="lbl">Lessor</div></div><div class="slot"><div class="sig">${initE}</div><div class="lbl">Lessee</div></div></div>`;
+  return pages.map((html,i)=>`<div class="doc-page"><div class="doc">${html}</div>${initials}<div class="pg-num">Page ${i+1} of ${pages.length}</div></div>`).join('');
+}
+
+
+function buildLeaseDoc(a){
+  const vt = `
+    <table class="vt">
+      <tr><td class="k">Make and Model</td><td class="c">:</td><td>${F(a.v_make_model)}</td></tr>
+      <tr><td class="k">Year of Manufacture</td><td class="c">:</td><td>${F(a.v_year)}</td></tr>
+      <tr><td class="k">Registration No.</td><td class="c">:</td><td>${F(a.v_reg)}</td></tr>
+      <tr><td class="k">Engine No.</td><td class="c">:</td><td>${F(a.v_engine)}</td></tr>
+      <tr><td class="k">Chassis No.</td><td class="c">:</td><td>${F(a.v_chassis)}</td></tr>
+      <tr><td class="k">Equipment/modification installed</td><td class="c">:</td><td>${F(a.v_equip)}</td></tr>
+      <tr><td class="k">Odometer reading</td><td class="c">:</td><td>${F(a.v_odo)}</td></tr>
+    </table>`;
+  const leasePeriod = (a.lease_from||a.lease_to) ? (fmtDate(a.lease_from)+' - '+fmtDate(a.lease_to)) : '';
+  const pt = `
+    <table class="vt">
+      <tr><td class="k">Lease commencement date</td><td class="c">:</td><td>${F(leasePeriod)}</td></tr>
+      <tr><td class="k">Duration of leasing</td><td class="c">:</td><td>${F(a.duration_days)}</td></tr>
+      <tr><td class="k">Vehicle price</td><td class="c">:</td><td>${F(rm(a.vehicle_price))}</td></tr>
+      <tr><td class="k">Leasing price</td><td class="c">:</td><td>${F('Payment lease of '+rm(a.leasing_price))}</td></tr>
+      <tr><td class="k">Insurance price</td><td class="c">:</td><td>Insurance coverage Insured ${esc(a.insurance_insured||'80')}%<br>When accident cause by customer, he has to bare only the ${esc(a.insurance_bear||'20')}% &amp; loss of NCD</td></tr>
+      <tr><td class="k">Mode of Payment</td><td class="c">:</td><td>Bank transfer to <b>GRANDPRIDE LUXURY TRAVEL SDN BHD</b></td></tr>
+    </table>`;
+
+  const p1 = `
+    <h1 class="title">LEASING AGREEMENT</h1>
+    <p>This AGREEMENT is made on ${F(fmtDate(a.agreement_date))}</p>
+    <p><b>Between:</b></p>
+    <p><b>GRANDPRIDE LUXURY TRAVEL SDN BHD</b> (Company No.1297143-K), a company incorporated in Malaysia (\u201c<b>Lessor</b>\u201d) and having its place of business at <b>5, Jalan 13/2, Pjs 13, 46200 Petaling Jaya, Selangor, Malaysia;</b> and</p>
+    <p>${F(a.lessee_name)} ( NRIC/Passport no. ${F(a.lessee_nric)}) (\u201c<b>Lessee</b>\u201d) with an address at ${F(a.lessee_address)}.</p>
+    <p>Now it is HEREBY AGREED as follows:</p>
+    <p class="head"><b>INTERPRETATIONS</b></p>
+    <p>In this Agreement, except where the context requires otherwise:</p>
+    <ol class="alpha">
+      <li>Any reference to a clause is to the relevant clause of or to this Agreement and any reference to a sub-clause or paragraph is to the relevant sub-clause or paragraph of the clause in which it appears;</li>
+      <li>The clause headings are included for convenience only and shall not affect the interpretation of this Agreement;</li>
+      <li>Use of the singular includes the plural and vice versa;</li>
+      <li>Use of any gender includes the other genders; and</li>
+      <li>Any phrase introduced by the terms \u201cincluding\u201d, \u201cinclude\u201d, \u201cin particular\u201d or any similar expression shall be construed as illustrative and shall not limit the sense of the words preceding those terms.</li>
+    </ol>`;
+
+  const p2 = `
+    <p class="head"><b>DESCRIPTION OF VEHICLE</b></p>
+    <p>The Lessor will lease and the Lessee will take the following vehicle (hereinafter referred to as \u201c<b>Vehicle</b>\u201d) upon the terms as set out in this Agreement:</p>
+    ${vt}
+    <p class="head"><b>PARTICULARS OF LEASE AND STRUCTURE OF PAYMENTS</b></p>
+    <p>The Lessor shall let to the Lessee and the Lessee shall take on lease the Vehicle describe at clause 2 above in view of owning the Vehicle subject to the terms and conditions stated in this Agreement. Further the Vehicle shall be delivered in accordance to the Delivery Certificate.</p>
+    <p>The Lessee agrees as follows:</p>
+    ${pt}
+    <p>Failure by the Lessee to make any Payment as set out at clause 3.2. above shall entitle the Lessor to, among others, repossess the Vehicle at any location or from whom so ever may be in possession of the Vehicle, of which costs incurred by the Lessor for this purpose shall be borne by the Lessee.</p>
+    <p>In the event of accident born either is borrower fault or other parties, the borrower is liable for ${esc(a.insurance_bear||'20')}% of the accident cost and loss of NCD.</p>
+    <p>The charge for late payment of any payments under this Agreement is ${F((a.late_charge||'8')+'%')}.</p>`;
+
+  const p3 = `
+    <p class="head"><b>OBLIGATION OF THE LESSEE</b></p>
+    <ol class="num">
+      <li>The Lessee warrant that he is above the age of ${F(a.age||'21')} and that he has the necessary power and approval to enter into this Agreement.</li>
+      <li>The Lessee shall obtain all necessary licenses, permits and permissions for the use of the Vehicle.</li>
+      <li>The Lessee shall upon taking delivery of the Vehicle examine the Vehicle to ensure the Vehicle is free from defects and acknowledge that the Vehicle is free from defects by signing the Delivery Certificate. The Lessor shall assume that the Vehicle is free from defects unless the Lessee informs the Lessor in writing of any defects at the time of taking delivery of the Vehicle.</li>
+      <li>The Lessee shall punctually pay the Payment as set out under this Agreement irrespective of whether, <i>inter alia</i>, the Lessee is able or unable to use the Vehicle during the duration of this Agreement.</li>
+      <li>The Lessee shall punctually pay the Payment as set out under this Agreement irrespective of any early termination of this Agreement.</li>
+      <li>The Lessee shall ensure that the Vehicle is at all times within the possession and control of the Lessee.</li>
+      <li>The Lessee shall at his own cost and expense keep the Vehicle in good order, repair and condition to the satisfaction of the Lessor.</li>
+      <li>The Lessee shall not sub-lease the Vehicle.</li>
+      <li>The Lessee shall pay all fuel costs. The vehicle must be returned with the same fuel level as provided at the time of collection. If the fuel level upon return is lower than the original level, the renter shall be charged for the fuel difference, plus an additional service charge of RM80.</li>
+      <li>Vehicle must be returned with the petrol level matching the original ${esc(a.petrol_type||'RON97')} level, along with a valid receipt as proof. If no receipt is provided, it will be assumed that the required ${esc(a.petrol_type||'RON97')} fuel was not used, and charges will be applied based on the amount of petrol originally provided, regardless of the fuel level upon return.</li>
+      <li>The Lessee shall immediately inform the Lessor of any change of the Lessee\u2019s address.</li>
+      <li>The Lessee shall on the request of the Lessor, produce the Vehicle for inspection and test by the Lesson, its agent or servant.</li>
+      <li>The Lessee shall be responsible for all loss and damages to the Vehicle as set out in the Confirmation Agreement agreed and acknowledged by the Lessee, a copy of which is provided to the Lessee, including collision/accident damage(s) and/or fire and/or theft and/or unreasonable or excess wear and use of the Vehicle. Further, the Lessee shall be fully responsible to restore the Vehicle to the delivery condition as set out by the Lessor.</li>
+    </ol>`;
+
+  const p4 = `
+    <ol class="num" start="14">
+      <li><b>The Traffic Offences &amp; Summons.</b> The Renter shall be fully responsible for any and all traffic offences, parking violations, toll charges, or summonses incurred during the rental period. The Company reserves the right to: Deduct any outstanding summons, penalties, or administrative fees from the security deposit; or Charge the Renter after the rental period should any summons be issued subsequently. The Renter agrees that liability for offences may be reported to the relevant authorities, including but not limited to Royal Malaysia Police and Road Transport Department Malaysia, for the purpose of summons transfer or enforcement. An administrative fee of RM80 per summon will be imposed for processing and handling. This clause remains enforceable even after the security deposit has been refunded.</li>
+      <li>The Lessee shall be liable for fine and/or summons and/or penalty issued by any government, local authority and statutory and non-statutory body during the duration under this Agreement.</li>
+      <li><b>No Smoking Policy &amp; Penalty.</b> Smoking is strictly prohibited in all vehicles. This includes cigarettes, cigars, e-cigarettes, vape devices, or any similar substances. In the event that smoking is detected in the vehicle, the Renter agrees to pay a non-negotiable cleaning and deodorization penalty fee of RM5,000. This fee will be charged to the Renter to cover professional cleaning, odor removal, and potential loss of use of the vehicle. The Lessor reserves the right to determine, at its sole discretion, whether evidence of smoking is present.</li>
+      <li>The Lessee shall be liable for and responsible of any seizure and/or confiscation and/or forfeiture of the Vehicle by any government, local authority and statutory and non-statutory body. Further, the Lessee shall continue to make the Payment as set out in this Agreement irrespective of whether the Lessee is able or unable to use the Vehicle during such seizure and/or confiscation and/or detention of the Vehicle.</li>
+      <li>In the event of any collision/accident, the Lessee shall contact the Lessor immediately upon the said collision. Where the Vehicle requires towing for any reason, this shall be arranged by the Lessor. The Lessee shall bear a penalty sum and costs incurred in full for any towing and/or garage services and/or repairs in the event the Lessee fails its obligations herein.</li>
+      <li>The Lessee shall inform the Lessor immediately if the Vehicle is stolen or is suspected of being stolen.</li>
+      <li>The Lessee shall hold harmless, to indemnify and to keep indemnified the Lessor its employees, agents, servants, contractors or affiliates against loss of or damage to the Vehicle or any part thereof including seizure and/or confiscation and/or forfeiture of the Vehicle.</li>
+      <li>The Lessee shall hold harmless, to indemnify and to keep indemnified the Lessor its employees, agents, servants, contractors or affiliates for all losses howsoever arising in connection with injury, death and damage to property caused by the Vehicle.</li>
+      <li>The Lessee agrees to hold harmless, to indemnify and to keep indemnified the Lessor its employees, agents, servants, contractors or affiliates for all losses howsoever arising due to late payment or non-payment of the Payment or repossession of the Vehicle.</li>
+    </ol>
+    <p>The Lessee shall not for the duration of this Agreement:</p>
+    <ol class="alpha">
+      <li>Use the Vehicle or permit the same to be used contrary to any law or regulation for the time being in force;</li>
+      <li>Conceal the Vehicle or alter any identifying number or mark thereon;</li>
+      <li>Modify the engine number and/or change of registration number without the Lessor\u2019s prior written consent;</li>
+      <li>Make any alterations or add any accessories to the Vehicle without the Lessor\u2019s prior written consent;</li>
+      <li>Move the Vehicle out of Malaysia without the Lessor\u2019s prior written consent;</li>
+      <li>Sell, transfer, dispose of or encumber the Vehicle in any manner whatsoever.</li>
+    </ol>`;
+
+  const p5 = `
+    <p class="head"><b>TERMS AND CONDITIONS</b></p>
+    <ol class="num">
+      <li>In any case of any breach by the Lessee relating to the Payment of instalments, the Lessor shall, in addition to the Lessor\u2019s right to take repossession of the Vehicle, be entitled to recover from the Lessee as liquidated damages all sums payable under this Agreement including all costs and expenses incurred by the Lessor in taking possession of the Vehicle in tracing and/or endeavoring to take possession of the Vehicle or in attempting to recover payment of any sums payable under this Agreement and where the Lessor resumes possession of the Vehicle all storage, repair and maintenance charges incurred in respect of the Vehicle and expenses of leasing/selling or otherwise disposing or the Vehicle or attempting to do so.</li>
+      <li>A statement signed by an officer of the Lessor or the Lessor\u2019s agent or solicitor as to the balance outstanding under this Agreement at the date stated in such statement shall be conclusive evidence that the amount so stated was in fact due from the Lessee to the Lessor at the date specified in such statement.</li>
+      <li>The Lessor shall not be responsible for any articles left or found in the Vehicle repossessed by or surrendered to the Lessor.</li>
+      <li>Where the Lessee comprises of two or more persons then each and every person shall be severally as well as jointly liable to the Lessor for the observance of all the obligations, terms and conditions and the payment of all the sums payable under this Agreement.</li>
+      <li>Time whenever mention in this Agreement shall be the essence of this Agreement.</li>
+      <li>Reference to any party in this Agreement includes the party\u2019s personal representatives, successors-in-title and permitted assigns.</li>
+      <li>This Agreement shall be deemed to come into force on the date stated at clause 3.2. above irrespective of the diverse dates upon which the parties may have each signed this Agreement respectively.</li>
+      <li>No change whatsoever in the constitution of the Lessor or the Lessee shall impair or discharge the Lessee\u2019s liability under this Agreement.</li>
+    </ol>
+    <p class="head"><b>TERMINATION</b></p>
+    <p>The Lessor reserve the right to terminate this Agreement by giving notice to the Lessee in the event that:</p>
+    <ol class="alpha">
+      <li>The Lessee has committed a breach of its obligations hereunder which cannot be remedied;</li>
+      <li>The Lessee has committed a repeated breach (capable of remedy) and has not remedied such breach within seven (7) days of being required by written notice to do so;</li>
+      <li>The Lessee goes into insolvency/liquidation (whether compulsory or voluntary) or an administrator or receiver is appointed over the whole or any part of its assets or if the other party enters any arrangement for the benefit of or compounds with its creditors generally or threatens to do any of these things or any judgment is made against the Lessee or any similar occurrence under any jurisdiction that affects the Lessee.</li>
+    </ol>
+    <p>Save where expressly stated otherwise, the termination of the Agreement shall not absolve the Lessee from making the Payment under this Agreement.</p>`;
+
+  const sigL = a.sig_lessor ? `<img src="${a.sig_lessor}">` : '';
+  const sigE = a.sig_lessee ? `<img src="${a.sig_lessee}">` : '';
+  const p6 = `
+    <p class="head"><b>NOTICES</b></p>
+    <p>Any account, demand, notice or document required or authorized to be given by the Lessor to the Lessee under this Agreement shall be deemed to have been served if it is handed to the Lessee in person or sent to the Lessee by e-mail to the e-mail address or by post to or left at the Lessee\u2019s address stated in this Agreement or at the Lessee\u2019s usual or last known business or private address. Any such account, demand, notice or document sent by e-mail or by post shall be conclusively deemed to have been received by and validly served on the Lessee forty-eight (48) hours after the time of such sending or posting despite any evidence to the contrary.</p>
+    <p class="head"><b>VARIATION</b></p>
+    <p>No variation or amendments or modifications to the clauses in this Agreement shall be binding upon the parties unless effected in writing and duly signed by the Lessee and authorised representative of the Lessor.</p>
+    <p class="head"><b>ENTIRE AGREEMENT</b></p>
+    <p>This Agreement constitutes the entire agreement between the parties and supersedes all prior quotations, proposals, agreements, undertakings and representations, whether written or oral, with respect thereto.</p>
+    <p>Nothing in this clause operates to limit or exclude any liability for fraud, fraudulent misrepresentation or fraudulent misstatement.</p>
+    <p>Nothing in this Agreement shall be construed as intending to create third party beneficiary rights in any third party.</p>
+    <p class="head"><b>SEVERANCE</b></p>
+    <p>Each provision of this Agreement is independent and severable from the remaining provisions and enforceable accordingly.</p>
+    <p>If any provision of this Agreement shall be unenforceable for any reason, but would be enforceable if part of the wording thereof is deleted, it shall apply with such deletions as may be necessary to make it enforceable.</p>
+    <p class="head"><b>GOVERNING LAW</b></p>
+    <p>This Agreement shall be governed and construed in accordance with the laws of Malaysia, without regard to the conflicts of law rules of such jurisdiction.</p>
+    <p>Lessee agrees to amicably resolve any disagreement that may arise between the parties, failing which, the parties agree to submit to the exclusive jurisdiction of the courts of Malaysia.</p>
+    <p style="margin-top:14pt"><b>IN WITNESS WHEREOF</b> this Agreement has been entered into on the date stated at the beginning.</p>
+    <div class="sigrow">
+      <div class="sigcol">
+        <p>Signed by</p>
+        <div class="sigline">${sigL}</div>
+        <p>For and on behalf of<br><b>GRANDPRIDE LUXURY TRAVEL SDN BHD</b><br>Company No. [ 1297143-K ]</p>
+        <p class="witness">In the presence of:</p>
+      </div>
+      <div class="sigcol">
+        <p>Signed by</p>
+        <div class="sigline">${sigE}</div>
+        <p>${F(a.lessee_name)}<br>NRIC/Passport no.: ${F(a.lessee_nric)}</p>
+        <p class="witness">In the presence of:</p>
+      </div>
+    </div>`;
+
+  const pages=[p1,p2,p3,p4,p5,p6];
+  const initL = a.sig_lessor_initial ? `<img src="${a.sig_lessor_initial}">` : '';
+  const initE = a.sig_lessee_initial ? `<img src="${a.sig_lessee_initial}">` : '';
+  const initials = `<div class="pg-initials"><div class="slot"><div class="sig">${initL}</div><div class="lbl">Lessor</div></div><div class="slot"><div class="sig">${initE}</div><div class="lbl">Lessee</div></div></div>`;
+  return pages.map((html,i)=>`<div class="doc-page"><div class="doc">${html}</div>${initials}<div class="pg-num">Page ${i+1} of ${pages.length}</div></div>`).join('');
+}
+
+function rmPlain(v){ if(!v) return 'RM[ ]'; v=String(v).trim(); return v.toUpperCase().indexOf('RM')===0?esc(v):'RM'+esc(v); }
+
+
+/* ============================================================
+   PREVIEW + SIGNING (two-stage) + LIST + PADS
+   ============================================================ */
+function rowFor(a){
+  // (pdf_url travels inside data)
+  return {
+    id:a.id, type:a.type, status:a.status, created_at:a.created_at, created_by:a.created_by,
+    lessee_name:a.lessee_name, lessee_nric:a.lessee_nric, reg_no:a.v_reg,
+    data:a, updated_at: todayISO()
+  };
+}
+
+function renderDoc(a){ $('doc').innerHTML = (a.type==='lease') ? buildLeaseDoc(a) : buildDoc(a); }
+
+function previewDoc(){
+  if($('f_lessee_name')){ if(STATE.current.type==='lease') readLeaseForm(); else readForm(); }   // only pull from the form when it's actually on screen
+  const a=STATE.current;
+  if(!a.lessee_name){ toast('Enter lessee name first'); return; }
+  STATE.view='preview'; setSub('Preview \u2014 '+(a.lessee_name||''));
+  renderDoc(a);                 // still build it (hidden) so "Print (browser)" backup works
+  $('doc').style.display='none'; // don't show the rough HTML draft on screen
+  const lessorDone=!!a.sig_lessor, lesseeDone=!!a.sig_lessee, both=lessorDone&&lesseeDone;
+  $('view').innerHTML = `
+    <div class="panel">
+      <h3>Sign &amp; Finalise</h3>
+      <p style="font-size:13px;color:var(--grey);margin-bottom:10px">Both parties sign here (any order), then tap <b style="color:var(--gold-soft)">Preview PDF</b> to see the real agreement in your template format.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn ${lessorDone?'sec':''}" onclick="openSign('lessor')">${lessorDone?'Lessor signed \u2713 (re-sign)':'Sign \u2014 Lessor (GP)'}</button>
+        <button class="btn ${lesseeDone?'sec':'ok'}" onclick="openSign('lessee')">${lesseeDone?'Lessee signed \u2713 (re-sign)':'Sign \u2014 Lessee'}</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+        <button class="btn" onclick="saveCurrent()">Save</button>
+        <button class="btn" id="previewBtn" onclick="generatePdf('preview')" ${both?'':'disabled'}>Preview PDF</button>
+        <button class="btn ok" id="genBtn" onclick="generatePdf('final')" ${both?'':'disabled'}>Finalise to Drive</button>
+        <button class="btn sec" onclick="backToForm()">\u2039 Edit details</button>
+        <a class="btn sec" href="index.html" style="text-decoration:none">Exit to Hub</a>
+      </div>
+      ${both
+        ? '<div class="hint" style="margin-top:10px">Tap <b>Preview PDF</b> to review, or <b>Finalise to Drive</b> to save the signed copy.</div>'
+        : '<div class="hint" style="margin-top:10px">Both signatures needed before you can preview or finalise.</div>'}
+    </div>
+
+    <div class="panel" style="text-align:center;padding:30px 18px">
+      <div style="font-size:34px;margin-bottom:8px">📄</div>
+      <div style="font-size:14px;color:var(--text);font-weight:600">Real agreement opens as a PDF</div>
+      <div style="font-size:12.5px;color:var(--grey);margin-top:6px;line-height:1.6">
+        The on-screen draft has been removed to avoid confusion.<br>
+        Sign both parties, then tap <b style="color:var(--gold-soft)">Preview PDF</b> — the exact
+        agreement (with your header, watermark &amp; formatting) opens in a new tab.
+      </div>
+    </div>`;
+}
+
+
+function showPreviewLink(url){
+  const v=document.getElementById('view');
+  if(!v) return;
+  const old=document.getElementById('previewCard'); if(old) old.remove();
+  const box=document.createElement('div');
+  box.className='panel'; box.id='previewCard';
+  box.innerHTML =
+    '<h3>Preview Ready</h3>'+
+    '<p style="font-size:13px;color:var(--grey);margin-bottom:10px">Your preview PDF is ready. Tap to open it (it may also have opened in a new tab).</p>'+
+    '<a class="btn ok" href="'+esc(url)+'" target="_blank" style="text-decoration:none;display:inline-block">Open Preview PDF ›</a>';
+  v.insertBefore(box, v.firstChild);
+}
+
+function showWhatsapp(pdfUrl, a){
+  // insert a WhatsApp card at the top of the view
+  const v=document.getElementById('view');
+  if(!v) return;
+  const existing=document.getElementById('waCard'); if(existing) existing.remove();
+  const box=document.createElement('div');
+  box.className='panel'; box.id='waCard';
+  box.innerHTML =
+    '<h3>Send to Customer</h3>'+
+    '<p style="font-size:13px;color:var(--grey);margin-bottom:10px">Agreement finalised. Open WhatsApp, choose the customer, and the message (with the PDF link) is ready to send.</p>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+      '<button class="btn ok" onclick="sendWhatsapp(\''+encodeURIComponent(pdfUrl)+'\')">Send via WhatsApp</button>'+
+      '<a class="btn sec" href="'+esc(pdfUrl)+'" target="_blank" style="text-decoration:none">Open PDF</a>'+
+    '</div>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;border-top:1px solid var(--line);padding-top:12px">'+
+      '<button class="btn" onclick="startNew(\'lease\')">+ New Agreement</button>'+
+      '<button class="btn sec" onclick="showChooser()">Done</button>'+
+      '<a class="btn sec" href="index.html" style="text-decoration:none">‹ Back to Hub</a>'+
+    '</div>';
+  v.insertBefore(box, v.firstChild);
+}
+
+function sendWhatsapp(encUrl){
+  const a=STATE.current||{};
+  const url=decodeURIComponent(encUrl);
+  const name=(a.lessee_name||'').trim();
+  const car=(a.v_make_model||'').trim();
+  const reg=(a.v_reg||'').trim();
+  let msg='Hi'+(name?' '+name:'')+', here is your GRANDPRIDE leasing agreement';
+  if(car) msg+=' for '+car;
+  if(reg) msg+=' ('+reg+')';
+  msg+='.\n\nPlease review and keep a copy:\n'+url+'\n\nThank you for choosing Grandpride Luxury Travel.';
+  // wa.me with no number -> opens WhatsApp and lets you pick the contact
+  const wa='https://wa.me/?text='+encodeURIComponent(msg);
+  window.open(wa,'_blank');
+}
+
+async function saveCurrent(){
+  const a=STATE.current;
+  if(a.sig_lessor&&a.sig_lessee) a.status='done';
+  else if(a.sig_lessor||a.sig_lessee) a.status='lessor';
+  else a.status='draft';
+  const ok=await sbUpsert(rowFor(a));
+  toast(ok?'Saved':'Saved (cloud off)');
+  if(STATE.view==='preview') previewDoc();
+}
+
+function pdfName(a){
+  const type=(a.type==='lease')?'LEASING':(a.type==='subscription')?'SUBSCRIPTION':'LEASE TO OWN';
+  const name=(a.lessee_name||'NAME').trim();
+  // agreement date -> e.g. 2JULY2024
+  let dstr='';
+  if(a.agreement_date){ try{ const x=new Date(a.agreement_date+'T00:00:00');
+    const mon=['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'][x.getMonth()];
+    dstr=x.getDate()+mon+x.getFullYear(); }catch(e){} }
+  const reg=(a.v_reg||'').trim();
+  return [type,name,dstr,reg].filter(Boolean).join('_');
+}
+
+function doPrint(){
+  const a=STATE.current;
+  const prev=document.title;
+  document.title = pdfName(a);   // browsers use document.title as default PDF filename
+  window.print();
+  setTimeout(()=>{ document.title=prev; }, 800);
+}
+
+
+async function generatePdf(mode){
+  const a=STATE.current;
+  if(!a.sig_lessor || !a.sig_lessee){ toast('Both signatures needed first'); return; }
+  const payload = Object.assign({}, a);
+  payload.lease_period = (a.lease_from||a.lease_to) ? (fmtDate(a.lease_from)+' - '+fmtDate(a.lease_to)) : '';
+  payload.mode = (mode==='preview') ? 'preview' : 'final';
+
+  const previewBtn=document.getElementById('previewBtn');
+  const genBtn=document.getElementById('genBtn');
+  const btn = (mode==='preview') ? previewBtn : genBtn;
+  const label = btn ? btn.textContent : '';
+  if(btn){ btn.disabled=true; btn.textContent='Generating…'; }
+  toast('Generating '+(mode==='preview'?'preview':'final')+' PDF…');
+
+  try{
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(payload)
+    });
+    const out = await res.json();
+    if(out.ok){
+      if(mode==='final'){
+        a.status='done'; a.pdf_url=out.url; await saveCurrent();
+        toast('Finalised & saved to Drive ✓');
+        showWhatsapp(out.url, a);
+      } else {
+        toast('Preview ready — tap "Open Preview PDF"');
+        showPreviewLink(out.url);
+      }
+      // No auto-popup (iOS blocks it). User taps the link button to open.
+    } else {
+      toast('Failed: '+(out.error||'unknown'));
+    }
+  }catch(e){
+    toast('Error: '+e.message);
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=label; }
+  }
+}
+
+function showPdfLink(url,name){
+  const v=document.getElementById('view');
+  const box=document.createElement('div');
+  box.className='panel';
+  box.innerHTML='<h3>PDF Generated</h3>'+
+    '<p style="font-size:13px;color:var(--grey);margin-bottom:10px">'+esc(name||'')+'.pdf saved to Drive.</p>'+
+    '<a class="btn ok" href="'+esc(url)+'" target="_blank" style="text-decoration:none;display:inline-block">Open PDF in Drive ›</a>';
+  v.insertBefore(box, v.firstChild);
+}
+
+function backToForm(){ if(STATE.current.type==='lease') showLeaseForm(); else showForm(); }
+
+/* signature modal */
+function openSign(party){
+  const a=STATE.current;
+  const wrap=document.createElement('div');
+  wrap.id='sigModal';
+  wrap.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px';
+  wrap.innerHTML=`
+    <div style="background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:520px;width:100%">
+      <h3 style="color:var(--gold-soft);font-size:14px;margin-bottom:10px;text-transform:uppercase">${party==='lessor'?'Lessor (GP) Signature':'Lessee Signature'}</h3>
+      ${party==='lessor'?`<label>Signatory name (GP representative)</label><input id="sg_name" value="${esc(a.sig_lessor_name||'')}" placeholder="Name" style="margin-bottom:8px">`:''}
+      <label>Full signature</label>
+      <div class="sigwrap"><canvas class="sigpad" id="padFull"></canvas>
+        <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padFull')">Clear</button></div></div>
+      <label style="margin-top:10px">Initials (small \u2014 stamped on every page)</label>
+      <div class="sigwrap"><canvas class="sigpad initial" id="padInit"></canvas>
+        <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padInit')">Clear</button></div></div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn ok" onclick="saveSign('${party}')">Save signature</button>
+        <button class="btn sec" onclick="closeSign()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+  initPad('padFull'); initPad('padInit');
+  // preload existing
+  if(party==='lessor'){ if(a.sig_lessor) loadPad('padFull',a.sig_lessor); if(a.sig_lessor_initial) loadPad('padInit',a.sig_lessor_initial); }
+  else { if(a.sig_lessee) loadPad('padFull',a.sig_lessee); if(a.sig_lessee_initial) loadPad('padInit',a.sig_lessee_initial); }
+}
+function closeSign(){ const m=$('sigModal'); if(m) m.remove(); }
+
+async function saveSign(party){
+  const a=STATE.current;
+  const full=getPad('padFull'), init=getPad('padInit');
+  if(!full){ toast('Please sign (full signature)'); return; }
+  if(party==='lessor'){
+    a.sig_lessor=full; a.sig_lessor_initial=init||a.sig_lessor_initial;
+    a.sig_lessor_name=($('sg_name')&&$('sg_name').value)||a.sig_lessor_name;
+    a.sig_lessor_date=todayISO();
+  } else {
+    a.sig_lessee=full; a.sig_lessee_initial=init||a.sig_lessee_initial; a.sig_lessee_date=todayISO();
+  }
+  closeSign();
+  await saveCurrent();
+  toast('Signature saved');
+}
+
+/* ---- canvas pad ---- */
+var PADS={};
+function initPad(id){
+  const c=$(id); const r=c.getBoundingClientRect();
+  c.width=r.width*2; c.height=r.height*2;
+  const ctx=c.getContext('2d'); ctx.scale(2,2); ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle='#111';
+  let drawing=false,last=null,dirty=false;
+  function pos(e){ const rect=c.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return {x:t.clientX-rect.left,y:t.clientY-rect.top}; }
+  function down(e){ drawing=true; last=pos(e); e.preventDefault(); }
+  function move(e){ if(!drawing)return; const p=pos(e); ctx.beginPath(); ctx.moveTo(last.x,last.y); ctx.lineTo(p.x,p.y); ctx.stroke(); last=p; dirty=true; e.preventDefault(); }
+  function up(){ drawing=false; }
+  c.addEventListener('mousedown',down); c.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+  c.addEventListener('touchstart',down,{passive:false}); c.addEventListener('touchmove',move,{passive:false}); c.addEventListener('touchend',up);
+  PADS[id]={c,ctx,isDirty:()=>dirty,setDirty:v=>dirty=v};
+}
+function clearPad(id){ const p=PADS[id]; if(!p)return; p.ctx.clearRect(0,0,p.c.width,p.c.height); p.setDirty(false); }
+function getPad(id){ const p=PADS[id]; if(!p||!p.isDirty())return ''; return p.c.toDataURL('image/png'); }
+function loadPad(id,dataUrl){ const p=PADS[id]; if(!p)return; const img=new Image(); img.onload=()=>{ p.ctx.drawImage(img,0,0,p.c.width/2,p.c.height/2); p.setDirty(true); }; img.src=dataUrl; }
+
+/* ---- saved list ---- */
+async function showList(){
+  STATE.view='list'; setSub('Saved agreements'); $('doc').style.display='none';
+  $('view').innerHTML='<div class="panel"><h3>Saved Agreements</h3><div id="listBody">Loading\u2026</div></div>';
+  const rows=await sbList();
+  if(!rows.length){ $('listBody').innerHTML='<p style="color:var(--grey);font-size:13px">No saved agreements yet.</p>'; return; }
+  $('listBody').innerHTML=rows.map(r=>{
+    const a=r.data||r; const st=a.status||'draft';
+    const pill=st==='done'?'<span class="pill done">Completed</span>':st==='lessor'?'<span class="pill lessor">Awaiting lessee</span>':'<span class="pill draft">Draft</span>';
+    return `<div class="rec">
+      <div class="meta"><b>${esc(a.lessee_name||'(no name)')}</b> ${pill}<br>
+        <small>${esc(a.v_reg||'')} \u00b7 ${({lto:'Lease to Own'}[a.type]||a.type)} \u00b7 ${new Date(r.created_at||a.created_at).toLocaleDateString('en-GB')}</small></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn sec mini" onclick="openSaved('${a.id}')">Open</button>
+        <button class="btn danger mini" onclick="delSaved('${a.id}')">\u2715</button>
+      </div></div>`;
+  }).join('');
+}
+async function openSaved(id){
+  const r=await sbGet(id); if(!r){ toast('Not found'); return; }
+  STATE.current = r.data||r;
+  previewDoc();
+}
+async function delSaved(id){
+  if(!confirm('Delete this agreement?'))return;
+  await sbDelete(id); toast('Deleted'); showList();
+}
+
+/* ---- init ---- */
+showChooser();
+
+</script>
+</body>
+</html>
