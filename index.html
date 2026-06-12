@@ -509,7 +509,7 @@ async function pullStaffFromCloud(){
   }));
   // make admin always present
   if(!fromCloud.find(x=>x.username==='admin')){
-    fromCloud.unshift({username:'admin',password:'Gldetailing2019',name:'Administrator',role:'Admin',apps:(typeof ALL_APPS!=='undefined'?ALL_APPS:[])});
+    fromCloud.unshift({username:'admin',name:'Administrator',role:'Admin',apps:(typeof ALL_APPS!=='undefined'?ALL_APPS:[])});
   }
   window.STAFF_SEED = fromCloud;
 }
