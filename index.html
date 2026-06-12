@@ -1993,11 +1993,18 @@ function renderAttLeave(){
     const u=DB.users.find(x=>x.username===uname)||{name:uname};
     const cls=pcls(r.status);
     const proof = r.proof ? `<button class="mini-btn" style="background:rgba(201,162,75,.18);color:var(--gold-soft)" data-proof="${uname}|${idx}">📎 Proof</button>` : '';
+    // Proof-pending MC: show a pending tag, an overdue flag past the 7-day due date, and a Revoke button.
+    let pendingBits='';
+    if(r.type==='MC' && r.proofPending){
+      const overdue = r.proofDue && todayKey() > r.proofDue;
+      pendingBits = '<span class="pill pending">⚠️ proof pending'+(overdue?' · OVERDUE':'')+'</span>';
+      if(canAct) pendingBits += '<button class="mini-btn no" data-revoke="'+uname+'|'+idx+'">Revoke</button>';
+    }
     const action = (canAct && r.status==='Pending')
       ? '<button class="mini-btn ok" data-appr="'+uname+'|'+idx+'">\u2713</button><button class="mini-btn no" data-rej="'+uname+'|'+idx+'">\u2715</button>'
       : '<span class="pill '+cls+'">'+r.status+'</span>';
     const by = r.decidedBy ? `<br><small style="color:var(--grey)">by ${r.decidedBy}</small>` : '';
-    return '<div class="rec-row"><span class="d">'+u.name+'<br><small style="color:var(--grey)">'+r.type+' \u00b7 '+rangeStr(r)+' \u00b7 '+(r.days||1)+'d'+(r.reason?' \u00b7 '+r.reason:'')+'</small>'+by+'</span><span style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+proof+action+'<button class="mini-btn" style="background:rgba(255,255,255,.06);color:var(--paper)" data-print="'+uname+'|'+idx+'">🖨</button></span></div>';
+    return '<div class="rec-row"><span class="d">'+u.name+'<br><small style="color:var(--grey)">'+r.type+' \u00b7 '+rangeStr(r)+' \u00b7 '+(r.days||1)+'d'+(r.reason?' \u00b7 '+r.reason:'')+'</small>'+by+'</span><span style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end">'+proof+pendingBits+action+'<button class="mini-btn" style="background:rgba(255,255,255,.06);color:var(--paper)" data-print="'+uname+'|'+idx+'">🖨</button></span></div>';
   };
 
   if(isManager || isAdmin){
@@ -2043,12 +2050,18 @@ function renderAttLeave(){
   const recs = DB.leaveReqs[current.username] || [];
   const hist = recs.length ? recs.map((r,idx)=>{
     const d=new Date(r.from||r.date);
+    const pendingBadge = (r.type==='MC' && r.proofPending)
+      ? '<span class="pill pending">⚠️ proof pending</span>' : '';
+    const addProofBtn = (r.type==='MC' && r.proofPending)
+      ? '<button class="mini-btn" style="background:rgba(240,176,86,.18);color:#f0b056" data-addproof="'+idx+'">📎 Add proof</button>' : '';
     return `<div class="lv-item">
       <div class="lv-date"><div class="lm">${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}).toUpperCase()}</div><div class="ld">${d.getFullYear()}<br>${(r.days||1)} day${(r.days||1)>1?'s':''}</div></div>
       <div class="lv-body"><div class="ln">${current.name}</div><div class="lt">${r.type} · ${rangeStr(r)}${r.reason?' — '+r.reason:''}</div>
-        <div style="display:flex;gap:6px;align-items:center;margin-top:4px">
+        <div style="display:flex;gap:6px;align-items:center;margin-top:4px;flex-wrap:wrap">
           <span class="pill ${pcls(r.status)}">${r.status}</span>
           ${r.proof?'<span class="pill" style="background:rgba(201,162,75,.18);color:var(--gold-soft)">📎 proof</span>':''}
+          ${pendingBadge}
+          ${addProofBtn}
           <button class="mini-btn" style="background:rgba(255,255,255,.06);color:var(--paper);margin-left:auto" data-print="${current.username}|${idx}">🖨 Print</button>
         </div></div>
     </div>`;
@@ -2071,7 +2084,7 @@ function renderAttLeave(){
       <div class="small" id="lvDays" style="color:var(--gold-soft);margin:4px 0 10px"></div>
       <textarea class="att-input" id="lvReason" rows="2" placeholder="Reason / details"></textarea>
       <div id="lvMcBox" style="display:none">
-        <p class="small" style="color:#f0b056;margin-bottom:6px">MC requires proof — capture or upload your medical certificate.</p>
+        <p class="small" style="color:#f0b056;margin-bottom:6px">MC is approved on the spot. You can attach the medical certificate now, or add it later — but proof is required within 7 days.</p>
         <input class="att-input" id="lvProof" type="file" accept="image/*" capture="environment" style="padding:8px">
         <div id="lvProofPrev" style="margin-bottom:10px"></div>
       </div>
@@ -2108,9 +2121,11 @@ function renderAttLeave(){
   });
   document.getElementById('lvSubmit').addEventListener('click',submitLeave);
   document.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>printLeaveForm(b.dataset.print)));
+  document.querySelectorAll('[data-addproof]').forEach(b=>b.addEventListener('click',()=>addProofLater(+b.dataset.addproof)));
   if(isAdmin || isManager){
     wrap.querySelectorAll('[data-appr]').forEach(b=>b.addEventListener('click',()=>setLeaveStatus(b.dataset.appr,'Approved')));
     wrap.querySelectorAll('[data-rej]').forEach(b=>b.addEventListener('click',()=>setLeaveStatus(b.dataset.rej,'Rejected')));
+    wrap.querySelectorAll('[data-revoke]').forEach(b=>b.addEventListener('click',()=>revokeMC(b.dataset.revoke)));
     wrap.querySelectorAll('[data-proof]').forEach(b=>b.addEventListener('click',()=>viewProof(b.dataset.proof)));
     const ca=document.getElementById('caAssign');
     if(ca) ca.addEventListener('click',()=>{
@@ -2188,6 +2203,49 @@ function getSignature(who){
   });
 }
 
+/* Mark every working day (Mon–Sat) in a leave's range as on-leave on the
+   staff member's calendar. Reused by HOD approval AND auto-approval. */
+function applyLeaveDays(uname, r){
+  if(!DB.attendance[uname]) DB.attendance[uname]={};
+  const f=new Date(r.from||r.date), t=new Date(r.to||r.date);
+  const d=new Date(f);
+  while(d<=t){
+    if(d.getDay()!==0){
+      const k=todayKey(d);
+      const ex = DB.attendance[uname][k] || {};
+      DB.attendance[uname][k]={
+        amIn:ex.amIn||null, lunchOut:ex.lunchOut||null, lunchIn:ex.lunchIn||null, pmOut:ex.pmOut||null,
+        status:r.type, lateMins:ex.lateMins||0, otMins:ex.otMins||0, leave:r.type, _dateKey:k
+      };
+      syncAttendance(uname, k, DB.attendance[uname][k], {punch:'Leave ('+r.type+')', time:''});
+    }
+    d.setDate(d.getDate()+1);
+  }
+}
+
+/* Reverse of applyLeaveDays — used when an MC is revoked for missing proof.
+   The day flips to an Absent/Unpaid marker (staff loses the day). */
+function revokeLeaveDays(uname, r){
+  if(!DB.attendance[uname]) return;
+  const f=new Date(r.from||r.date), t=new Date(r.to||r.date);
+  const d=new Date(f);
+  while(d<=t){
+    if(d.getDay()!==0){
+      const k=todayKey(d);
+      const ex = DB.attendance[uname][k];
+      // only flip days that are still marked as THIS leave (don't clobber real punches)
+      if(ex && ex.leave===r.type){
+        DB.attendance[uname][k]={
+          amIn:null, lunchOut:null, lunchIn:null, pmOut:null,
+          status:'Absent', lateMins:0, otMins:0, leave:null, absent:true, _dateKey:k
+        };
+        syncAttendance(uname, k, DB.attendance[uname][k], {punch:'Absent (MC revoked)', time:''});
+      }
+    }
+    d.setDate(d.getDate()+1);
+  }
+}
+
 async function submitLeave(){
   attData();
   const type=document.getElementById('lvType').value;
@@ -2205,25 +2263,66 @@ async function submitLeave(){
     if((type==='AL'||type==='EL') && ent.onProbation){ toast('No annual/emergency leave during probation'); return; }
     if(type==='AL' && ent.al<=0){ toast('You have no annual leave entitlement'); return; }
   }
-  let proof=null;
+
+  // EL and MC are auto-approved on the spot — no HOD approval, no signature.
+  const autoApprove = (type==='EL' || type==='MC');
+
+  // MC: proof is OPTIONAL at submit (apply on the spot, prove later).
+  let proof=null, proofPending=false;
   if(type==='MC'){
     const pe=document.getElementById('lvProof');
     proof = pe && pe.dataset.b64 ? pe.dataset.b64 : null;
-    if(!proof){ toast('MC requires a proof photo'); return; }
+    proofPending = !proof;   // if no photo yet, MC is approved but proof-pending
   }
-  // staff e-signature (required)
-  const sig = await getSignature(current.name+' (Staff)');
-  if(!sig){ toast('Signature required to submit'); return; }
+
+  // Signature only required for the approval-based flow (AL etc). EL/MC skip it.
+  let sig=null;
+  if(!autoApprove){
+    sig = await getSignature(current.name+' (Staff)');
+    if(!sig){ toast('Signature required to submit'); return; }
+  }
+
   if(!DB.leaveReqs[current.username]) DB.leaveReqs[current.username]=[];
-  DB.leaveReqs[current.username].unshift({ from, to, days, type, reason, status:'Pending', proof, submitted:todayKey(), staffSig:sig });
-  // Notify the people this staff reports to that a leave application needs review
-  notifySupervisors(current.username,
-    '📋 Leave application — ' + current.name,
-    type + ' · ' + from + (to && to!==from ? ' → ' + to : '') + ' (' + days + ' day' + (days>1?'s':'') + ')' + (reason ? ' · ' + reason : ''));
+  const rec = {
+    from, to, days, type, reason,
+    status: autoApprove ? 'Approved' : 'Pending',
+    proof, proofPending,
+    submitted: todayKey(), staffSig: sig
+  };
+  if(autoApprove){
+    rec.decidedBy = 'Auto-approved';
+    rec.decidedOn = todayKey();
+    if(proofPending){
+      // 7-day clock for the in-charge reminder / revoke window
+      const due=new Date(); due.setDate(due.getDate()+7);
+      rec.proofDue = todayKey(due);
+    }
+  }
+  DB.leaveReqs[current.username].unshift(rec);
+
+  if(autoApprove){
+    applyLeaveDays(current.username, rec);
+    // Upload MC proof now if one was provided up front.
+    if(type==='MC' && proof && DB.attSettings && DB.attSettings.imgbbKey){
+      const link = await uploadToImgBB(proof);
+      if(link){ rec.proofUrl = link; }
+    }
+    // Tell the in-charge (full detail) what was auto-approved.
+    notifySupervisors(current.username,
+      '🟢 ' + type + ' auto-approved — ' + current.name,
+      type + ' · ' + from + (to && to!==from ? ' → ' + to : '') + ' (' + days + ' day' + (days>1?'s':'') + ')' +
+      (proofPending ? ' · ⚠️ MC proof pending' : '') + (reason ? ' · ' + reason : ''));
+    toast(type==='MC' && proofPending ? 'MC approved — remember to add proof' : type+' approved');
+  } else {
+    // Approval-based flow (AL): notify supervisors to review.
+    notifySupervisors(current.username,
+      '📋 Leave application — ' + current.name,
+      type + ' · ' + from + (to && to!==from ? ' → ' + to : '') + ' (' + days + ' day' + (days>1?'s':'') + ')' + (reason ? ' · ' + reason : ''));
+    toast('Leave request submitted to HOD');
+  }
   saveDB();
   syncLeave(current.username, DB.leaveReqs[current.username][0]);
   pushLeaveCloud(current.username);
-  toast('Leave request submitted to HOD');
   renderAttLeave();
 }
 function pushLeaveCloud(username){
@@ -2258,23 +2357,7 @@ async function setLeaveStatus(ref, status){
       if(link) r.proofUrl = link;
     }
     if(status==='Approved'){
-      // mark every working day in the range as on-leave (keep punches if they already exist)
-      if(!DB.attendance[uname]) DB.attendance[uname]={};
-      const f=new Date(r.from||r.date), t=new Date(r.to||r.date);
-      const d=new Date(f);
-      while(d<=t){
-        if(d.getDay()!==0){
-          const k=todayKey(d);
-          const ex = DB.attendance[uname][k] || {};
-          DB.attendance[uname][k]={
-            amIn:ex.amIn||null, lunchOut:ex.lunchOut||null, lunchIn:ex.lunchIn||null, pmOut:ex.pmOut||null,
-            status:r.type, lateMins:ex.lateMins||0, otMins:ex.otMins||0, leave:r.type, _dateKey:k
-          };
-          // send a dedicated leave-day row to the staff's sheet tab
-          syncAttendance(uname, k, DB.attendance[uname][k], {punch:'Leave ('+r.type+')', time:''});
-        }
-        d.setDate(d.getDate()+1);
-      }
+      applyLeaveDays(uname, r);
     }
     saveDB();
     syncLeave(uname, r);
@@ -2290,6 +2373,86 @@ function viewProof(ref){
   if(!r||!r.proof){ toast('No proof attached'); return; }
   const w=window.open('','_blank');
   w.document.write('<title>MC Proof</title><body style="margin:0;background:#111;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh"><img src="'+r.proof+'" style="max-width:100%;max-height:90vh"><button onclick="window.close(); setTimeout(function(){ history.length>1 ? history.back() : (location.href=\'index.html\'); }, 150)" style="margin-top:14px;padding:10px 22px;font-size:14px;background:#c9a24b;border:none;border-radius:8px;font-weight:bold;cursor:pointer">← Close / Back</button></body>');
+}
+
+/* In-charge revokes an MC that never got its proof. Staff loses the day(s). */
+async function revokeMC(ref){
+  attData();
+  const [uname, idx]=ref.split('|');
+  const arr=DB.leaveReqs[uname]; if(!arr||!arr[idx]) return;
+  const r=arr[idx];
+  if(r.type!=='MC' || !r.proofPending){ toast('Only proof-pending MC can be revoked'); return; }
+  if(!confirm('Revoke '+(DB.users.find(x=>x.username===uname)||{name:uname}).name+'\u2019s MC for missing proof? The day(s) will count as absent.')) return;
+  r.status='Revoked';
+  r.proofPending=false;
+  r.decidedBy=current.name;
+  r.decidedOn=todayKey();
+  revokeLeaveDays(uname, r);
+  pushNotify('⛔ MC revoked', 'Your MC ('+(r.from||'')+(r.to&&r.to!==r.from?' → '+r.to:'')+') was revoked — no proof provided. Marked absent.', uname);
+  saveDB(); syncLeave(uname, r); pushLeaveCloud(uname);
+  toast('MC revoked'); renderAttLeave();
+}
+
+/* Staff adds the MC proof photo after the fact (from their own history). */
+async function addProofLater(idx){
+  attData();
+  const arr=DB.leaveReqs[current.username]; if(!arr||!arr[idx]) return;
+  const r=arr[idx];
+  if(r.type!=='MC' || !r.proofPending){ toast('Nothing pending'); return; }
+  // hidden file input
+  let inp=document.getElementById('lateProofInput');
+  if(!inp){
+    inp=document.createElement('input');
+    inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+    inp.id='lateProofInput'; inp.style.display='none';
+    document.body.appendChild(inp);
+  }
+  inp.onchange=async()=>{
+    const f=inp.files[0]; if(!f) return;
+    const rd=new FileReader();
+    rd.onload=async()=>{
+      r.proof=rd.result; r.proofPending=false;
+      if(DB.attSettings && DB.attSettings.imgbbKey){
+        toast('Uploading proof…');
+        const link=await uploadToImgBB(rd.result); if(link) r.proofUrl=link;
+      }
+      // let the in-charge know proof arrived
+      notifySupervisors(current.username, '📎 MC proof received — '+current.name,
+        'MC ('+(r.from||'')+(r.to&&r.to!==r.from?' → '+r.to:'')+') proof now attached.');
+      saveDB(); syncLeave(current.username, r); pushLeaveCloud(current.username);
+      toast('Proof added'); renderAttLeave();
+    };
+    rd.readAsDataURL(f);
+  };
+  inp.click();
+}
+
+/* Morning broadcast: the first staff to open the app each day announces who is
+   on leave today. Everyone gets a REDACTED note ("X is on leave today"); the
+   in-charge + Admin/HOD already got the full type at approval time. Deduped by date. */
+function broadcastTodayLeave(){
+  try{
+    const k=todayKey();
+    if(DB.lastLeaveBroadcast===k) return;      // already done today on this device
+    // collect everyone approved-on-leave today
+    const onLeave=[];
+    Object.keys(DB.leaveReqs||{}).forEach(uname=>{
+      (DB.leaveReqs[uname]||[]).forEach(r=>{
+        if(r.status!=='Approved') return;
+        const f=(r.from||r.date), t=(r.to||r.date||f);
+        if(k>=f && k<=t){
+          const u=DB.users.find(x=>x.username===uname)||{name:uname};
+          onLeave.push({uname, name:u.name, type:r.type});
+        }
+      });
+    });
+    DB.lastLeaveBroadcast=k; saveDB();          // set flag even if nobody, so we don't recheck all day
+    if(!onLeave.length) return;
+    onLeave.forEach(p=>{
+      // redacted to everyone
+      pushNotify('👤 On leave today', p.name+' is on leave today.', 'all');
+    });
+  }catch(e){}
 }
 
 function printLeaveForm(ref){
@@ -2871,6 +3034,9 @@ async function init(){
 
   // Remembered device: restore Supabase Auth session if still valid
   await tryAutoLogin();
+
+  // First app-open of the day announces who's on leave today (redacted to all).
+  try{ broadcastTodayLeave(); }catch(e){}
 }
 init();
 </script><script>
