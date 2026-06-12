@@ -126,7 +126,7 @@ function sbBase(){ return (SB_URL||'').replace(/\/rest\/v1\/?$/,''); }
 function sbHeaders(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
 var CLOUD = !!(SB_URL && SB_KEY);
 
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwLrjqCeOhG5wWxqk8yHhHCWwhFar14WrkoPA_eTNt8_U5uJrpXc8Ih_HHeHQKPBbk/exec';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXYDim7Kwk3tiVGK2Vo9y34W4JKsQ6MrI8tBHy2pYVQIs_PYa8T6AJmTAL-wyo4Ls/exec';
 
 /* ---- Supabase REST ---- */
 async function sbUpsert(row){
