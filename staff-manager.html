@@ -70,15 +70,13 @@
 
 <div class="wrap">
   <div class="card" style="margin-top:16px">
-    <p class="muted">Add or edit staff here, then tap <b>Generate staff.js</b> at the bottom. Copy the result into your <b>staff.js</b> file and redeploy to Netlify. Both the Hub and Stock app will use the new list.</p>
+    <p class="muted">Add new staff to send them an email invite — they set their own password from the link. For existing staff without a login, add their email then tap <b>Invite</b>. Changes save to the cloud automatically.</p>
   </div>
 
   <button class="btn" onclick="openForm()">+ Add new staff</button>
 
   <div class="sec-title">Current Staff</div>
   <div id="staffList"></div>
-
-  <button class="btn ghost" onclick="showGenerate()" style="margin-top:20px">⤓ Generate staff.js</button>
 </div>
 
 <div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
@@ -87,8 +85,8 @@
 <script src="supa.js"></script>
 <script src="staff.js"></script>
 <script>
-/* This page loads the current staff.js, lets you edit the list in a form,
-   and regenerates the staff.js text for you to copy & deploy.
+/* This page loads staff from the cloud (gp_staff), lets you add/edit staff in a
+   form, and sends Supabase Auth email invites so staff set their own passwords.
    Working copy is kept in localStorage so you don't lose edits on refresh. */
 
 const OPT_IN_APPS = ['mia','jobboard','gpagreement','gpchecklist','gpdaily','gpappt','gprecord']; // apps that are NOT given by default — assigned per-staff
@@ -132,6 +130,7 @@ async function init(){
     if(r.ok && r.data && r.data.length){
       staff = r.data.map(row=>({
         username:row.username, email:row.email||undefined, name:row.name, role:row.role,
+        auth_id: row.auth_id||undefined,
         company:row.company||undefined, title:row.title||undefined, birthday:row.birthday||undefined,
         reportsTo: row.reports_to? (function(){ try{ const v=JSON.parse(row.reports_to); return Array.isArray(v)?v:[v]; }catch(e){ return [row.reports_to]; } })() : undefined,
         canPostNotice:!!row.can_post_notice,
@@ -172,10 +171,20 @@ function render(){
   if(!staff.length){ wrap.innerHTML='<p class="muted">No staff yet. Tap “Add new staff”.</p>'; return; }
   wrap.innerHTML = staff.map((s,i)=>{
     const isCh = s.title && s.title.toLowerCase().indexOf('chauffeur')>=0;
+    // Login status: has auth_id = can already log in; else needs an invite.
+    let statusBtn;
+    if(s.auth_id){
+      statusBtn = '<span class="tag" style="background:#1f5f3f;color:#9be8bf">✓ Active</span>';
+    } else if(s.email){
+      statusBtn = '<button class="btn sm" onclick="inviteExisting('+i+')">Invite</button>';
+    } else {
+      statusBtn = '<button class="btn ghost sm" onclick="openForm('+i+')" title="Add an email first">No email</button>';
+    }
     return '<div class="staff-row"><div class="info"><div class="nm">'+s.name+
       ' <span class="tag">'+s.role+'</span>'+(isCh?'<span class="tag chau">🚗 Chauffeur</span>':'')+'</div>'+
       '<div class="mt">'+s.username+' · '+(s.title||s.role)+(s.company?' · '+s.company:'')+'<br>'+appsOf(s)+'</div></div>'+
-      '<button class="btn ghost sm" onclick="openForm('+i+')">Edit</button></div>';
+      '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'+statusBtn+
+      '<button class="btn ghost sm" onclick="openForm('+i+')">Edit</button></div></div>';
   }).join('');
 }
 
@@ -205,6 +214,29 @@ function openForm(idx){
   document.getElementById('sheet').innerHTML=h;
   document.getElementById('modal').classList.add('show');
 }
+// Invite a staff member who ALREADY exists as a row but has no Auth login yet
+// (the pre-existing team migrated from the old plaintext system). Sends the email
+// invite and links the new Auth user to their existing row — keeps all their data.
+async function inviteExisting(idx){
+  const s = staff[idx];
+  if(!s) return;
+  if(s.auth_id){ toast(s.name+' already has a login'); return; }
+  if(!s.email){ toast('Add an email for '+s.name+' first (Edit)'); return; }
+  if(!confirm('Send a login invite to '+s.name+' at '+s.email+'?')) return;
+  toast('Sending invite…');
+  const res = await SUPA.inviteStaff({
+    email:s.email, username:s.username, name:s.name,
+    role:s.role, company:s.company||null, title:s.title||null,
+    birthday:s.birthday||null,
+    reports_to: s.reportsTo? (Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null,
+    can_post_notice:!!s.canPostNotice, apps:s.apps||[],
+    existing:true   // tells the function to link to the existing row, not insert a new one
+  });
+  if(!res.ok){ toast('Invite failed: '+(res.error||'unknown')); return; }
+  if(res.data && res.data.auth_id) s.auth_id = res.data.auth_id;
+  persist(); render(); toast('Invite sent to '+s.email);
+}
+
 async function saveStaff(idx){
   const username=document.getElementById('fUser').value.trim().toLowerCase();
   const email=document.getElementById('fEmail').value.trim().toLowerCase();
@@ -254,49 +286,6 @@ function delStaff(idx){
   staff.splice(idx,1); persist();
   if(SUPA.isReady() && removed) SUPA.del('gp_staff',{username:removed.username});
   closeModal(); render(); toast('Staff deleted');
-}
-
-/* ---- generate staff.js text ---- */
-function genFile(){
-  const lines = staff.map(s=>{
-    // ALL_APPS = the base apps (mia excluded — it's an opt-in extra)
-    const baseKeys = APP_LIST.filter(a=>!OPT_IN_APPS.includes(a.key)).map(a=>a.key);
-    const arr = Array.isArray(s.apps) ? s.apps : [];
-    const hasAllBase = baseKeys.every(k=>arr.includes(k));
-    const extras = OPT_IN_APPS.filter(k=>arr.includes(k)); // e.g. ['mia','jobboard']
-    let appsStr;
-    if(hasAllBase && !extras.length)      appsStr = 'ALL_APPS';
-    else if(hasAllBase && extras.length)  appsStr = "ALL_APPS.concat(["+extras.map(a=>"'"+a+"'").join(',')+"])";
-    else                                  appsStr = '['+arr.map(a=>"'"+a+"'").join(',')+']';
-    let parts = "{ username:'"+s.username+"', name:'"+s.name.replace(/'/g,"\\'")+"', role:'"+s.role+"'";
-    if(s.email) parts += ", email:'"+s.email+"'";
-    if(s.company) parts += ", company:'"+s.company+"'";
-    if(s.title) parts += ", title:'"+s.title.replace(/'/g,"\\'")+"'";
-    if(s.birthday) parts += ", birthday:'"+s.birthday+"'";
-    if(s.reportsTo){ const arr=Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]; parts += ", reportsTo:["+arr.map(x=>"'"+x+"'").join(',')+"]"; }
-    if(s.canPostNotice) parts += ", canPostNotice:true";
-    parts += ", apps:"+appsStr+" }";
-    return '  '+parts+',';
-  }).join('\n');
-  return "/* GRANDPRIDE & GRANDLAB — SHARED STAFF LIST (generated by Staff Manager) */\n"+
-         "var ALL_APPS = ['attendance','tasklog','joborder','academy','dutyboard','stock'];\n\n"+
-         "var STAFF_SEED = [\n"+lines+"\n];\n";
-}
-function showGenerate(){
-  const text=genFile();
-  let h='<button class="x" onclick="closeModal()">×</button><h3>Your staff.js</h3>';
-  h+='<p class="muted">Copy everything below, paste it into your <b>staff.js</b> file (replace all), then redeploy to Netlify.</p>';
-  h+='<textarea id="genOut" readonly>'+text.replace(/</g,'&lt;')+'</textarea>';
-  h+='<button class="btn" onclick="copyGen()">📋 Copy to clipboard</button>';
-  h+='<div class="warn">After deploying, if a phone still shows old staff, bump <b>LS_KEY</b> in index.html (e.g. _v3 → _v4) so it reloads.</div>';
-  document.getElementById('sheet').innerHTML=h;
-  document.getElementById('modal').classList.add('show');
-}
-function copyGen(){
-  const t=document.getElementById('genOut');
-  t.select(); t.setSelectionRange(0,99999);
-  try{ document.execCommand('copy'); toast('Copied! Paste into staff.js'); }
-  catch(e){ navigator.clipboard && navigator.clipboard.writeText(genFile()).then(()=>toast('Copied!')); }
 }
 
 function closeModal(){ document.getElementById('modal').classList.remove('show'); }
