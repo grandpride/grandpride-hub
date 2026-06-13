@@ -299,7 +299,9 @@ async function deleteChecklist(id, plate){
   // 2) remove the Supabase row
   try{ await sbDelete(id); }catch(e){}
   toast('Deleted ✓');
-  showPending();
+  // refresh whichever screen we came from
+  if(STATE.view==='historyDetail' || STATE.view==='history'){ showHistory(); }
+  else { showPending(); }
 }
 async function openReturn(id){
   const r=await sbGet(id); if(!r){ toast('Not found'); return; }
@@ -380,16 +382,18 @@ async function showHistoryDetail(id){
   }
 
   const pdfBtn=(url,label)=> url
-    ? `<a class="btn ok full" href="${esc(url)}" target="_blank" style="text-decoration:none;margin-bottom:8px">${label} ›</a>`
-    : `<div class="btn sec full" style="margin-bottom:8px;opacity:.5;cursor:default">${label} — not available</div>`;
+    ? `<a class="btn ok" href="${esc(url)}" target="_blank" style="text-decoration:none;display:block;width:100%;box-sizing:border-box;text-align:center;margin:0">${label} ›</a>`
+    : `<div class="btn sec" style="display:block;width:100%;box-sizing:border-box;text-align:center;margin:0;opacity:.5;cursor:default">${label} — not available</div>`;
 
   $('view').innerHTML=`
     <div class="panel">
       <h3>${esc(r.car_plate||'(no plate)')} · ${esc(r.customer_name||'')}</h3>
       <p class="hint" style="margin-bottom:14px">${esc(r.car_model||'')} · ${PLAN_NAME[r.plan]||r.plan} · ${r.status==='completed'?'Completed':'Awaiting return'}</p>
 
-      ${pdfBtn(r.out_pdf_url,'📤 Delivery checklist PDF')}
-      ${pdfBtn(r.in_pdf_url,'📥 Return checklist PDF')}
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${pdfBtn(r.out_pdf_url,'📤 Delivery checklist PDF')}
+        ${pdfBtn(r.in_pdf_url,'📥 Return checklist PDF')}
+      </div>
 
       <div class="panel" style="margin-top:14px;background:var(--bg2,#1a1a1a)">
         <h4 style="margin:0 0 10px">Return summary</h4>
@@ -399,6 +403,7 @@ async function showHistoryDetail(id){
       </div>
 
       ${r.status!=='completed'?`<button class="btn ok full" style="margin-top:14px" onclick="openReturn('${r.id}')">Do Return now ›</button>`:''}
+      <button class="btn danger full" style="margin-top:14px" onclick="deleteChecklist('${r.id}','${esc(r.car_plate||'')}')">🗑 Delete this job</button>
     </div>
     <button class="btn sec full" style="margin-top:14px" onclick="showHistory()">‹ Back to history</button>`;
 }
