@@ -1,0 +1,2929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="GL Job Card">
+<meta name="theme-color" content="#ffffff">
+<title>Grandlab Job Card</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.x/dist/tabler-icons.min.css">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111;font-size:14px}
+:root{--bg:#fff;--bg2:#f5f5f5;--bg3:#efefef;--border:#e0e0e0;--border2:#ccc;--text:#111;--text2:#555;--text3:#888;--accent:#111;--accent-fg:#fff;--info-bg:#e8f4fd;--info-text:#1565a8;--warn-bg:#fff8e6;--warn-text:#7a4f00;--success-bg:#e8f5e9;--success-text:#256029;--danger-bg:#fdecea;--danger-text:#991b1b;--radius:10px;--radius-sm:7px}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--border:#3a3a3c;--border2:#555;--text:#f2f2f7;--text2:#aeaeb2;--text3:#636366;--accent:#f2f2f7;--accent-fg:#1c1c1e;--info-bg:#0d2a45;--info-text:#7ab8f5;--warn-bg:#3a2a00;--warn-text:#f5c842;--success-bg:#0d2e12;--success-text:#5fcf75;--danger-bg:#3a0d0d;--danger-text:#f87171}}
+.app{width:100%;max-width:100%;margin:0;height:100dvh;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden}
+.hdr{background:var(--bg);border-bottom:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hdr-title{font-size:15px;font-weight:600;flex:1}
+.hdr-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.sync-badge{font-size:10px;padding:3px 8px;border-radius:20px;background:var(--bg2);border:1px solid var(--border);color:var(--text3);display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
+.sdot{width:6px;height:6px;border-radius:50%;background:#e53935;flex-shrink:0}
+.sdot.on{background:#43a047}
+.nav{display:flex;background:var(--bg);border-bottom:1px solid var(--border);flex-shrink:0}
+.nav-btn{flex:1;padding:10px 4px;font-size:12px;text-align:center;border:none;background:transparent;cursor:pointer;color:var(--text3);border-bottom:2.5px solid transparent;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;transition:.15s}
+.nav-btn.a{color:var(--text);border-bottom-color:var(--text);font-weight:600}
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.view{display:none}.view.a{display:block}
+.search-bar{padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg);display:flex;gap:8px}
+.search-bar input{flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg2);color:var(--text);outline:none;font-family:inherit}
+.btn-primary{padding:9px 14px;border:none;border-radius:var(--radius-sm);background:var(--accent);color:var(--accent-fg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:5px}
+.plate-list{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+.plate-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer}
+.plate-card:active{background:var(--bg2)}
+.pc-body{padding:12px 13px;display:flex;align-items:center;gap:11px}
+.pc-icon{width:40px;height:40px;border-radius:9px;background:var(--bg2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;color:var(--text3)}
+.pc-plate{font-size:16px;font-weight:700;letter-spacing:.5px}
+.pc-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.pc-right{margin-left:auto;text-align:right;flex-shrink:0}
+.pc-visits{font-size:11px;color:var(--text3)}
+.pc-date{font-size:11px;color:var(--text3);margin-top:1px}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;margin-top:3px}
+.b-warn{background:var(--warn-bg);color:var(--warn-text)}
+.b-ok{background:var(--success-bg);color:var(--success-text)}
+.b-info{background:var(--info-bg);color:var(--info-text)}
+.empty{padding:3rem 1rem;text-align:center;color:var(--text3);font-size:13px;line-height:1.8}
+  .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;padding:2rem 1rem;text-align:center;color:var(--text3);font-size:13px;line-height:1.8}
+.empty i{font-size:36px;display:block;margin-bottom:8px;color:var(--border2)}
+.detail-header{padding:13px 14px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.back-btn{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;margin-bottom:8px;background:none;border:none;font-family:inherit;padding:0}
+.detail-plate{font-size:22px;font-weight:700;letter-spacing:.5px}
+.detail-info{font-size:12px;color:var(--text2);margin-top:3px}
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.stat{background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;border:1px solid var(--border)}
+.stat-val{font-size:18px;font-weight:700}
+.stat-lbl{font-size:11px;color:var(--text3);margin-top:2px}
+.new-visit-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:calc(100% - 28px);margin:10px 14px 0;padding:11px;background:var(--accent);color:var(--accent-fg);border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+.timeline{padding:12px 14px}
+.tl-title{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px}
+.visit-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden}
+.vc-head{padding:11px 13px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px}
+.vc-head:active{background:var(--bg2)}
+.vc-date{font-size:13px;font-weight:600}
+.vc-staff{font-size:12px;color:var(--text2);margin-top:3px;font-weight:500}
+.vc-total{font-size:14px;font-weight:700;white-space:nowrap}
+.vc-body{display:none;border-top:1px solid var(--border);padding:11px 13px}
+.vc-body.open{display:block}
+.svc-line{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px}
+.svc-line:last-of-type{border-bottom:none}
+.def-section{margin-top:10px}
+.def-section-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.def-line{display:flex;align-items:flex-start;gap:7px;padding:3px 0;font-size:12px}
+.def-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.vc-actions{display:flex;gap:8px;margin-top:10px}
+.vc-btn{flex:1;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:transparent;font-size:12px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px}
+.vc-btn:active{background:var(--bg2)}
+.held-section{padding:10px 14px;border-bottom:1px solid var(--border)}
+.held-title{font-size:10px;font-weight:700;color:#e65100;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:5px}
+.fsec{padding:12px 14px;border-bottom:1px solid var(--border)}
+.flabel{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ff{margin-bottom:9px}.ff:last-child{margin-bottom:0}
+.ff label{display:block;font-size:11px;color:var(--text2);margin-bottom:3px;font-weight:500}
+.ff input,.ff select{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;-webkit-appearance:none}
+.ff input:focus,.ff select:focus{border-color:var(--border2)}
+.notice{padding:8px 11px;border-radius:var(--radius-sm);font-size:12px;margin-bottom:10px;display:none}
+.notice.info{background:var(--info-bg);color:var(--info-text)}
+.notice.warn{background:var(--warn-bg);color:var(--warn-text)}
+.staff-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.sc{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;cursor:pointer;text-align:center;color:var(--text2);background:var(--bg);font-family:inherit}
+.sc.sel{background:var(--accent);color:var(--accent-fg);border-color:var(--accent);font-weight:600}
+.svc-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;background:var(--bg2);padding:8px 9px;border-radius:var(--radius-sm)}
+.svc-row input{padding:7px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;outline:none}
+.s-desc{flex:1;min-width:0}.s-price{width:75px}
+.sdel{background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:3px;flex-shrink:0}
+.def-row{display:flex;gap:6px;margin-bottom:6px}
+.def-row input{flex:1;padding:8px 9px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;outline:none}
+.def-row select{width:120px;flex:none;padding:8px 7px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--bg);color:var(--text);font-family:inherit;outline:none;-webkit-appearance:none}
+.add-link{width:100%;padding:8px;border:1.5px dashed var(--border2);border-radius:var(--radius-sm);background:transparent;color:var(--text3);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;font-family:inherit;margin-top:2px}
+.add-link:active{background:var(--bg2)}
+.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pslot{aspect-ratio:4/3;border:1.5px dashed var(--border2);border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;background:var(--bg2);position:relative;overflow:hidden}
+.pslot span{font-size:11px;color:var(--text3)}
+.pslot i{font-size:22px;color:var(--text3)}
+.pslot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pslot .rm-btn{position:absolute;top:5px;right:5px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.pm-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+  .pm-opt{padding:9px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);text-align:center;cursor:pointer;font-size:12px;color:var(--text2);background:var(--bg);font-family:inherit;transition:.1s}
+  .pm-opt.sel{border-color:var(--accent);color:var(--text);background:var(--bg2);font-weight:600}
+.pm{padding:9px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);text-align:center;cursor:pointer;font-size:12px;color:var(--text2);background:var(--bg);font-family:inherit}
+.pm.sel{border-color:var(--accent);color:var(--text);background:var(--bg2);font-weight:600}
+.total-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0 6px}
+.total-lbl{font-size:13px;color:var(--text2)}
+.total-amt{font-size:22px;font-weight:700}
+.dep-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.dep-row label{font-size:12px;color:var(--text2);white-space:nowrap}
+.tg{display:flex;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+.tg button{flex:1;padding:7px 12px;border:none;background:transparent;font-size:12px;cursor:pointer;color:var(--text2);font-family:inherit}
+.tg button.a{background:var(--accent);color:var(--accent-fg);font-weight:600}
+.chk-box{width:24px;height:24px;border:1.5px solid var(--border2);border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;font-weight:700;color:var(--accent);background:var(--bg);transition:.1s}
+.chk-box.checked{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.chk-row{display:flex;align-items:center;gap:10px;padding:4px 0}
+.chk-label{font-size:13px;font-weight:600;color:var(--text)}
+.hold-banner{background:#fff3e0;border-bottom:1px solid #ffcc80;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hold-banner-text{font-size:13px;font-weight:600;color:#e65100}
+.hold-banner-sub{font-size:11px;color:#bf360c;margin-top:1px}
+.btn-cancel-hold{padding:8px 14px;background:transparent;border:1px solid #e65100;border-radius:var(--radius-sm);font-size:12px;color:#e65100;cursor:pointer;font-family:inherit;font-weight:600}
+.form-actions{padding:12px 14px 20px;display:flex;flex-direction:column;gap:8px}
+.btn-save{width:100%;padding:13px;background:var(--accent);color:var(--accent-fg);border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-hold{width:100%;padding:12px;background:#e65100;color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-outline{width:100%;padding:11px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px}
+.setup-wrap{padding:14px}
+.setup-sec{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;margin-top:14px}
+.setup-sec:first-child{margin-top:0}
+.setup-card{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:6px}
+.setup-row{padding:13px 14px;display:flex;align-items:center;gap:11px;cursor:pointer}
+.setup-row:not(:last-child){border-bottom:1px solid var(--border)}
+.setup-row:active{background:var(--bg2)}
+.si{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px}
+.setup-title{font-size:13px;font-weight:600}
+.setup-sub{font-size:11px;color:var(--text3);margin-top:1px}
+.step-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:8px;display:none}
+.step-box.open{display:block}
+.step-title{font-size:13px;font-weight:700;margin-bottom:10px}
+.step-box ol{padding-left:18px;color:var(--text)}
+.step-box li{margin-bottom:7px;font-size:13px;line-height:1.6}
+.step-box code{font-family:"Courier New",monospace;font-size:12px;background:var(--bg2);padding:2px 6px;border-radius:4px;border:1px solid var(--border)}
+.url-input{width:100%;margin-top:10px;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg2);color:var(--text);font-family:"Courier New",monospace;outline:none}
+.btn-small{margin-top:8px;padding:8px 16px;border:none;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;display:inline-flex;align-items:center;gap:5px}
+.btn-dark{background:var(--accent);color:var(--accent-fg)}
+.btn-light{background:var(--bg2);color:var(--text);border:1px solid var(--border)}
+.gs-status{margin-top:6px;font-size:12px;color:var(--success-text)}
+
+  /* Dark mode */
+  body.dark-mode{--bg:#1c1c1e;--bg2:#2c2c2e;--bg3:#3a3a3c;--border:#3a3a3c;--border2:#555;--text:#f2f2f7;--text2:#aeaeb2;--text3:#636366;--accent:#f2f2f7;--accent-fg:#1c1c1e;--radius:10px;--radius-sm:7px}
+  body.dark-mode .header,body.dark-mode .nav,body.dark-mode .search-bar,body.dark-mode .held-section{background:var(--bg)!important}
+  body.dark-mode .plate-card,body.dark-mode .visit-card,body.dark-mode .hcard,body.dark-mode .setup-card{background:var(--bg)!important;border-color:var(--border)!important}
+  body.dark-mode input,body.dark-mode select,body.dark-mode textarea{background:var(--bg2)!important;color:var(--text)!important;border-color:var(--border)!important}
+  body.dark-mode .svc-row,body.dark-mode .def-row input,body.dark-mode .def-row select{background:var(--bg2)!important}
+  body.dark-mode .detail-header,body.dark-mode .stat{background:var(--bg2)!important}
+  body.dark-mode .fsec{border-color:var(--border)!important}
+  body.dark-mode .presets-bar{background:var(--bg2)!important}
+  body.dark-mode .preset-chip{background:var(--bg)!important;color:var(--text)!important;border-color:var(--border)!important}
+  body.dark-mode .btn-save{background:var(--text)!important;color:var(--bg)!important}
+  body.dark-mode .setup-wrap{background:var(--bg2)}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* Only force uppercase on new job form fields */
+  .form-wrap input:not([type="password"]):not([type="number"]):not([type="checkbox"]):not([type="file"]),
+  .form-wrap textarea,
+  #remarks-input{text-transform:uppercase}
+  .form-wrap input::placeholder,.form-wrap textarea::placeholder,
+  #remarks-input::placeholder{text-transform:none}
+</style>
+</head>
+<body>
+<!-- ADMIN PANEL -->
+<div id="admin-panel" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9998;flex-direction:column">
+  <div style="background:var(--bg2);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+    <div style="font-weight:700;font-size:15px"><i class="ti ti-shield" style="color:#f5a623"></i> Admin Panel</div>
+    <button onclick="closeAdmin()" style="background:none;border:none;font-size:22px;color:var(--text3);cursor:pointer">×</button>
+  </div>
+  <div style="flex:1;overflow-y:auto;padding:16px">
+    <!-- App Config -->
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px"><i class="ti ti-settings" style="color:#f5a623"></i> App Configuration</div>
+    <div id="admin-config-section" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:20px"></div>
+    <!-- Staff Accounts -->
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px"><i class="ti ti-users" style="color:#f5a623"></i> Staff Accounts</div>
+    <button onclick="syncStaffNow()" style="width:100%;padding:10px;background:#1565a8;color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px"><i class="ti ti-refresh"></i> Sync accounts to all phones</button>
+    <div id="admin-staff-list"></div>
+    <button onclick="addStaffAccount()" style="width:100%;padding:10px;background:var(--bg2);border:1.5px dashed var(--border2);border-radius:var(--radius-sm);font-size:13px;color:var(--text2);cursor:pointer;margin-top:8px"><i class="ti ti-plus"></i> Add staff account</button>
+    <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Logged in as: <strong id="admin-logged-as"></strong></div>
+      <button onclick="doLogout()" style="width:100%;padding:10px;background:#e53935;color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer"><i class="ti ti-logout"></i> Logout</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="position:fixed;inset:0;background:#1c1c1e;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px">
+  <div style="width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:28px;font-weight:900;letter-spacing:1px;color:#f2f2f7">GRAND<span style="color:#f5a623">LAB</span></div>
+      <div style="font-size:12px;color:#636366;margin-top:4px;letter-spacing:.05em">DETAILING JOB CARD SYSTEM</div>
+    </div>
+    <div style="background:#2c2c2e;border-radius:12px;padding:24px;border:1px solid #3a3a3c">
+      <div id="login-loading" style="display:none;text-align:center;padding:20px 0">
+        <div style="font-size:13px;color:#aeaeb2;margin-bottom:8px">Loading staff accounts...</div>
+        <div style="width:32px;height:32px;border:3px solid #3a3a3c;border-top-color:#f5a623;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto"></div>
+      </div>
+      <div id="login-form-area">
+      <div style="font-size:14px;font-weight:700;color:#f2f2f7;margin-bottom:16px">Staff Login</div>
+      <input id="login-user" type="text" autocapitalize="none" placeholder="Username" style="width:100%;padding:11px 13px;border:1px solid #3a3a3c;border-radius:8px;font-size:14px;background:#1c1c1e;color:#f2f2f7;font-family:inherit;outline:none;margin-bottom:10px">
+      <input id="login-pass" type="password" placeholder="Password" style="width:100%;padding:11px 13px;border:1px solid #3a3a3c;border-radius:8px;font-size:14px;background:#1c1c1e;color:#f2f2f7;font-family:inherit;outline:none;margin-bottom:14px" onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <input type="checkbox" id="login-remember" checked style="width:16px;height:16px;cursor:pointer">
+        <label for="login-remember" style="font-size:13px;color:#aeaeb2;cursor:pointer">Remember me on this device</label>
+      </div>
+
+      <button onclick="doLogin()" style="width:100%;padding:12px;background:#f2f2f7;color:#1c1c1e;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Login</button>
+      <div id="login-err" style="color:#e53935;font-size:12px;margin-top:10px;text-align:center;display:none">Incorrect username or password.</div>
+      </div><!-- end login-form-area -->
+    </div>
+  </div>
+</div>
+
+<div class="app" id="app" style="display:none">
+  <div class="hdr">
+    <img id="gl-logo" alt="Grandlab logo" src="data:image/png;base64,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" style="width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0" alt="Grandlab">
+    <div class="hdr-title" style="flex:1">Grandlab Job Card</div>
+    <div style="display:flex;align-items:center;gap:4px"><button id="logout-btn" onclick="doLogout()" style="background:none;border:1px solid var(--border2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--text2);cursor:pointer"><i class="ti ti-logout"></i></button><button id="admin-btn" onclick="openAdmin()" style="display:none;background:none;border:1px solid var(--border2);border-radius:20px;padding:3px 9px;font-size:11px;color:var(--text2);cursor:pointer"><i class="ti ti-shield"></i></button><div class="sync-badge" onclick="testGs()"><div class="sdot" id="sdot"></div><span id="slbl">Not synced</span></div></div>
+  </div>
+  <!-- REMARKS MODAL -->
+  <div id="remarks-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;align-items:flex-end;justify-content:center">
+    <div style="background:var(--bg);border-radius:16px 16px 0 0;width:100%;max-width:500px;max-height:85vh;display:flex;flex-direction:column">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-weight:700;font-size:15px"><i class="ti ti-notes" style="color:var(--accent)"></i> Remarks — <span id="remarks-plate-title"></span></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Sales advisor notes for this customer</div>
+        </div>
+        <button onclick="closeRemarks()" style="background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;padding:4px">×</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:12px 16px" id="remarks-list"></div>
+      <div style="padding:12px 16px;border-top:1px solid var(--border)">
+        <textarea id="remarks-input" rows="3" placeholder="Add a remark or note about this customer..." style="text-transform:uppercase" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;background:var(--bg2);color:var(--text);font-family:inherit;resize:none;outline:none;line-height:1.5"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+          <select id="remarks-staff-sel" style="flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg2);color:var(--text);font-family:inherit;outline:none"></select>
+          <button onclick="saveRemark()" style="background:var(--accent);color:var(--accent-fg);border:none;border-radius:var(--radius-sm);padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0"><i class="ti ti-check"></i> Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="nav-btn a" id="nb-cars" onclick="showView('cars')"><i class="ti ti-car"></i> Cars</button>
+    <button class="nav-btn" id="nb-new" onclick="showView('new')"><i class="ti ti-plus"></i> New job</button>
+    <button class="nav-btn" id="nb-settings" onclick="showView('settings')"><i class="ti ti-adjustments"></i> Settings</button>
+    <button class="nav-btn" id="nb-setup" onclick="showView('setup')"><i class="ti ti-settings"></i> Setup</button>
+      <button class="nav-btn" id="nb-report" onclick="showView('report')"><i class="ti ti-chart-bar"></i><span>Report</span></button>
+  </div>
+  <div class="content">
+
+    <!-- CARS -->
+    <div class="view a" id="view-cars">
+      <div class="search-bar">
+        <input id="car-search" type="text" autocapitalize="characters" placeholder="Search plate, name, phone..." oninput="renderCars()">
+        <button class="btn-primary" style="background:#1565a8;flex-shrink:0" onclick="searchSheet()"><i class="ti ti-cloud-search"></i></button>
+        <button class="btn-primary" style="flex-shrink:0" onclick="showView('new')"><i class="ti ti-plus"></i> New</button>
+      </div>
+
+      <div id="sheet-search-result" style="display:none;padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border)"></div>
+      <div class="held-section" id="held-section" style="display:none">
+        <div class="held-title"><i class="ti ti-clock-pause" style="font-size:12px"></i> On Hold — Pending Payment</div>
+        <div id="held-list"></div>
+      </div>
+      <div class="plate-list" id="plate-list"></div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="view" id="view-detail">
+      <div class="detail-header">
+        <button class="back-btn" onclick="showView('cars')"><i class="ti ti-arrow-left"></i> All cars</button>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+          <div><div class="detail-plate" id="dd-plate">—</div><div class="detail-info" id="dd-info">—</div></div>
+          <div id="dd-badge"></div>
+        </div>
+        <div class="stats-row">
+          <div class="stat"><div class="stat-val" id="dd-visits">0</div><div class="stat-lbl">Total visits</div></div>
+          <div class="stat"><div class="stat-val" id="dd-spent">RM 0</div><div class="stat-lbl">Total spent</div></div>
+        </div>
+        <button class="new-visit-btn" onclick="newVisitForPlate()"><i class="ti ti-plus"></i> New visit for this car</button>
+        <button class="new-visit-btn" style="background:var(--bg2);margin-top:6px" onclick="exportHistory()"><i class="ti ti-file-download"></i> Export history as PDF</button>
+        <button class="new-visit-btn" style="background:#0d2a45;color:#7ab8f5;margin-top:6px" onclick="showRemarks()"><i class="ti ti-notes"></i> Customer remarks / notes</button>
+      </div>
+      <div class="timeline"><div class="tl-title">Visit history</div><div id="visit-tl"></div></div>
+    </div>
+
+    <!-- NEW JOB -->
+    <div class="view" id="view-new">
+      <div class="hold-banner" id="held-banner" style="display:none">
+        <div><div class="hold-banner-text" id="held-banner-text"><i class="ti ti-clock-pause"></i> Completing held job</div><div class="hold-banner-sub" id="held-banner-sub">Select payment method and tap Save</div></div>
+        <button class="btn-cancel-hold" onclick="cancelComplete()">Cancel</button>
+      </div>
+      <div class="fsec">
+        <div class="flabel">Customer &amp; car</div>
+        <div class="notice info" id="n-returning"></div>
+        <div class="notice warn" id="n-rejected"></div>
+        <div class="frow">
+          <div class="ff"><label>Car plate *</label><input id="f-plate" type="text" autocapitalize="characters" placeholder="WXX 1234" oninput="onPlateInput(this)" autocomplete="off" spellcheck="false"></div>
+          <div class="ff"><label>Car model *</label><input id="f-model" type="text" autocapitalize="characters" placeholder="Proton X50"></div>
+        </div>
+        <div class="frow">
+          <div class="ff"><label>Customer name *</label><input id="f-name" type="text" autocapitalize="characters" placeholder="Ahmad bin Ali"></div>
+          <div class="ff"><label>H/P number *</label><input id="f-hp" type="tel" placeholder="012-345 6789"></div>
+        </div>
+        <div class="ff"><label>Email *</label><input id="f-email" type="email" placeholder="email@example.com"></div>
+        <div class="ff"><label>Introducer *</label><input id="f-intro" type="text" autocapitalize="characters" placeholder="Referred by..."></div>
+      </div>
+      <div class="fsec">
+        <div class="flabel">Attended by *</div>
+        <div class="staff-grid" id="staff-grid"></div>
+      </div>
+      <div class="fsec">
+        <div class="flabel">Services</div>
+        <div id="presets-bar" class="presets-bar" style="display:none"></div>
+        <div id="svc-list"></div>
+        <button class="add-link" onclick="addSvc()"><i class="ti ti-plus"></i> Add service</button>
+      </div>
+      <div class="fsec">
+        <div class="flabel">Defects / car issues</div>
+        <div id="def-list"></div>
+        <button class="add-link" onclick="addDef()"><i class="ti ti-plus"></i> Add defect / remark</button>
+      </div>
+      <div class="fsec">
+        <div class="flabel">Photos</div>
+        <div class="photo-grid" id="photo-grid">
+          <div class="pslot" id="ps-car" onclick="document.getElementById('pi-car').click()">
+            <i class="ti ti-car"></i><span>Car photo</span>
+            <input type="file" accept="image/*" id="pi-car" style="display:none" onchange="prevPhoto(this,'ps-car')">
+          </div>
+          <div class="pslot" id="ps-d1" onclick="document.getElementById('pi-d1').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 1</span>
+            <input type="file" accept="image/*" id="pi-d1" style="display:none" onchange="prevPhoto(this,'ps-d1')">
+          </div>
+          <div class="pslot" id="ps-d2" onclick="document.getElementById('pi-d2').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 2</span>
+            <input type="file" accept="image/*" id="pi-d2" style="display:none" onchange="prevPhoto(this,'ps-d2')">
+          </div>
+          <div class="pslot" id="ps-d3" onclick="document.getElementById('pi-d3').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 3</span>
+            <input type="file" accept="image/*" id="pi-d3" style="display:none" onchange="prevPhoto(this,'ps-d3')">
+          </div>
+          <div class="pslot" id="ps-d4" onclick="document.getElementById('pi-d4').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 4</span>
+            <input type="file" accept="image/*" id="pi-d4" style="display:none" onchange="prevPhoto(this,'ps-d4')">
+          </div>
+          <div class="pslot" id="ps-d5" onclick="document.getElementById('pi-d5').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 5</span>
+            <input type="file" accept="image/*" id="pi-d5" style="display:none" onchange="prevPhoto(this,'ps-d5')">
+          </div>
+          <div class="pslot" id="ps-d6" onclick="document.getElementById('pi-d6').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 6</span>
+            <input type="file" accept="image/*" id="pi-d6" style="display:none" onchange="prevPhoto(this,'ps-d6')">
+          </div>
+          <div class="pslot" id="ps-d7" onclick="document.getElementById('pi-d7').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 7</span>
+            <input type="file" accept="image/*" id="pi-d7" style="display:none" onchange="prevPhoto(this,'ps-d7')">
+          </div>
+          <div class="pslot" id="ps-d8" onclick="document.getElementById('pi-d8').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 8</span>
+            <input type="file" accept="image/*" id="pi-d8" style="display:none" onchange="prevPhoto(this,'ps-d8')">
+          </div>
+          <div class="pslot" id="ps-d9" onclick="document.getElementById('pi-d9').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 9</span>
+            <input type="file" accept="image/*" id="pi-d9" style="display:none" onchange="prevPhoto(this,'ps-d9')">
+          </div>
+          <div class="pslot" id="ps-d10" onclick="document.getElementById('pi-d10').click()">
+            <i class="ti ti-alert-triangle"></i><span>Defect 10</span>
+            <input type="file" accept="image/*" id="pi-d10" style="display:none" onchange="prevPhoto(this,'ps-d10')">
+          </div>
+        </div>
+      </div>
+      <div class="fsec">
+        <div class="flabel">Payment</div>
+        <div class="total-row"><span class="total-lbl">Total</span><span class="total-amt">RM <span id="f-total">0.00</span></span></div>
+        <div class="dep-row">
+          <label>Deposit paid?</label>
+          <div class="tg"><button id="dep-no" class="a" onclick="setDep(false)">No</button><button id="dep-yes" onclick="setDep(true)">Yes</button></div>
+          <input type="number" id="f-dep" placeholder="RM" style="display:none;flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;outline:none">
+        </div>
+        <div id="f-balance-row" style="display:none;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px dashed var(--border)">
+          <span style="font-size:13px;color:var(--text2)">Balance due</span>
+          <span style="font-size:18px;font-weight:700;color:#e53935">RM <span id="f-balance">0.00</span></span>
+        </div>
+        <div class="pm-grid" id="pm-grid"></div>
+        <div id="payment-proof-wrap" style="display:none;margin-top:10px;padding:10px;background:var(--bg2);border:1.5px dashed var(--border2);border-radius:var(--radius-sm)">
+          <div class="flabel" style="margin-bottom:6px"><i class="ti ti-camera"></i> Payment proof photo</div>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+            <i class="ti ti-upload" style="font-size:18px;color:var(--text3)"></i>
+            <span id="proof-label" style="font-size:13px;color:var(--text2);flex:1">Tap to upload proof</span>
+            <img id="proof-thumb" style="display:none;width:48px;height:48px;border-radius:6px;object-fit:cover">
+            <input type="file" id="proof-photo-input" accept="image/*" capture="environment" style="display:none" onchange="handleProofPhoto(this)">
+          </label>
+          <button id="proof-clear-btn" onclick="clearProofPhoto()" style="display:none;margin-top:6px;background:none;border:none;color:#e53935;font-size:12px;cursor:pointer;padding:0"><i class="ti ti-x"></i> Remove</button>
+        </div>
+      </div>
+      <div class="fsec">
+        <div class="flabel">Reception admin</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="chk-row"><div class="chk-box" id="chk-mochi" onclick="toggleChk('chk-mochi')"></div><span class="chk-label">MOCHI</span></div>
+          <div class="chk-row"><div class="chk-box" id="chk-excel" onclick="toggleChk('chk-excel')"></div><span class="chk-label">EXCEL</span></div>
+        </div>
+        <div class="ff"><label>Mochi Receipt No.</label><input id="f-mochi-receipt" type="text" autocapitalize="characters" placeholder="Receipt number..."></div>
+        <div class="ff"><label>SQL Invoice No.</label><input id="f-sql-invoice" type="text" autocapitalize="characters" placeholder="Invoice number..."></div>
+        <div class="ff"><label>SQL Knock Off</label><input id="f-sql-knockoff" type="text" autocapitalize="characters" placeholder="Reference..."></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" id="btn-save" onclick="saveJob()"><i class="ti ti-device-floppy"></i> Save &amp; sync</button>
+        <button class="btn-hold" id="btn-hold" onclick="holdJob()"><i class="ti ti-clock-pause"></i> Hold — payment later</button>
+        <button class="btn-outline" onclick="printCurrentForm()"><i class="ti ti-printer"></i> Preview &amp; print job slip</button>
+        <button class="btn-outline" style="background:#25D366;color:#fff;border-color:#25D366" onclick="sendCustomerWa()"><i class="ti ti-brand-whatsapp"></i> Notify customer</button>
+        <button class="btn-outline" style="background:#0d2a45;color:#7ab8f5;border-color:#1565a8" onclick="openRemarksFromForm()"><i class="ti ti-notes"></i> Add / view remarks</button>
+        <button class="btn-outline" style="background:#25D366;color:#fff;border-color:#25D366" onclick="sendWhatsApp()"><i class="ti ti-brand-whatsapp"></i> Send to WhatsApp</button>
+      </div>
+    </div>
+
+
+    <!-- SETTINGS VIEW -->
+    <div class="view" id="view-settings">
+      <div class="setup-wrap">
+
+        <!-- Dark/Light Mode -->
+        <div class="setup-sec">Appearance</div>
+        <div class="setup-card">
+          <div class="setup-row" style="cursor:default">
+            <div class="si" style="background:#f3f3f3;color:#333"><i class="ti ti-moon"></i></div>
+            <div style="flex:1"><div class="setup-title">Dark mode</div><div class="setup-sub">Toggle dark / light theme</div></div>
+            <div id="theme-toggle" onclick="toggleTheme()" style="width:44px;height:26px;border-radius:20px;background:var(--border2);cursor:pointer;position:relative;transition:.2s;flex-shrink:0">
+              <div id="theme-knob" style="position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Staff Management -->
+        <div class="setup-sec">Staff <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">— shown in Attended By</span></div>
+        <div class="setup-card">
+          <div id="staff-list-settings"></div>
+          <div class="setup-row" onclick="addStaffSetting()">
+            <div class="si" style="background:var(--bg2)"><i class="ti ti-plus"></i></div>
+            <div style="flex:1"><div class="setup-title" style="color:var(--text2)">Add staff</div></div>
+          </div>
+        </div>
+
+        <!-- Preset Services -->
+        <div class="setup-sec">Preset services <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">— quick add in New Job</span></div>
+        <div class="setup-card">
+          <div id="preset-list-settings"></div>
+          <div class="setup-row" onclick="addPresetSetting()">
+            <div class="si" style="background:var(--bg2)"><i class="ti ti-plus"></i></div>
+            <div style="flex:1"><div class="setup-title" style="color:var(--text2)">Add preset service</div></div>
+          </div>
+        </div>
+
+        <!-- WhatsApp Template -->
+        <div class="setup-sec">Customer WhatsApp notification</div>
+        <div class="setup-card">
+          <div class="setup-row" style="cursor:default">
+            <div class="si" style="background:#e8f5e9;color:#2e7d32"><i class="ti ti-brand-whatsapp"></i></div>
+            <div style="flex:1"><div class="setup-title">Message template</div><div class="setup-sub">Sent to customer when job is done</div></div>
+          </div>
+          <div style="padding:0 14px 12px">
+            <textarea id="wa-template" rows="6" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;resize:vertical;line-height:1.6"></textarea>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Use NAME PLATE MODEL SERVICES TOTAL DATE as placeholders</div>
+            <button class="btn-small btn-dark" style="margin-top:8px" onclick="saveWaTemplate()"><i class="ti ti-check"></i> Save template</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SETUP -->
+    <div class="view" id="view-report">
+  <div class="setup-wrap" style="padding:16px;overflow-y:auto;height:100%">
+    <div style="font-size:16px;font-weight:800;color:var(--text);margin-bottom:16px"><i class="ti ti-chart-bar" style="color:#f5a623"></i> Sales Report</div>
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px;border:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div><div class="flabel" style="margin-bottom:4px">From</div>
+          <input type="date" id="report-from" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;text-transform:none"></div>
+        <div><div class="flabel" style="margin-bottom:4px">To</div>
+          <input type="date" id="report-to" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--text);font-family:inherit;font-size:13px;text-transform:none"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+        <button onclick="setReportRange('today')" class="btn-outline" style="font-size:12px;padding:7px">Today</button>
+        <button onclick="setReportRange('week')" class="btn-outline" style="font-size:12px;padding:7px">This Week</button>
+        <button onclick="setReportRange('month')" class="btn-outline" style="font-size:12px;padding:7px">This Month</button>
+      </div>
+      <button onclick="generateReport()" style="width:100%;padding:10px;background:var(--accent);color:var(--accent-fg);border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer"><i class="ti ti-refresh"></i> Generate Report</button>
+    </div>
+    <div id="report-loading" style="display:none;text-align:center;padding:30px;color:var(--text3);font-size:13px">Loading data from sheet...</div>
+    <div id="report-output" style="display:none">
+      <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;border:1px solid var(--border)">
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px" id="report-title"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--border)">
+            <div style="font-size:22px;font-weight:900;color:var(--accent)" id="report-total-sales">RM0</div>
+            <div style="font-size:11px;color:var(--text3)">Total Sales</div>
+          </div>
+          <div style="background:var(--bg);border-radius:var(--radius-sm);padding:10px;text-align:center;border:1px solid var(--border)">
+            <div style="font-size:22px;font-weight:900;color:#1565a8" id="report-total-jobs">0</div>
+            <div style="font-size:11px;color:var(--text3)">Total Jobs</div>
+          </div>
+        </div>
+        <div id="report-breakdown"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button onclick="sendReportWa()" style="padding:11px;background:#25D366;color:#fff;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer"><i class="ti ti-brand-whatsapp"></i> Send WhatsApp</button>
+        <button onclick="copyReport()" style="padding:11px;background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-weight:700;cursor:pointer"><i class="ti ti-copy"></i> Copy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="view" id="view-setup">
+      <div class="setup-wrap">
+        <div class="setup-sec">Google Sheets sync</div>
+        <div class="setup-card">
+          <div class="setup-row" onclick="toggleBox('box-gs')">
+            <div class="si" style="background:#e8f5e9;color:#2e7d32"><i class="ti ti-table"></i></div>
+            <div style="flex:1"><div class="setup-title">Connect Google Sheets</div><div class="setup-sub">Each car plate gets its own sheet tab</div></div>
+            <i class="ti ti-chevron-down" style="color:var(--text3)"></i>
+          </div>
+        </div>
+        <div class="step-box" id="box-gs">
+          <div class="step-title">Setup steps (one time, 5 min)</div>
+          <ol>
+            <li>Open your Google Sheet &rarr; <strong>Extensions &rarr; Apps Script</strong></li>
+            <li>Delete all code, tap <strong>Copy Apps Script</strong> below and paste it in</li>
+            <li><strong>Deploy &rarr; New deployment &rarr;</strong> gear icon &rarr; <strong>Web app</strong></li>
+            <li>Execute as: <strong>Me</strong> &nbsp; Who has access: <strong>Anyone</strong></li>
+            <li>Deploy &rarr; Authorize &rarr; Allow &rarr; copy the <code>/exec</code> URL</li>
+            <li>Paste URL below and tap <strong>Save URL</strong></li>
+          </ol>
+          <button class="btn-small btn-light" onclick="copyScript()"><i class="ti ti-copy"></i> Copy Apps Script</button>
+          <input class="url-input" id="gs-url" type="url" placeholder="Paste your /exec URL here...">
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-small btn-dark" onclick="saveGsUrl()"><i class="ti ti-check"></i> Save URL</button>
+            <button class="btn-small btn-light" onclick="testGs()"><i class="ti ti-send"></i> Test</button>
+          </div>
+          <div class="gs-status" id="gs-status"></div>
+        </div>
+        <div class="setup-sec">Share with staff</div>
+        <div class="setup-card">
+          <div class="setup-row" onclick="toggleBox('box-share')">
+            <div class="si" style="background:#e8f4fd;color:#1565a8"><i class="ti ti-share"></i></div>
+            <div style="flex:1"><div class="setup-title">How to share with staff</div><div class="setup-sub">All staff use the same Netlify URL</div></div>
+            <i class="ti ti-chevron-down" style="color:var(--text3)"></i>
+          </div>
+        </div>
+        <div class="step-box" id="box-share">
+          <ol>
+            <li>Upload <code>index.html</code> to <strong>app.netlify.com/drop</strong></li>
+            <li>Share the Netlify link to all staff via WhatsApp</li>
+            <li>Each staff: open in Chrome/Safari &rarr; Share &rarr; <strong>Add to Home Screen</strong></li>
+            <li>Each staff: go to Setup &rarr; paste the same Google Sheets URL &rarr; Save</li>
+          </ol>
+        </div>
+        <div class="setup-sec">Photo storage (ImgBB)</div>
+        <div class="setup-card">
+          <div class="setup-row" onclick="toggleBox('box-imgbb')">
+            <div class="si" style="background:#e8f4fd;color:#1565a8"><i class="ti ti-photo"></i></div>
+            <div style="flex:1"><div class="setup-title">Connect ImgBB photo storage</div><div class="setup-sub">Free · no size limit · photos save as links in sheet</div></div>
+            <i class="ti ti-chevron-down" style="color:var(--text3)"></i>
+          </div>
+        </div>
+        <div class="step-box" id="box-imgbb">
+          <div class="step-title">Setup (2 minutes, free):</div>
+          <ol>
+            <li>Go to <strong>imgbb.com</strong> and sign up free</li>
+            <li>Click your profile → <strong>API</strong></li>
+            <li>Copy your API key</li>
+            <li>Paste it below and tap Save</li>
+          </ol>
+          <div style="margin-top:8px;font-size:12px;color:var(--text2)">Photos upload instantly to ImgBB. Links are saved in Google Sheet so you can view anytime.</div>
+          <input class="url-input" id="imgbb-key" type="text" placeholder="Paste ImgBB API key here...">
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn-small btn-dark" onclick="saveImgbbKey()"><i class="ti ti-check"></i> Save key</button>
+          </div>
+          <div class="gs-status" id="imgbb-status"></div>
+        </div>
+        <div class="setup-sec">About</div>
+        <div class="setup-card">
+          <div class="setup-row" style="cursor:default">
+            <div style="flex:1"><div class="setup-title">Grandlab Job Card</div>
+<script>
+
+const STAFF=['IQA','SHAFIQ','ALEX','JIMMY'];
+const PMS=['Cash','Online Transfer','Credit Card','Debit Card','TNG / QR Pay','Point (Credit)'];
+const GS_CODE=`function doPost(e){
+  try{
+    var d=JSON.parse(e.postData.contents);
+    var ss=SpreadsheetApp.getActiveSpreadsheet();
+    if(d.action==='get_held'){var hs=ss.getSheetByName('__HELD__');if(!hs)return out({result:'ok',held:[]});var hd=hs.getDataRange().getValues(),held=[];for(var i=1;i<hd.length;i++){if(hd[i][0])try{held.push(JSON.parse(hd[i][0]));}catch(e){}}return out({result:'ok',held:held});}
+    if(d.action==='save_held'){var hs=ss.getSheetByName('__HELD__')||ss.insertSheet('__HELD__');if(hs.getLastRow()===0)hs.appendRow(['Job Data','Plate','Customer','Time','Status']);var hd=hs.getDataRange().getValues();for(var i=1;i<hd.length;i++){try{var ex=JSON.parse(hd[i][0]);if(ex.id===d.job.id){hs.getRange(i+1,1,1,5).setValues([[JSON.stringify(d.job),d.job.plate,d.job.name,d.job.heldAt,'HELD']]);return out({result:'ok'});}}catch(e){}}hs.appendRow([JSON.stringify(d.job),d.job.plate,d.job.name,d.job.heldAt,'HELD']);return out({result:'ok'});}
+    if(d.action==='delete_held'){var hs=ss.getSheetByName('__HELD__');if(!hs)return out({result:'ok'});var hd=hs.getDataRange().getValues();for(var i=1;i<hd.length;i++){try{var ex=JSON.parse(hd[i][0]);if(ex.id===d.id){hs.deleteRow(i+1);return out({result:'ok'});}}catch(e){}}return out({result:'ok'});}
+    if(d.action==='save_accounts'){var cs=ss.getSheetByName('__CONFIG__')||ss.insertSheet('__CONFIG__');if(cs.getLastRow()===0)cs.appendRow(['key','value']);var cd=cs.getDataRange().getValues();for(var i=1;i<cd.length;i++){if(cd[i][0]==='gl_accounts'){cs.getRange(i+1,2).setValue(JSON.stringify(d.accounts));return out({result:'ok'});}}cs.appendRow(['gl_accounts',JSON.stringify(d.accounts)]);return out({result:'ok'});}
+    if(d.action==='save_config'){var cs=ss.getSheetByName('__CONFIG__')||ss.insertSheet('__CONFIG__');cs.clearContents();cs.appendRow(['key','value']);var cfg=d.config||{};Object.keys(cfg).forEach(function(k){cs.appendRow([k,cfg[k]]);});return out({result:'ok'});}
+    if(d.action==='save_remarks'){var rs=ss.getSheetByName('__REMARKS__')||ss.insertSheet('__REMARKS__');if(rs.getLastRow()===0)rs.appendRow(['Plate','Remarks JSON','Last Updated']);var rd=rs.getDataRange().getValues();var plate=d.plate.replace(/[^A-Z0-9]/gi,'').toUpperCase();for(var i=1;i<rd.length;i++){if(rd[i][0]===plate){rs.getRange(i+1,2,1,2).setValues([[JSON.stringify(d.remarks),new Date().toString()]]);return out({result:'ok'});}}rs.appendRow([plate,JSON.stringify(d.remarks),new Date().toString()]);return out({result:'ok'});}
+    var plate=d.plate.replace(/[^A-Z0-9]/gi,'').toUpperCase();
+    var sh=ss.getSheetByName(plate);
+    if(!sh){sh=ss.insertSheet(plate);sh.appendRow(["Visit Date","Time","SO Number","Customer","H/P","Car Model","Staff","Services","Total (RM)","Deposit","Payment","Defects","Rejected","STATUS","Photo 1","Photo 2","Photo 3","Photo 4","Photo 5","Photo 6","Photo 7","Photo 8","Photo 9","Photo 10","Mochi","Excel","Mochi Receipt","SQL Invoice","SQL Knock Off"]);sh.getRange(1,1,1,29).setFontWeight("bold").setBackground("#f3f3f3");sh.setFrozenRows(1);sh.setColumnWidth(1,90);sh.setColumnWidth(3,90);sh.setColumnWidth(4,130);sh.setColumnWidth(8,200);sh.setColumnWidth(12,200);for(var c=15;c<=24;c++)sh.setColumnWidth(c,80);sh.setColumnWidth(25,60);sh.setColumnWidth(26,60);sh.setColumnWidth(27,100);sh.setColumnWidth(28,100);sh.setColumnWidth(29,110);}
+    var svcs=d.services.map(function(x){return x.desc+" RM"+x.price;}).join("; ")||"None";
+    var rej=d.defects.filter(function(x){return x.status==="rejected";}).map(function(x){return x.note;}).join("; ")||"None";
+    var allDef=d.defects.filter(function(x){return x.note;}).map(function(x){return x.note+" ("+x.status+")";}).join("; ")||"None";
+    var payStatus=d.paymentStatus||"PAID";
+    var links=(d.driveLink||"").split(" | ").filter(function(l){return l.trim();});
+    var row=[d.date,d.time,d.soNum,d.name,d.hp,d.model,d.staff,svcs,"RM"+d.total,d.deposit?"RM"+d.depAmt:"No",d.payment||"",allDef,rej,payStatus,links[0]||"",links[1]||"",links[2]||"",links[3]||"",links[4]||"",links[5]||"",links[6]||"",links[7]||"",links[8]||"",links[9]||"",d.mochiDone?"v":"",d.excelDone?"v":"",d.mochiReceipt||"",d.sqlInvoice||"",d.sqlKnockoff||""];
+    if(payStatus==="PAID"&&d.soNum){var data=sh.getDataRange().getValues();for(var i=1;i<data.length;i++){if(data[i][2]===d.soNum&&data[i][13]==="PENDING"){sh.getRange(i+1,1,1,29).setValues([row]);sh.getRange(i+1,1,1,29).setBackground("#e8f5e9");setPhotoLinks(sh,i+1,links);return out({result:"ok",action:"updated"});}}}
+    sh.appendRow(row);var lr=sh.getLastRow();sh.getRange(lr,1,1,29).setBackground(payStatus==="PENDING"?"#fff3e0":"#e8f5e9");setPhotoLinks(sh,lr,links);
+    return out({result:"ok"});
+  }catch(err){return out({result:"error",message:err.toString()});}
+}
+function out(obj){return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);}
+function setPhotoLinks(sh,rowNum,links){for(var i=0;i<links.length&&i<10;i++){if(links[i])sh.getRange(rowNum,15+i).setFormula('=HYPERLINK("'+links[i]+'","Photo '+(i+1)+'")');;}}
+function doGet(e){
+  try{
+    var p=e.parameter||{};
+    var ss=SpreadsheetApp.getActiveSpreadsheet();
+    if(p.action==="search"&&p.plate){var plate=decodeURIComponent(p.plate).replace(/[^A-Z0-9]/gi,"").toUpperCase();var sh=ss.getSheetByName(plate);if(!sh)return out({result:"ok",visits:[]});var range=sh.getDataRange(),data=range.getValues(),fmls=range.getFormulas(),visits=[];for(var i=1;i<data.length;i++){var row=data[i];if(!row[0])continue;var photos=[];for(var j=14;j<=23;j++){var f=fmls[i]&&fmls[i][j]?fmls[i][j]:"";if(f.indexOf("HYPERLINK")>-1){var m=f.match(/"(https?:[^"]+)"/);if(m)photos.push(m[1]);}else if(row[j]&&row[j].toString().indexOf("http")===0)photos.push(row[j].toString());}var dv=row[0],ds="";if(dv instanceof Date){ds=dv.getDate().toString().padStart(2,"0")+"/"+(dv.getMonth()+1).toString().padStart(2,"0")+"/"+dv.getFullYear();}else ds=dv?dv.toString():"";visits.push({date:ds,time:row[1]?row[1].toString():"",soNum:row[2]?row[2].toString():"",name:row[3]?row[3].toString():"",hp:row[4]?row[4].toString():"",model:row[5]?row[5].toString():"",staff:row[6]?row[6].toString():"",services:row[7]?row[7].toString():"",total:row[8]?row[8].toString():"",deposit:row[9]?row[9].toString():"",payment:row[10]?row[10].toString():"",defects:row[11]?row[11].toString():"",rejected:row[12]?row[12].toString():"",status:row[13]?row[13].toString():"",photoUrls:photos});}return out({result:"ok",plate:plate,visits:visits});}
+    if(p.action==="list_plates"){var sheets=ss.getSheets(),plates=[];for(var i=0;i<sheets.length;i++){var name=sheets[i].getName();if(/^[A-Z0-9]+$/.test(name)){var lr=sheets[i].getLastRow();if(lr>1){var r=sheets[i].getRange(lr,1,1,6).getValues()[0];var dv=r[0],ds="";if(dv instanceof Date){ds=dv.getDate().toString().padStart(2,"0")+"/"+(dv.getMonth()+1).toString().padStart(2,"0")+"/"+dv.getFullYear();}else ds=dv?dv.toString():"";plates.push({plate:name,lastDate:ds,name:r[3]?r[3].toString():"",model:r[5]?r[5].toString():"",visits:lr-1});}}}return out({result:"ok",plates:plates});}
+    if(p.action==="delete_visit"&&p.plate&&p.soNum){var plate=decodeURIComponent(p.plate).replace(/[^A-Z0-9]/gi,"").toUpperCase();var sh=ss.getSheetByName(plate);if(!sh)return out({result:"error",message:"Sheet not found"});var data=sh.getDataRange().getValues();for(var i=1;i<data.length;i++){if(data[i][2]&&data[i][2].toString()===decodeURIComponent(p.soNum)){sh.deleteRow(i+1);return out({result:"ok",action:"deleted"});}}return out({result:"error",message:"Record not found"});}
+    if(p.action==="get_accounts"){var cs=ss.getSheetByName("__CONFIG__");if(!cs)return out({result:"ok",accounts:[]});var cd=cs.getDataRange().getValues();for(var i=1;i<cd.length;i++){if(cd[i][0]==="gl_accounts"){try{return out({result:"ok",accounts:JSON.parse(cd[i][1]||"[]")});}catch(e){}}}return out({result:"ok",accounts:[]});}
+    if(p.action==="get_config"){var cs=ss.getSheetByName("__CONFIG__");if(!cs)return out({result:"ok",config:{}});var cd=cs.getDataRange().getValues(),config={};for(var i=1;i<cd.length;i++){if(cd[i][0])config[cd[i][0]]=cd[i][1];}return out({result:"ok",config:config});}
+    if(p.action==="save_accounts"&&p.data){var cs=ss.getSheetByName("__CONFIG__")||ss.insertSheet("__CONFIG__");if(cs.getLastRow()===0)cs.appendRow(["key","value"]);var cd=cs.getDataRange().getValues(),decoded=decodeURIComponent(p.data);for(var i=1;i<cd.length;i++){if(cd[i][0]==="gl_accounts"){cs.getRange(i+1,2).setValue(decoded);return out({result:"ok"});}}cs.appendRow(["gl_accounts",decoded]);return out({result:"ok"});}
+    if(p.action==="save_config"&&p.data){var cs=ss.getSheetByName("__CONFIG__")||ss.insertSheet("__CONFIG__");cs.clearContents();cs.appendRow(["key","value"]);var cfg=JSON.parse(decodeURIComponent(p.data));Object.keys(cfg).forEach(function(k){cs.appendRow([k,cfg[k]]);});return out({result:"ok"});}
+    if(p.action==="save_remarks"&&p.plate&&p.data){var rs=ss.getSheetByName("__REMARKS__")||ss.insertSheet("__REMARKS__");if(rs.getLastRow()===0)rs.appendRow(["Plate","Remarks JSON","Last Updated"]);var rd=rs.getDataRange().getValues();var plate=decodeURIComponent(p.plate).replace(/[^A-Z0-9]/gi,"").toUpperCase();var rj=decodeURIComponent(p.data);for(var i=1;i<rd.length;i++){var rp=(rd[i][0]||"").toString().replace(/[^A-Z0-9]/gi,"").toUpperCase();if(rp===plate){rs.getRange(i+1,2,1,2).setValues([[rj,new Date().toString()]]);return out({result:"ok"});}}rs.appendRow([plate,rj,new Date().toString()]);return out({result:"ok"});}
+    if(p.action==="get_remarks"&&p.plate){var rs=ss.getSheetByName("__REMARKS__");if(!rs)return out({result:"ok",remarks:[]});var rd=rs.getDataRange().getValues();var sp=decodeURIComponent(p.plate).replace(/[^A-Z0-9]/gi,"").toUpperCase();for(var i=1;i<rd.length;i++){var rp=(rd[i][0]||"").toString().replace(/[^A-Z0-9]/gi,"").toUpperCase();if(rp===sp){try{return out({result:"ok",remarks:JSON.parse(rd[i][1]||"[]")});}catch(e){}}}return out({result:"ok",remarks:[]});}
+    return out({result:"ok",status:"alive"});
+  }catch(err){return out({result:"error",message:err.toString()});}
+}`;
+
+// State
+let selStaff=[],selPM='',depPaid=false,svcN=0,defN=0,currentPlate=null;
+let _completingHeldId=null,_completingHeld=false,_editingHeldId=null;
+const photoData={};
+
+function getJobs(){try{return JSON.parse(localStorage.getItem('gl_v3')||'[]');}catch{return [];}}
+function setJobs(j){try{localStorage.setItem('gl_v3',JSON.stringify(j));}catch{alert('Storage full.');}}
+
+function showView(v){
+  ['cars','detail','new','settings','setup','report'].forEach(x=>{
+    document.getElementById('view-'+x).classList.toggle('a',x===v);
+    const nb=document.getElementById('nb-'+x);
+    if(nb) nb.classList.toggle('a',x===v);
+  });
+  if(v==='cars'){renderCars();renderHeld();syncHeldFromSheet();if(!window._sheetPlatesLoaded)loadSheetPlates();}
+}
+
+function setSyncStatus(on){
+  document.getElementById('sdot').classList.toggle('on',on);
+  document.getElementById('slbl').textContent=on?'Sheets synced':'Not synced';
+}
+
+function init(){
+  const sg=document.getElementById('staff-grid');
+  const staffList=getStaffList();
+  staffList.forEach(s=>{
+    const b=document.createElement('div');b.className='sc';b.textContent=s;
+    b.onclick=()=>{selStaff.includes(s)?selStaff=selStaff.filter(x=>x!==s):selStaff.push(s);b.classList.toggle('sel',selStaff.includes(s));};
+    sg.appendChild(b);
+  });
+  const pg=document.getElementById('pm-grid');
+  PMS.forEach(m=>{
+    const b=document.createElement('div');b.className='pm-opt';b.textContent=m;
+    b.onclick=()=>{selPM=m;document.querySelectorAll('.pm-opt').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');togglePaymentProof(m);};
+    pg.appendChild(b);
+  });
+  addSvc();addDef();
+  const url=getGsUrl();
+  if(url){document.getElementById('gs-url').value=url;setSyncStatus(true);}
+  renderCars();renderHeld();
+  syncHeldFromSheet();
+  loadSheetPlates(); // Load all plates from sheet // Fetch held jobs from sheet on load
+  const imgbbKey=localStorage.getItem('gl_imgbb_key');
+  if(imgbbKey&&document.getElementById('imgbb-key')) document.getElementById('imgbb-key').value=imgbbKey;
+}
+
+
+// ============ CORE APP FUNCTIONS ============
+window._sheetPlates=window._sheetPlates||[];
+window._sheetPlatesLoaded=false;
+
+async function loadSheetPlates(){
+  const url=getGsUrl();
+  if(!url)return;
+  try{
+    const res=await fetch(url+'?action=list_plates',{redirect:'follow'});
+    const data=await res.json();
+    if(data.result==='ok'&&data.plates){
+      window._sheetPlates=data.plates;
+      window._sheetPlatesLoaded=true;
+      renderCars();
+    }
+  }catch(e){console.warn('Sheet plates fetch failed:',e);}
+}
+
+function renderCars(){
+  const q=(document.getElementById('car-search').value||'').toLowerCase();
+  const localJobs=getJobs().filter(function(j){return j.status!=='held'&&j.plate;});
+  const localByPlate={};
+  localJobs.forEach(function(j){(localByPlate[j.plate]=localByPlate[j.plate]||[]).push(j);});
+  const allPlates={};
+  Object.keys(localByPlate).forEach(function(p){
+    const visits=localByPlate[p];const lat=visits[0];
+    allPlates[p]={plate:p,name:lat.name||'—',model:lat.model||'—',lastDate:lat.date||'',visits:visits.length,source:'local',rejCount:visits.flatMap(function(v){return(v.defects||[]).filter(function(d){return d.status==='rejected';});}).length};
+  });
+  (window._sheetPlates||[]).forEach(function(sp){
+    if(allPlates[sp.plate]){allPlates[sp.plate].visits=Math.max(allPlates[sp.plate].visits,sp.visits);allPlates[sp.plate].source='both';}
+    else allPlates[sp.plate]={plate:sp.plate,name:sp.name||'—',model:sp.model||'—',lastDate:sp.lastDate||'',visits:sp.visits||0,source:'sheet',rejCount:0};
+  });
+  const plates=Object.keys(allPlates).sort();
+  const filtered=q?plates.filter(function(p){const d=allPlates[p];return p.toLowerCase().includes(q)||(d.name||'').toLowerCase().includes(q)||(d.model||'').toLowerCase().includes(q);}):plates;
+  const el=document.getElementById('plate-list');
+  if(!filtered.length){el.innerHTML='<div class="empty-state" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;text-align:center;color:var(--text3);font-size:13px"><i class="ti ti-car-off" style="font-size:40px;margin-bottom:10px;color:var(--border2)"></i>No records yet.<br>Tap + New to add a job.</div>';return;}
+  el.innerHTML='';
+  filtered.forEach(function(plate){
+    const d=allPlates[plate];
+    const card=document.createElement('div');card.className='plate-card';
+    card.setAttribute('data-plate',plate);
+    const displayDate=formatSheetDate(d.lastDate||'');
+    card.innerHTML='<div class="pc-body"><div class="pc-icon"><i class="ti ti-car"></i></div>'
+      +'<div style="flex:1;min-width:0"><div class="pc-plate">'+plate+'</div>'
+      +'<div class="pc-sub">'+(d.model||'—')+' · '+(d.name||'—')+'</div></div>'
+      +'<div class="pc-right"><div class="pc-visits">'+d.visits+' visit'+(d.visits!==1?'s':'')+'</div>'
+      +'<div class="pc-date">'+displayDate+'</div>'
+      +(d.rejCount?'<div><span class="badge b-warn">'+d.rejCount+' rej</span></div>':'')
+      +'</div></div>';
+    card.onclick=function(){
+      const plate=this.getAttribute('data-plate');
+      console.log('Card clicked:',plate);
+      const localVisits=getJobs().filter(function(j){return j.plate===plate&&j.status!=='held';});
+      if(localVisits.length>0){showDetail(plate);return;}
+      // Not local - fetch from sheet using GET
+      const url=getGsUrl();
+      if(!url){alert('Connect Google Sheets in Setup to view this record.');return;}
+      if(window._sheetVisits&&window._sheetVisits[plate]){showSheetDetail(plate);return;}
+      fetch(url+'?action=search&plate='+encodeURIComponent(plate),{redirect:'follow'})
+        .then(function(r){return r.json();})
+        .then(function(data){
+          if(data.result==='ok'&&data.visits&&data.visits.length>0){
+            window._sheetVisits=window._sheetVisits||{};
+            window._sheetVisits[plate]=data.visits;
+            showSheetDetail(plate);
+          } else {
+            alert('No records found for '+plate+'.');
+          }
+        })
+        .catch(function(e){
+          console.warn('Search failed:',e);
+          alert('Fetch error: '+e.message+'\n\nURL: '+(url+'?action=search&plate='+plate).substring(0,80));
+        });
+    };
+    el.appendChild(card);
+  });
+}
+
+async function showDetail(plate){
+  currentPlate=plate;
+  const jobs=getJobs().filter(function(j){return j.status!=='held';});
+  const visits=jobs.filter(function(j){return j.plate===plate;}).sort(function(a,b){return b.id-a.id;});
+  if(!visits.length)return;
+  const lat=visits[0];
+  document.getElementById('dd-plate').textContent=plate;
+  document.getElementById('dd-info').textContent=(lat.model||'—')+' · '+(lat.name||'—')+' · '+(lat.hp||'—');
+  const totalSpent=visits.reduce(function(s,v){return s+(parseFloat(v.total)||0);},0);
+  document.getElementById('dd-visits').textContent=visits.length;
+  document.getElementById('dd-spent').textContent='RM '+totalSpent.toFixed(0);
+  const allRej=visits.flatMap(function(v){return(v.defects||[]).filter(function(d){return d.status==='rejected';});});
+  document.getElementById('dd-badge').innerHTML=allRej.length?'<span class="badge b-warn">'+allRej.length+' rejected</span>':'<span class="badge b-ok"><i class="ti ti-check" style="font-size:10px"></i> All clear</span>';
+  const tl=document.getElementById('visit-tl');tl.innerHTML='';
+  if(visits.length>0)console.log('First visit staff:',JSON.stringify(visits[0].staff),'payment:',visits[0].payment);
+  visits.forEach(function(v,i){
+    const card=document.createElement('div');card.className='visit-card';
+    const bid='vb'+v.id;
+    const svcHtml=(v.services||[]).length?(v.services).map(function(s){return'<div class="svc-line"><span>'+s.desc+'</span><span style="color:var(--text2)">RM '+parseFloat(s.price||0).toFixed(2)+'</span></div>';}).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0">No services</div>';
+    const defs=(v.defects||[]).filter(function(d){return d.note;});
+    const defHtml=defs.length?'<div class="def-section"><div class="def-section-title">Defects</div>'+defs.map(function(d){return'<div class="def-line"><div class="def-dot" style="background:'+(d.status==='rejected'?'#e53935':d.status==='done'?'#43a047':'#9e9e9e')+'"></div><span>'+d.note+'</span><span style="font-size:11px;color:var(--text3);margin-left:4px">('+d.status+')</span></div>';}).join('')+'</div>':'';
+    const photoBtn=(v.photoUrls&&v.photoUrls.length>0)?'<button class="vc-btn" style="color:#1565a8;border-color:#1565a8" onclick="viewPhotos('+v.id+')"><i class="ti ti-photo"></i> Photos ('+v.photoUrls.length+')</button>':'';
+    card.innerHTML='<div class="vc-head" onclick="document.getElementById(\''+bid+'\').classList.toggle(\'open\')">'
+      +'<div><div class="vc-date">'+v.date+(i===0?' <span class="badge b-info" style="font-size:10px">Latest</span>':'')+'</div>'
+      +'<div class="vc-staff" style="margin-top:3px;font-size:12px;color:var(--text2)"><i class="ti ti-user" style="font-size:11px;color:var(--accent)"></i> <strong>'+(v.staff&&v.staff.toString().trim()?v.staff:'Not recorded')+' </strong>· '+(v.payment||'—')+'</div></div>'
+      +'<div class="vc-total">RM '+v.total+'</div></div>'
+      +'<div style="display:flex;gap:6px;padding:0 12px 8px">'+photoBtn
+      +'<button class="vc-btn" style="color:#1565a8;border-color:#1565a8" onclick="editVisit('+v.id+')"><i class="ti ti-edit"></i> Edit</button>'
+      +'<button class="vc-btn" onclick="printVisit('+v.id+')"><i class="ti ti-printer"></i> Print</button>'
+      +'<button class="vc-btn" style="color:#e53935;border-color:#e53935" onclick="deleteVisit('+v.id+')"><i class="ti ti-trash"></i> Delete</button>'
+      +'</div>'
+      +'<div class="vc-body'+(i===0?' open':'')+'" id="'+bid+'">'+svcHtml+defHtml+'</div>';
+    tl.appendChild(card);
+  });
+  showView('detail');
+  setTimeout(function(){updateRemarksBadge(plate);},100);
+}
+
+function newVisitForPlate(){
+  if(!currentPlate)return;
+  const jobs=getJobs();
+  const prev=jobs.find(function(j){return j.plate===currentPlate&&j.status!=='held';});
+  resetForm();showView('new');
+  document.getElementById('f-plate').value=currentPlate;
+  if(prev){
+    document.getElementById('f-model').value=prev.model||'';
+    document.getElementById('f-name').value=prev.name||'';
+    document.getElementById('f-hp').value=prev.hp||'';
+    document.getElementById('f-email').value=prev.email||'';
+    showReturningNotice(prev);
+  }
+}
+
+async function onPlateInput(inp){
+  inp.value=inp.value.toUpperCase().replace(/[^A-Z0-9 ]/g,'');
+  const plate=inp.value.trim();
+  if(plate.length<3)return;
+  let visits=getJobs().filter(function(j){return j.plate===plate&&j.status!=='held';}).sort(function(a,b){return b.id-a.id;});
+  if(visits.length===0){
+    const sheetVisits=await searchPlateFromSheet(plate);
+    if(sheetVisits&&sheetVisits.length>0){
+      visits=sheetVisits.map(function(v){return{plate:plate,name:v.name,model:v.model,hp:v.hp,email:'',date:v.date,services:[],defects:[],status:'saved',id:0};});
+    }
+  }
+  if(visits.length>0){
+    const prev=visits[0];
+    document.getElementById('f-model').value=prev.model||'';
+    document.getElementById('f-name').value=prev.name||'';
+    document.getElementById('f-hp').value=prev.hp||'';
+    document.getElementById('f-email').value=prev.email||'';
+    showReturningNotice(prev);
+    const rejected=visits.flatMap(function(v){return(v.defects||[]).filter(function(d){return d&&d.status==='rejected';});});
+    const rn=document.getElementById('n-rejected');
+    if(rejected.length){rn.style.display='block';rn.textContent='Prev rejected: '+rejected.map(function(r){return r.note;}).join(', ');}
+    else rn.style.display='none';
+  } else {
+    document.getElementById('n-returning').style.display='none';
+    document.getElementById('n-rejected').style.display='none';
+  }
+}
+
+function showReturningNotice(prev){
+  const n=document.getElementById('n-returning');
+  n.style.display='block';
+  n.textContent='Returning: '+prev.name+' · '+(prev.model||'—')+' · last visit '+prev.date;
+}
+
+function addSvc(){
+  svcN++;const id='sv'+svcN;
+  const d=document.createElement('div');d.className='svc-row';d.id=id;
+  const di=document.createElement('input');di.className='s-desc';di.type='text';di.setAttribute('autocapitalize','characters');di.style.textTransform='uppercase';di.placeholder='Service...';di.oninput=calcTotal;
+  const dp=document.createElement('input');dp.className='s-price';dp.type='number';dp.placeholder='RM';dp.oninput=calcTotal;
+  const dx=document.createElement('button');dx.className='sdel';dx.innerHTML='<i class="ti ti-x"></i>';
+  dx.onclick=function(){document.getElementById(id).remove();calcTotal();};
+  d.appendChild(di);d.appendChild(dp);d.appendChild(dx);
+  document.getElementById('svc-list').appendChild(d);
+}
+
+function addDef(){
+  defN++;const id='df'+defN;
+  const d=document.createElement('div');d.className='def-row';d.id=id;
+  const inp=document.createElement('input');inp.type='text';inp.setAttribute('autocapitalize','characters');inp.style.textTransform='uppercase';inp.placeholder='e.g. SCRATCH FRONT BUMPER...';
+  const sel=document.createElement('select');
+  ['Noted|noted','Done|done','Rejected|rejected','Monitor|monitor'].forEach(function(o){
+    const parts=o.split('|');const opt=document.createElement('option');opt.textContent=parts[0];opt.value=parts[1];sel.appendChild(opt);
+  });
+  const dx=document.createElement('button');dx.className='sdel';dx.innerHTML='<i class="ti ti-x"></i>';
+  dx.onclick=function(){document.getElementById(id).remove();};
+  d.appendChild(inp);d.appendChild(sel);d.appendChild(dx);
+  document.getElementById('def-list').appendChild(d);
+}
+
+function calcTotal(){
+  let t=0;document.querySelectorAll('.s-price').forEach(function(i){t+=parseFloat(i.value)||0;});
+  document.getElementById('f-total').textContent=t.toFixed(2);
+  updateBalance();
+}
+
+function setDep(v){
+  depPaid=v;
+  document.getElementById('dep-no').classList.toggle('a',!v);
+  document.getElementById('dep-yes').classList.toggle('a',v);
+  const depInp=document.getElementById('f-dep');
+  depInp.style.display=v?'block':'none';
+  if(!v){document.getElementById('f-balance-row').style.display='none';}
+  updateBalance();
+}
+
+function updateBalance(){
+  const total=parseFloat(document.getElementById('f-total').textContent)||0;
+  const dep=parseFloat(document.getElementById('f-dep').value)||0;
+  const balRow=document.getElementById('f-balance-row');
+  if(depPaid&&dep>0&&balRow){
+    const bal=total-dep;
+    document.getElementById('f-balance').textContent=bal.toFixed(2);
+    balRow.style.display='flex';
+  } else if(balRow){
+    balRow.style.display='none';
+  }
+}
+
+function toggleChk(id){
+  const el=typeof id==='string'?document.getElementById(id):id;
+  if(!el)return;
+  const checked=el.getAttribute('data-checked')==='1';
+  el.setAttribute('data-checked',checked?'0':'1');
+  el.textContent=checked?'':'✓';
+  el.style.background=checked?'':'var(--accent)';
+  el.style.color=checked?'var(--accent)':'var(--accent-fg)';
+}
+
+const photoData2={};
+function compressAndStore(file,sid,imgEl){
+  const MAX_W=1280,MAX_H=1280,QUALITY=0.75;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const image=new Image();
+    image.onload=function(){
+      let w=image.width,h=image.height;
+      if(w>MAX_W||h>MAX_H){const ratio=Math.min(MAX_W/w,MAX_H/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}
+      const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;
+      const ctx=canvas.getContext('2d');ctx.drawImage(image,0,0,w,h);
+      const compressed=canvas.toDataURL('image/jpeg',QUALITY);
+      const base64=compressed.split(',')[1];
+      photoData2[sid]={base64:base64,name:file.name.replace(/\.[^.]+$/,'.jpg'),type:'image/jpeg'};
+      const slot=document.getElementById(sid);
+      let info=slot.querySelector('.photo-size');
+      if(!info){info=document.createElement('div');info.className='photo-size';info.style.cssText='position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.55);color:#fff;font-size:9px;padding:2px 5px;border-radius:3px;';slot.appendChild(info);}
+      info.textContent=Math.round(file.size/1024)+'KB→'+Math.round(base64.length*0.75/1024)+'KB';
+    };
+    image.src=ev.target.result;
+    imgEl.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function prevPhoto(inp,sid){
+  const f=inp.files[0];if(!f)return;
+  const slot=document.getElementById(sid);
+  let img=slot.querySelector('img');
+  if(!img){img=document.createElement('img');slot.appendChild(img);}
+  let rm=slot.querySelector('.rm-btn');
+  if(!rm){
+    rm=document.createElement('button');rm.className='rm-btn';rm.innerHTML='&times;';
+    rm.onclick=function(e){e.stopPropagation();img.remove();rm.remove();inp.value='';delete photoData2[sid];const info=slot.querySelector('.photo-size');if(info)info.remove();};
+    slot.appendChild(rm);
+  }
+  compressAndStore(f,sid,img);
+}
+
+function collectForm(){
+  const svcs=[],defs=[];
+  document.querySelectorAll('.svc-row').forEach(function(r){
+    const inputs=r.querySelectorAll('input');const desc=inputs[0],price=inputs[1];
+    if(desc&&desc.value.trim())svcs.push({desc:desc.value.trim(),price:price?price.value:'0'});
+  });
+  document.querySelectorAll('.def-row').forEach(function(r){
+    const inp=r.querySelector('input');const sel=r.querySelector('select');
+    if(inp&&inp.value.trim())defs.push({note:inp.value.trim(),status:sel?sel.value:'noted'});
+  });
+  const now=new Date();
+  const mochi=document.getElementById('chk-mochi');
+  const excel=document.getElementById('chk-excel');
+  return{
+    id:Date.now(),soNum:'SO-'+Date.now().toString().slice(-6),
+    date:now.toLocaleDateString('en-MY'),time:now.toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'}),
+    plate:(document.getElementById('f-plate').value||'').trim().toUpperCase(),
+    model:(document.getElementById('f-model').value||'').trim(),
+    name:(document.getElementById('f-name').value||'').trim(),
+    hp:(document.getElementById('f-hp').value||'').trim(),
+    email:(document.getElementById('f-email').value||'').trim(),
+    intro:(document.getElementById('f-intro').value||'').trim(),
+    staff:selStaff.join(', '),services:svcs,defects:defs,
+    total:document.getElementById('f-total').textContent,
+    deposit:depPaid,depAmt:(document.getElementById('f-dep').value||'0'),payment:selPM,
+    photos:Object.keys(photoData2).map(function(k){return{slot:k,base64:photoData2[k].base64,name:photoData2[k].name,type:photoData2[k].type};}),
+    photoUrls:[],
+    mochiDone:mochi&&mochi.getAttribute('data-checked')==='1',
+    excelDone:excel&&excel.getAttribute('data-checked')==='1',
+    mochiReceipt:(document.getElementById('f-mochi-receipt').value||'').trim(),
+    sqlInvoice:(document.getElementById('f-sql-invoice').value||'').trim(),
+    sqlKnockoff:(document.getElementById('f-sql-knockoff').value||'').trim(),
+    status:'saved'
+  };
+}
+
+function resetForm(){
+  selStaff=[];selPM='';depPaid=false;
+  document.querySelectorAll('.sc').forEach(function(b){b.classList.remove('sel');});
+  document.querySelectorAll('.pm-opt').forEach(function(b){b.classList.remove('sel');});
+  ['f-plate','f-model','f-name','f-hp','f-email','f-intro','f-dep','f-mochi-receipt','f-sql-invoice','f-sql-knockoff'].forEach(function(id){const el=document.getElementById(id);if(el)el.value='';});
+  ['chk-mochi','chk-excel'].forEach(function(id){const el=document.getElementById(id);if(el){el.setAttribute('data-checked','0');el.textContent='';el.style.background='';el.style.color='var(--accent)';}});
+  document.getElementById('f-total').textContent='0.00';
+  document.getElementById('svc-list').innerHTML='';
+  document.getElementById('def-list').innerHTML='';
+  document.getElementById('n-returning').style.display='none';
+  document.getElementById('n-rejected').style.display='none';
+  document.getElementById('dep-no').classList.add('a');
+  document.getElementById('dep-yes').classList.remove('a');
+  document.getElementById('f-dep').style.display='none';
+  const banner=document.getElementById('held-complete-banner');if(banner)banner.style.display='none';
+  Object.keys(photoData2).forEach(function(k){delete photoData2[k];});
+  addSvc();addDef();
+}
+
+function loadJobIntoForm(job){
+  document.getElementById('f-plate').value=job.plate||'';
+  document.getElementById('f-model').value=job.model||'';
+  document.getElementById('f-name').value=job.name||'';
+  document.getElementById('f-hp').value=job.hp||'';
+  document.getElementById('f-email').value=job.email||'';
+  document.getElementById('f-intro').value=job.intro||'';
+  document.getElementById('svc-list').innerHTML='';
+  (job.services||[{desc:'',price:''}]).forEach(function(s){
+    svcN++;const sid='sv'+svcN;
+    const d=document.createElement('div');d.className='svc-row';d.id=sid;
+    const di=document.createElement('input');di.className='s-desc';di.type='text';di.setAttribute('autocapitalize','characters');di.style.textTransform='uppercase';di.placeholder='Service...';di.oninput=calcTotal;
+    const dp=document.createElement('input');dp.className='s-price';dp.type='number';dp.placeholder='RM';dp.oninput=calcTotal;
+    const dx=document.createElement('button');dx.className='sdel';dx.innerHTML='<i class="ti ti-x"></i>';
+    dx.onclick=function(){document.getElementById(sid).remove();calcTotal();};
+    d.appendChild(di);d.appendChild(dp);d.appendChild(dx);
+    document.getElementById('svc-list').appendChild(d);
+    di.value=s.desc||'';dp.value=s.price||'';
+  });
+  calcTotal();
+  document.getElementById('def-list').innerHTML='';
+  (job.defects||[]).forEach(function(df){
+    if(!df.note)return;
+    defN++;const did='df'+defN;
+    const d=document.createElement('div');d.className='def-row';d.id=did;
+    const inp=document.createElement('input');inp.type='text';inp.setAttribute('autocapitalize','characters');inp.style.textTransform='uppercase';inp.placeholder='Defect...';
+    const sel=document.createElement('select');
+    ['Noted|noted','Done|done','Rejected|rejected','Monitor|monitor'].forEach(function(o){const parts=o.split('|');const opt=document.createElement('option');opt.textContent=parts[0];opt.value=parts[1];sel.appendChild(opt);});
+    const dx=document.createElement('button');dx.className='sdel';dx.innerHTML='<i class="ti ti-x"></i>';dx.onclick=function(){document.getElementById(did).remove();};
+    d.appendChild(inp);d.appendChild(sel);d.appendChild(dx);
+    document.getElementById('def-list').appendChild(d);
+    inp.value=df.note;sel.value=df.status;
+  });
+  if(document.querySelectorAll('.def-row').length===0)addDef();
+  selStaff=(job.staff||'').split(', ').filter(Boolean);
+  document.querySelectorAll('.sc').forEach(function(b){b.classList.toggle('sel',selStaff.includes(b.textContent));});
+}
+
+function completeHeld(id){
+  const job=getJobs().find(function(j){return j.id===id;});
+  if(!job){alert('Job not found.');return;}
+  // Save photoUrls before resetForm clears everything
+  const savedPhotoUrls=job.photoUrls||[];
+  resetForm();
+  _completingHeldId=id;_completingHeld=true;_editingHeldId=null;
+  loadJobIntoForm(job);
+  // Restore photoUrls so they get saved when payment is completed
+  window._heldPhotoUrls=savedPhotoUrls;
+  const banner=document.getElementById('held-complete-banner');
+  if(banner){
+    banner.style.display='flex';
+    const bt=banner.querySelector('.hold-banner-text');const bs=banner.querySelector('.hold-banner-sub');
+    if(bt)bt.innerHTML='<i class="ti ti-cash"></i> Complete payment';
+    if(bs)bs.textContent='Select payment method and tap Save';
+  }
+  ['cars','detail','new','settings','setup'].forEach(function(x){
+    document.getElementById('view-'+x).classList.toggle('a',x==='new');
+    const nb=document.getElementById('nb-'+x);if(nb)nb.classList.toggle('a',x==='new');
+  });
+}
+
+function editHeld(id){
+  const job=getJobs().find(function(j){return j.id===id;});
+  if(!job){alert('Job not found.');return;}
+  resetForm();
+  _editingHeldId=id;_completingHeld=false;_completingHeldId=null;
+  loadJobIntoForm(job);
+  const banner=document.getElementById('held-complete-banner');
+  if(banner){
+    banner.style.display='flex';
+    const bt=banner.querySelector('.hold-banner-text');const bs=banner.querySelector('.hold-banner-sub');
+    if(bt)bt.innerHTML='<i class="ti ti-edit"></i> Editing held job';
+    if(bs)bs.textContent='Make changes then tap Hold to save back';
+  }
+  ['cars','detail','new','settings','setup'].forEach(function(x){
+    document.getElementById('view-'+x).classList.toggle('a',x==='new');
+    const nb=document.getElementById('nb-'+x);if(nb)nb.classList.toggle('a',x==='new');
+  });
+}
+
+function cancelComplete(){
+  _completingHeldId=null;_completingHeld=false;_editingHeldId=null;
+  window._editingVisitId=null;
+  window._editingOriginalPlate=null;
+  window._editingOriginalSoNum=null;
+  resetForm();showView('cars');
+}
+
+async function holdJob(){
+  const btn=document.querySelector('.btn-hold');
+  if(btn&&btn.disabled)return;
+  if(btn){btn.disabled=true;btn.style.opacity='0.6';btn.textContent='Saving...';}
+  setTimeout(function(){if(btn){btn.disabled=false;btn.style.opacity='1';btn.innerHTML='<i class="ti ti-clock-pause"></i> Hold — payment later';}},8000);
+  const job=collectForm();
+  if(!job.plate||!job.name){alert('Please fill in car plate and customer name.');return;}
+  job.status='held';job.heldAt=job.time;
+  // Upload photos to ImgBB NOW so other phones can see them
+  const photos=job.photos||[];
+  if(photos.length>0){
+    const imgbbKey=localStorage.getItem('gl_imgbb_key');
+    if(imgbbKey){
+      try{
+        if(btn)btn.textContent='Uploading '+photos.length+' photo(s)...';
+        const driveLink=await uploadAllPhotos(job);
+        if(driveLink){
+          job.photoUrls=driveLink.split(' | ').filter(function(u){return u.trim();});
+          console.log('Hold photos uploaded:',job.photoUrls.length);
+        }
+      }catch(e){console.warn('Hold photo upload failed:',e);}
+    }
+  }
+  if(_editingHeldId){const cleaned=getJobs().filter(function(j){return j.id!==_editingHeldId;});setJobs(cleaned);_editingHeldId=null;}
+  const jobs=getJobs();jobs.unshift(job);setJobs(jobs);
+  const url=getGsUrl();
+  if(url){
+    try{
+      // Save to held sheet with photoUrls included (no base64)
+      const jobClean=Object.assign({},job,{photos:[]});
+      fetch(url,{method:'POST',body:JSON.stringify({action:'save_held',job:jobClean}),mode:'no-cors',headers:{}}).catch(function(){});
+    }catch(e){}
+  }
+  const photoMsg=job.photoUrls&&job.photoUrls.length>0?' '+job.photoUrls.length+' photo(s) saved.':'';
+  alert('Job for '+(job.name)+' ('+job.plate+') is ON HOLD.'+photoMsg);
+  resetForm();showView('cars');
+}
+
+async function saveJob(){
+  const btn=document.querySelector('.btn-save');
+  if(btn&&btn.disabled)return;
+  if(btn){btn.disabled=true;btn.style.opacity='0.6';btn.textContent='Saving...';}
+  setTimeout(function(){if(btn){btn.disabled=false;btn.style.opacity='1';btn.innerHTML='<i class="ti ti-device-floppy"></i> Save & sync to Google Sheets';}},5000);
+  const job=collectForm();
+  // Handle edit mode - replace existing job
+  if(window._editingVisitId){
+    const editId=window._editingVisitId;
+    const origPlate=window._editingOriginalPlate||'';
+    const origSoNum=window._editingOriginalSoNum||'';
+    window._editingVisitId=null;
+    window._editingOriginalPlate=null;
+    window._editingOriginalSoNum=null;
+    job.id=editId;
+    const jobs=getJobs();
+    const idx=jobs.findIndex(function(j){return j.id===editId;});
+    if(idx>-1)jobs.splice(idx,1);
+    // If plate changed, delete old sheet record
+    const newPlate=job.plate.replace(/[^A-Z0-9]/gi,'').toUpperCase();
+    if(origPlate&&origSoNum&&origPlate!==newPlate){
+      const delUrl=getGsUrl();
+      if(delUrl){
+        fetch(delUrl+'?action=delete_visit&plate='+encodeURIComponent(origPlate)+'&soNum='+encodeURIComponent(origSoNum),{redirect:'follow'})
+          .then(function(r){return r.json();})
+          .then(function(d){console.log('Old record deleted:',d.result);})
+          .catch(function(e){console.warn('Delete old record failed:',e);});
+      }
+    }
+    // Continue to save as normal (will create/update correct tab)
+  }
+  if(!job.plate||!job.name){alert('Please fill in car plate and customer name.');return;}
+  if(!_completingHeld){
+    if(!job.model){alert('Please fill in car model.');return;}
+    if(!job.hp){alert('Please fill in H/P number.');return;}
+    if(!job.email){alert('Please fill in email.');return;}
+    if(!job.intro){alert('Please fill in introducer.');return;}
+    if(!job.staff){alert('Please select at least one staff.');return;}
+  }
+  if(_editingHeldId){
+    const cleaned=getJobs().filter(function(j){return j.id!==_editingHeldId;});setJobs(cleaned);
+    job.status='held';job.heldAt=job.time;
+    const jobs2=getJobs();jobs2.unshift(job);setJobs(jobs2);
+    _editingHeldId=null;alert('Order updated and kept on hold.');resetForm();showView('cars');return;
+  }
+  const url=getGsUrl();
+  let driveLink='';
+  const photos=job.photos||[];
+  // If completing a held job, restore the previously uploaded photo URLs
+  if(_completingHeld&&window._heldPhotoUrls&&window._heldPhotoUrls.length>0){
+    job.photoUrls=window._heldPhotoUrls;
+    driveLink=window._heldPhotoUrls.join(' | ');
+    window._heldPhotoUrls=[];
+    console.log('Restored held photoUrls:',job.photoUrls.length);
+  } else if(photos.length>0){
+    const imgbbKey=localStorage.getItem('gl_imgbb_key');
+    if(!imgbbKey){
+      alert('Photos not uploaded!\nPlease set up ImgBB key in Setup tab.');
+    } else {
+      try{
+        if(btn)btn.textContent='Uploading '+photos.length+' photo(s)...';
+        driveLink=await uploadAllPhotos(job);
+        if(driveLink)job.photoUrls=driveLink.split(' | ').filter(function(u){return u.trim();});
+      }catch(e){console.error('Photo upload failed:',e);}
+    }
+  }
+  if(_completingHeldId){
+    const heldId=_completingHeldId;
+    const cleaned=getJobs().filter(function(j){return j.id!==heldId;});setJobs(cleaned);
+    _completingHeldId=null;_completingHeld=false;
+    const urlDel=getGsUrl();
+    if(urlDel)fetch(urlDel,{method:'POST',body:JSON.stringify({action:'delete_held',id:heldId}),mode:'no-cors',headers:{}}).catch(function(){});
+  }
+  const jobs=getJobs();jobs.unshift(job);setJobs(jobs);
+  if(url){
+    try{
+      const payload=Object.assign({},job,{paymentStatus:'PAID',photos:[],driveLink:driveLink});
+      fetch(url,{method:'POST',body:JSON.stringify(payload),mode:'no-cors',headers:{}}).catch(function(){});
+      const pc=(job.photos||[]).length;
+      alert('Job saved for '+job.name+' ('+job.plate+')!'+(pc>0?'\n'+pc+' photo(s) uploading...':''));
+    }catch(e){alert('Job saved for '+job.name+' ('+job.plate+')!');}
+  } else {
+    alert('Job saved for '+job.name+' ('+job.plate+'). Connect Google Sheets in Setup to sync.');
+  }
+  currentPlate=job.plate;
+  showDetail(job.plate);
+}
+
+function editVisitFromSheet(plate,v){
+  // Convert sheet visit to local job format for editing
+  const job={
+    id:Date.now(),
+    plate:plate,
+    name:v.name||'',
+    hp:v.hp||'',
+    model:v.model||'',
+    date:v.date||'',
+    soNum:v.soNum||'',
+    staff:v.staff||'',
+    payment:v.payment||'',
+    total:(v.total||'').replace('RM',''),
+    services:[],
+    defects:[],
+    photos:[],
+    photoUrls:v.photoUrls||[],
+    paymentStatus:v.status||'PAID'
+  };
+  // Parse services
+  if(v.services&&v.services!=='None'){
+    v.services.split('; ').forEach(function(s){
+      var m=s.match(/^(.+)\s+RM([\d.]+)$/);
+      if(m)job.services.push({desc:m[1].trim(),price:m[2]});
+      else if(s.trim())job.services.push({desc:s.trim(),price:'0'});
+    });
+  }
+  resetForm();
+  loadJobIntoForm(job);
+  window._editingVisitId=job.id;
+  window._editingOriginalPlate=plate.toUpperCase();
+  window._editingOriginalSoNum=v.soNum||'';
+  const banner=document.getElementById('held-complete-banner');
+  if(banner){
+    banner.style.display='flex';
+    const bt=banner.querySelector('.hold-banner-text');
+    const bs=banner.querySelector('.hold-banner-sub');
+    if(bt)bt.innerHTML='<i class="ti ti-edit"></i> Editing saved job';
+    if(bs)bs.textContent='Make changes then tap Save to update';
+  }
+  showView('new');
+}
+
+function editVisit(id){
+  const job=getJobs().find(function(j){return j.id===id;});
+  if(!job){alert('Job not found.');return;}
+  resetForm();
+  loadJobIntoForm(job);
+  window._editingVisitId=id;
+  // Store original plate and soNum to delete old sheet record if plate changes
+  window._editingOriginalPlate=(job.plate||'').toUpperCase();
+  window._editingOriginalSoNum=job.soNum||'';
+  const banner=document.getElementById('held-complete-banner');
+  if(banner){
+    banner.style.display='flex';
+    const bt=banner.querySelector('.hold-banner-text');
+    const bs=banner.querySelector('.hold-banner-sub');
+    if(bt)bt.innerHTML='<i class="ti ti-edit"></i> Editing saved job';
+    if(bs)bs.textContent='Make changes then tap Save to update';
+  }
+  showView('new');
+}
+
+function deleteVisit(id){
+  if(!confirm('Delete this job card? Cannot be undone.'))return;
+  const jobs=getJobs().filter(function(j){return j.id!==id;});setJobs(jobs);
+  if(currentPlate){
+    const remaining=jobs.filter(function(j){return j.plate===currentPlate&&j.status!=='held';});
+    remaining.length>0?showDetail(currentPlate):showView('cars');
+  }
+}
+
+function viewPhotos(id,jobOverride){
+  const job=jobOverride||(id?getJobs().find(function(j){return j.id===id;}):null);
+  if(!job||!(job.photoUrls||[]).length){alert('No photos saved for this visit.');return;}
+  const urls=job.photoUrls;
+  let html='<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">';
+  html+='<title>Photos - '+job.plate+'</title>';
+  html+='<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#111;font-family:sans-serif}';
+  html+='.hdr{background:#1a1a1a;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0}';
+  html+='.hdr h1{color:#fff;font-size:15px;font-weight:600}.hdr p{color:#888;font-size:12px}';
+  html+='.close-btn{background:#fff;color:#111;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer}';
+  html+='.grid{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px}';
+  html+='.grid img{width:100%;aspect-ratio:4/3;object-fit:cover;cursor:pointer}';
+  html+='.lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:100;align-items:center;justify-content:center;flex-direction:column}';
+  html+='.lb.open{display:flex}.lb img{max-width:100%;max-height:80vh;object-fit:contain}';
+  html+='.lb-nav{display:flex;gap:16px;margin-top:12px;align-items:center}';
+  html+='.lb-btn{background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:22px;cursor:pointer}';
+  html+='.lb-count{color:#ccc;font-size:13px}';
+  html+='.lb-close{position:absolute;top:12px;right:12px;background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:18px;cursor:pointer}';
+  html+='</style></head><body>';
+  html+='<div class="hdr"><div><h1>'+job.plate+'</h1><p>'+job.date+' · '+urls.length+' photos</p></div>';
+  html+='<button class="close-btn" onclick="window.close()">✕ Close</button></div>';
+  html+='<div class="grid">';
+  for(var i=0;i<urls.length;i++){html+='<img src="'+urls[i]+'" loading="lazy" onclick="openLb('+i+')">';}
+  html+='</div>';
+  html+='<div class="lb" id="lb"><button class="lb-close" onclick="closeLb()">✕</button>';
+  html+='<img id="lb-img" src=""><div class="lb-nav">';
+  html+='<button class="lb-btn" onclick="prevP()">‹</button>';
+  html+='<span class="lb-count" id="lb-c">1/'+urls.length+'</span>';
+  html+='<button class="lb-btn" onclick="nextP()">›</button>';
+  html+='</div></div>';
+  html+='var photos='+JSON.stringify(urls)+';var cur=0;';
+  html+='function openLb(i){cur=i;document.getElementById("lb-img").src=photos[i];document.getElementById("lb-c").textContent=(i+1)+"/"+photos.length;document.getElementById("lb").classList.add("open");}';
+  html+='function closeLb(){document.getElementById("lb").classList.remove("open");}';
+  html+='function prevP(){openLb((cur-1+photos.length)%photos.length);}';
+  html+='function nextP(){openLb((cur+1)%photos.length);}';
+  html+='document.getElementById("lb").addEventListener("click",function(e){if(e.target===this)closeLb();});';
+  html+='<\/script></body></html>';
+  const w=window.open('','_blank');if(w){w.document.write(html);w.document.close();}
+}
+
+async function searchPlateFromSheet(plate){
+  const url=getGsUrl();if(!url)return null;
+  try{
+    const res=await fetch(url+'?action=search&plate='+encodeURIComponent(plate.replace(/[^A-Z0-9]/gi,'').toUpperCase()),{redirect:'follow'});
+    const data=await res.json();
+    return data.result==='ok'?data.visits||[]:null;
+  }catch(e){return null;}
+}
+
+
+async function searchSheet(){
+  const q=(document.getElementById('car-search').value||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!q){alert('Type a car plate number to search.');return;}
+  const url=getGsUrl();
+  if(!url){alert('Connect Google Sheets in Setup first.');return;}
+  const resultEl=document.getElementById('sheet-search-result');
+  resultEl.style.display='block';
+  resultEl.textContent='Searching '+q+' in Google Sheet...';
+  try{
+    const res=await fetch(url+'?action=search&plate='+encodeURIComponent(q),{redirect:'follow'});
+    const data=await res.json();
+    if(data.result==='ok'){
+      const visits=data.visits||[];
+      if(!visits.length){
+        resultEl.innerHTML='<span style="color:var(--text2)">No records for <strong>'+q+'</strong>.</span>';
+        return;
+      }
+      window._sheetVisits=window._sheetVisits||{};
+      window._sheetVisits[q]=visits;
+      const viewSpan=document.createElement('span');viewSpan.style.cssText='color:var(--info-text);font-weight:700;cursor:pointer;text-decoration:underline';viewSpan.textContent='View →';viewSpan.onclick=function(){showSheetDetail(q);};
+      resultEl.innerHTML='';
+      const msgSpan=document.createElement('span');msgSpan.style.color='var(--info-text)';
+      msgSpan.innerHTML='<strong>'+q+'</strong> — '+visits.length+' visit(s). ';
+      resultEl.appendChild(msgSpan);resultEl.appendChild(viewSpan);
+    }
+  }catch(e){
+    resultEl.innerHTML='<span style="color:var(--danger-text)">Search failed: '+e.message+'</span>';
+  }
+}
+
+function formatSheetDate(ds){
+  if(!ds)return '';
+  if(ds.indexOf('GMT')>-1||ds.indexOf('00:00:00')>-1){
+    try{const d=new Date(ds);if(!isNaN(d.getTime()))return String(d.getDate()).padStart(2,'0')+'/'+ String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();}catch(e){}
+  }
+  return ds;
+}
+
+function showSheetDetail(plate){
+  const visits=(window._sheetVisits||{})[plate]||[];
+  if(!visits.length)return;
+  // Debug: show photo data from first visit
+  if(visits[0])console.log('First visit data:',JSON.stringify({soNum:visits[0].soNum,photoUrls:visits[0].photoUrls,photoUrlsLength:visits[0].photoUrls?visits[0].photoUrls.length:0}));
+  currentPlate=plate;
+  document.getElementById('dd-plate').textContent=plate;
+  const lat=visits[0];
+  document.getElementById('dd-info').textContent=(lat.model||'—')+' · '+(lat.name||'—')+' · '+(lat.hp||'—');
+  const totalSpent=visits.reduce(function(s,v){return s+(parseFloat((v.total||'').replace('RM',''))||0);},0);
+  document.getElementById('dd-visits').textContent=visits.length;
+  document.getElementById('dd-spent').textContent='RM '+totalSpent.toFixed(0);
+  const allRej=visits.filter(function(v){return v.rejected&&v.rejected!=='None'&&v.rejected!=='';});
+  document.getElementById('dd-badge').innerHTML=allRej.length
+    ?'<span class="badge b-warn">'+allRej.length+' rejected</span>'
+    :'<span class="badge b-ok"><i class="ti ti-check" style="font-size:10px"></i> All clear</span>';
+  const tl=document.getElementById('visit-tl');tl.innerHTML='';
+  if(visits.length>0)console.log('First visit staff:',JSON.stringify(visits[0].staff),'payment:',visits[0].payment);
+  visits.forEach(function(v,i){
+    const card=document.createElement('div');card.className='visit-card';
+    const bid='vbs'+Date.now()+i;
+    const dateDisplay=formatSheetDate(v.date);
+    const head=document.createElement('div');head.className='vc-head';
+    head.onclick=function(){document.getElementById(bid).classList.toggle('open');};
+    const headLeft=document.createElement('div');
+    const dateDiv=document.createElement('div');dateDiv.className='vc-date';dateDiv.textContent=dateDisplay;
+    if(i===0){const badge=document.createElement('span');badge.className='badge b-info';badge.style.fontSize='10px';badge.textContent='Latest';dateDiv.appendChild(badge);}
+    const staffDiv=document.createElement('div');staffDiv.className='vc-staff';staffDiv.textContent=(v.staff||'—')+' · '+(v.payment||'—');
+    headLeft.appendChild(dateDiv);headLeft.appendChild(staffDiv);
+    const totalDiv=document.createElement('div');totalDiv.className='vc-total';totalDiv.textContent=v.total||'';
+    head.appendChild(headLeft);head.appendChild(totalDiv);
+    const body=document.createElement('div');body.className='vc-body';body.id=bid;
+    const svcDiv=document.createElement('div');svcDiv.style.cssText='font-size:12px;color:var(--text);padding:2px 0';svcDiv.textContent=v.services||'—';
+    body.appendChild(svcDiv);
+    if(v.defects&&v.defects!=='None'&&v.defects!==''){
+      const defDiv=document.createElement('div');defDiv.style.cssText='font-size:11px;color:var(--text3);margin-top:4px';defDiv.textContent=v.defects;body.appendChild(defDiv);
+    }
+    const acts=document.createElement('div');acts.className='vc-actions';
+    console.log('Visit photoUrls:',v.photoUrls,'length:',v.photoUrls?v.photoUrls.length:0);
+    if(v.photoUrls&&v.photoUrls.length>0){
+      const pb=document.createElement('button');pb.className='vc-btn';
+      pb.style.cssText='color:#1565a8;border-color:#1565a8';
+      pb.innerHTML='<i class="ti ti-photo"></i> Photos ('+v.photoUrls.length+')';
+      const urls=v.photoUrls;const pl=plate;const dt=dateDisplay;
+      pb.onclick=function(){viewPhotos(null,{plate:pl,date:dt,photoUrls:urls});};
+      acts.appendChild(pb);
+    }
+    // Print button
+    const printBtn=document.createElement('button');printBtn.className='vc-btn';
+    printBtn.innerHTML='<i class="ti ti-printer"></i> Print';
+    const vData=v;const plateName=plate;
+    printBtn.onclick=function(){
+      const job={
+        plate:plateName,name:vData.name||'',model:vData.model||'',
+        hp:vData.hp||'',email:'',intro:'',staff:vData.staff||'',
+        date:dateDisplay,time:vData.time||'',soNum:vData.soNum||'',
+        services:(vData.services||'').split('; ').filter(function(s){return s;}).map(function(s){
+          const parts=s.split(' RM');return{desc:parts[0]||s,price:parts[1]||''};
+        }),
+        defects:[{note:vData.defects||'',status:'noted'}],
+        total:(vData.total||'').replace('RM',''),
+        deposit:false,depAmt:'0',payment:vData.payment||'',
+        status:'saved',photoUrls:vData.photoUrls||[]
+      };
+      const w=window.open('','_blank');
+      if(w){w.document.write(buildSlip(job));w.document.close();setTimeout(function(){w.print();},800);}
+    };
+    // Edit button
+    const editBtn=document.createElement('button');editBtn.className='vc-btn';
+    editBtn.style.cssText='color:#1565a8;border-color:#1565a8';
+    editBtn.innerHTML='<i class="ti ti-edit"></i> Edit';
+    const vSnap=vData;const pSnap=plate;
+    editBtn.onclick=function(){editVisitFromSheet(pSnap,vSnap);};
+    acts.appendChild(editBtn);
+    acts.appendChild(printBtn);
+    // Delete button - removes from sheet via Apps Script
+    const delBtn=document.createElement('button');delBtn.className='vc-btn';
+    delBtn.style.cssText='color:#e53935;border-color:#e53935';
+    delBtn.innerHTML='<i class="ti ti-trash"></i> Delete';
+    const soNumVal=v.soNum||'';const plateDel=plate;
+    delBtn.onclick=function(){
+      if(!confirm('Delete this visit record for '+plateDel+'? This will remove it from Google Sheet.'))return;
+      const url=getGsUrl();
+      if(!url){alert('Connect Google Sheets in Setup first.');return;}
+      fetch(url+'?action=delete_visit&plate='+encodeURIComponent(plateDel)+'&soNum='+encodeURIComponent(soNumVal),{redirect:'follow'})
+        .then(function(r){return r.json();})
+        .then(function(data){
+          if(data.result==='ok'){
+            // Remove from cached visits
+            if(window._sheetVisits&&window._sheetVisits[plateDel]){
+              window._sheetVisits[plateDel]=window._sheetVisits[plateDel].filter(function(x){return x.soNum!==soNumVal;});
+            }
+            alert('Deleted!');
+            // Refresh detail view
+            if(window._sheetVisits&&window._sheetVisits[plateDel]&&window._sheetVisits[plateDel].length>0){
+              showSheetDetail(plateDel);
+            } else {
+              showView('cars');
+            }
+          } else {
+            alert('Delete failed: '+(data.message||'unknown error'));
+          }
+        })
+        .catch(function(e){alert('Delete failed: '+e.message);});
+    };
+    acts.appendChild(delBtn);
+    body.appendChild(acts);
+    card.appendChild(head);card.appendChild(body);
+    tl.appendChild(card);
+  });
+  const ssr=document.getElementById('sheet-search-result');if(ssr)ssr.style.display='none';
+  showView('detail');
+  setTimeout(function(){updateRemarksBadge(plate);},100);
+}
+
+function viewJobPhotos(urlsJson,plate,date){
+  try{
+    var urls=JSON.parse(urlsJson);
+    viewPhotos(null,{plate:plate,date:date,photoUrls:urls});
+  }catch(e){console.error(e);}
+}
+
+function editVisitFromSheet(plate,v){
+  // Convert sheet visit to local job format for editing
+  const job={
+    id:Date.now(),
+    plate:plate,
+    name:v.name||'',
+    hp:v.hp||'',
+    model:v.model||'',
+    date:v.date||'',
+    soNum:v.soNum||'',
+    staff:v.staff||'',
+    payment:v.payment||'',
+    total:(v.total||'').replace('RM',''),
+    services:[],
+    defects:[],
+    photos:[],
+    photoUrls:v.photoUrls||[],
+    paymentStatus:v.status||'PAID'
+  };
+  // Parse services
+  if(v.services&&v.services!=='None'){
+    v.services.split('; ').forEach(function(s){
+      var m=s.match(/^(.+)\s+RM([\d.]+)$/);
+      if(m)job.services.push({desc:m[1].trim(),price:m[2]});
+      else if(s.trim())job.services.push({desc:s.trim(),price:'0'});
+    });
+  }
+  resetForm();
+  loadJobIntoForm(job);
+  window._editingVisitId=job.id;
+  window._editingOriginalPlate=plate.toUpperCase();
+  window._editingOriginalSoNum=v.soNum||'';
+  const banner=document.getElementById('held-complete-banner');
+  if(banner){
+    banner.style.display='flex';
+    const bt=banner.querySelector('.hold-banner-text');
+    const bs=banner.querySelector('.hold-banner-sub');
+    if(bt)bt.innerHTML='<i class="ti ti-edit"></i> Editing saved job';
+    if(bs)bs.textContent='Make changes then tap Save to update';
+  }
+  showView('new');
+}
+
+function editVisit(id){
+  const job=getJobs().find(function(j){return j.id===id;});
+  if(!job){alert('Job not found.');return;}
+  resetForm();
+  loadJobIntoForm(job);
+  window._editingVisitId=id;
+  // Store original plate and soNum to delete old sheet record if plate changes
+  window._editingOriginalPlate=(job.plate||'').toUpperCase();
+  window._editingOriginalSoNum=job.soNum||'';
+  const banner=document.getElementById('held-complete-banner');
+  if(banner){
+    banner.style.display='flex';
+    const bt=banner.querySelector('.hold-banner-text');
+    const bs=banner.querySelector('.hold-banner-sub');
+    if(bt)bt.innerHTML='<i class="ti ti-edit"></i> Editing saved job';
+    if(bs)bs.textContent='Make changes then tap Save to update';
+  }
+  showView('new');
+}
+
+function deleteVisit(id){
+  if(!confirm('Delete this job card? Cannot be undone.'))return;
+  const jobs=getJobs().filter(j=>j.id!==id);
+  setJobs(jobs);
+  if(currentPlate){
+    const remaining=jobs.filter(j=>j.plate===currentPlate&&j.status!=='held');
+    remaining.length>0?showDetail(currentPlate):showView('cars');
+  }
+}
+
+async function syncHeldFromSheet(){
+  const url=getGsUrl();
+  if(!url) return;
+  try{
+    const res=await fetch(url,{
+      method:'POST',
+      body:JSON.stringify({action:'get_held'}),
+      headers:{'Content-Type':'text/plain'}
+    });
+    const data=await res.json();
+    if(data.result==='ok'&&data.held&&data.held.length>0){
+      // Merge sheet held jobs with local ones
+      const local=getJobs();
+      const localIds=new Set(local.map(j=>j.id));
+      let added=false;
+      data.held.forEach(function(hj){
+        if(!localIds.has(hj.id)){
+          hj.status='held';
+          // photoUrls already included from sheet sync
+          local.unshift(hj);
+          added=true;
+        }
+      });
+      if(added){setJobs(local);renderHeld();renderCars();}
+    }
+  }catch(e){console.warn('Held sync failed:',e);}
+}
+
+function renderHeld(){
+  const held=getJobs().filter(j=>j.status==='held');
+  const sec=document.getElementById('held-section');
+  const list=document.getElementById('held-list');
+  if(!held.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  list.innerHTML='';
+  held.forEach(function(job){
+    const card=document.createElement('div');
+    card.style.cssText='background:#fff8f0;border:1px solid #ffcc80;border-radius:10px;margin-bottom:8px;overflow:hidden;';
+    const bodyDiv=document.createElement('div');
+    bodyDiv.style.cssText='padding:11px 13px;display:flex;align-items:center;gap:10px;';
+    const icon=document.createElement('div');
+    icon.style.cssText='width:38px;height:38px;border-radius:8px;background:#ffcc80;display:flex;align-items:center;justify-content:center;flex-shrink:0;';
+    icon.innerHTML='<i class="ti ti-clock-pause" style="color:#e65100;font-size:18px"></i>';
+    const info=document.createElement('div');
+    info.style.cssText='flex:1;min-width:0;';
+    info.innerHTML='<div style="font-size:15px;font-weight:700;color:var(--text)">'+job.plate+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+job.name+' · '+(job.model||'—')+' · '+((job.services||[]).map(function(s){return s.desc;}).join(', ')||'—')+'</div>'
+      +'<div style="font-size:11px;color:#e65100;margin-top:3px;font-weight:600"><i class="ti ti-user" style="font-size:10px"></i> Opened by: '+(job.staff||'—')+'</div>';
+    const timeDiv=document.createElement('div');
+    timeDiv.style.cssText='font-size:11px;color:#e65100;text-align:right;white-space:nowrap;flex-shrink:0;';
+    timeDiv.innerHTML='On hold<br>'+(job.heldAt||job.time||'');
+    bodyDiv.appendChild(icon);bodyDiv.appendChild(info);bodyDiv.appendChild(timeDiv);
+    const actDiv=document.createElement('div');
+    actDiv.style.cssText='display:flex;border-top:1px solid #ffcc80;';
+    const completeBtn=document.createElement('button');
+    completeBtn.style.cssText='flex:1;padding:9px;background:#e65100;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;';
+    completeBtn.innerHTML='<i class="ti ti-cash"></i> Complete Payment';
+    completeBtn.addEventListener('click',function(){completeHeld(job.id);});
+    const editBtn=document.createElement('button');
+    editBtn.style.cssText='flex:1;padding:9px;background:transparent;color:#1565a8;border:none;border-left:1px solid #ffcc80;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;';
+    editBtn.innerHTML='<i class="ti ti-edit"></i> Edit Order';
+    editBtn.addEventListener('click',function(){editHeld(job.id);});
+    const delBtn=document.createElement('button');
+    delBtn.style.cssText='padding:9px 13px;background:transparent;color:#e53935;border:none;border-left:1px solid #ffcc80;font-size:13px;cursor:pointer;font-family:inherit;';
+    delBtn.innerHTML='<i class="ti ti-trash"></i>';
+    delBtn.addEventListener('click',function(){
+      if(confirm('Delete held job for '+job.plate+'?')){
+        setJobs(getJobs().filter(function(j){return j.id!==job.id;}));
+        renderHeld();renderCars();
+      }
+    });
+    actDiv.appendChild(completeBtn);actDiv.appendChild(editBtn);actDiv.appendChild(delBtn);
+    card.appendChild(bodyDiv);card.appendChild(actDiv);
+    list.appendChild(card);
+  });
+}
+
+function buildSlip(job){
+  const svcs=job.services||[];
+  let svcRows='';
+  for(let i=0;i<7;i++){
+    const s=svcs[i]||{};
+    svcRows+='<tr>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:center;width:30px">'+(i+1)+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:center;width:70px">'+(s.staff||'')+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px">'+(s.desc||'')+'</td>'
+      +'<td style="border:1px solid #000;padding:4px 6px;text-align:right;width:80px">'+(s.price?'RM '+parseFloat(s.price).toFixed(2):'RM')+'</td>'
+      +'</tr>';
+  }
+  const defText=(job.defects||[]).filter(d=>d.note).map(d=>d.note+(d.status!=='noted'?' ('+d.status+')':'')).join(', ');
+  const isCash=job.payment==='Cash';
+  const isOnline=job.payment==='Online Transfer';
+  const isCreditCard=job.payment==='Credit Card';
+  const isDebitCard=job.payment==='Debit Card';
+  const isTng=job.payment==='TNG / QR Pay';
+  const isPoint=job.payment==='Point (Credit)';
+  const chk='&#10003;';
+  // Get logo from page
+  const logoEl=document.getElementById('gl-logo')||document.querySelector('img[alt="Grandlab logo"]')||document.querySelector('img[id="gl-logo"]');
+  const logoSrc=logoEl?logoEl.src:'';
+  return'<!DOCTYPE html><html><head><meta charset="utf-8"><title>Sales Order '+job.plate+'</title>'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:12px;color:#000;padding:16px;max-width:680px;margin:0 auto}'
+    +'.top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}'
+    +'.title{font-size:18px;font-weight:900;font-style:italic}'
+    +'.info-row{display:flex;align-items:baseline;margin-bottom:5px;gap:6px}'
+    +'.info-row .lbl{font-weight:700;font-size:11px;white-space:nowrap;min-width:90px}'
+    +'.info-row .val{border-bottom:1px solid #000;flex:1;min-height:16px;padding:0 4px;font-size:12px}'
+    +'.info-2col{display:grid;grid-template-columns:1fr 1fr;gap:0 20px;margin-bottom:5px}'
+    +'.staff-codes{font-size:10px;margin:6px 0 8px;line-height:1.6}'
+    +'table{width:100%;border-collapse:collapse;margin-bottom:8px}'
+    +'th{border:1px solid #000;padding:4px 6px;font-weight:700;font-size:11px;background:#f0f0f0}'
+    +'.remark-box{border-bottom:1px solid #000;min-height:14px;margin-bottom:4px;padding:0 4px}'
+    +'.divider{border-top:2px solid #000;margin:10px 0}'
+    +'.pm-box{width:18px;height:18px;border:1.5px solid #000;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;margin-right:4px}'
+    +'.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin-top:12px;padding-top:10px;border-top:1.5px solid #000}'
+    +'.admin-line{border-bottom:1px solid #000;min-height:18px;padding:0 4px;margin-top:3px}'
+    +'.footnotes{font-size:9px;line-height:1.6;margin-top:10px;color:#333}'
+    +'@media print{body{padding:8px}.no-print{display:none!important}}'
+    +'</style></head><body>'
+    +'<div class="no-print" style="position:fixed;top:0;left:0;right:0;background:#1a1a1a;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;z-index:999"><span style="color:#fff;font-size:13px;font-weight:600">Sales Order</span><button onclick="window.close()" style="background:#fff;color:#111;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">x Close</button></div><div style="height:44px"></div>'
+    +'<div class="top"><div><div class="title">SALES ORDER RECORD</div></div>'
+    +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">'
+    +'<div style="font-size:11px;color:#333">GL/SALES/SO/V1</div>'
+    +(logoSrc?'<img src="'+logoSrc+'" style="width:80px;margin-top:4px">':'')
+    +'</div></div>'
+    +'<div class="info-row"><span class="lbl">* CUSTOMER:</span><span class="val">'+(job.name||'')+'</span></div>'
+    +'<div class="info-row"><span class="lbl">* CAR MODEL:</span><span class="val">'+(job.model||'')+'</span></div>'
+    +'<div class="info-2col">'
+    +'<div class="info-row"><span class="lbl">* CAR PLATE:</span><span class="val">'+(job.plate||'')+'</span></div>'
+    +'<div class="info-row"><span class="lbl">* EMAIL:</span><span class="val">'+(job.email||'')+'</span></div>'
+    +'</div><div class="info-2col">'
+    +'<div class="info-row"><span class="lbl">* H/P NUMBER:</span><span class="val">'+(job.hp||'')+'</span></div>'
+    +'<div class="info-row"><span class="lbl">ATTEND BY:</span><span class="val">'+(job.staff||'')+'</span></div>'
+    +'</div><div class="info-2col">'
+    +'<div class="info-row"><span class="lbl">DATE:</span><span class="val">'+(job.date||'')+'</span></div>'
+    +'<div class="info-row"><span class="lbl">INTRODUCER:</span><span class="val">'+(job.intro||'')+'</span></div>'
+    +'</div>'
+    +'<div class="staff-codes"><strong>STAFF REFER CODE:</strong> 1.IQA &nbsp;2.SHAFIQ &nbsp;3.ALEX &nbsp;4.JIMMY</div>'
+    +'<table><thead><tr><th style="text-align:center">NO</th><th style="text-align:center">STAFF CODE</th><th>DESCRIPTION</th><th style="text-align:right">PRICE</th></tr></thead>'
+    +'<tbody>'+svcRows+'</tbody></table>'
+    +'<div style="font-weight:700;font-size:11px;margin-bottom:3px">REMARK:</div>'
+    +'<div class="remark-box">'+defText+'</div><div class="remark-box"></div>'
+    +'<div class="divider"></div><div style="height:6px"></div><div class="divider"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;font-weight:700">'
+    +'PAID DEPOSIT? <div style="display:flex;gap:10px;margin-left:4px">'
+    +'<span><span class="pm-box">'+(job.deposit?chk:'')+'</span>YES</span>'
+    +'<span><span class="pm-box">'+(!job.deposit?chk:'')+'</span>NO</span>'
+    +'</div></div>'
+    +'<div class="info-row"><span class="lbl">DEPOSIT HOW MUCH?</span><span class="val">'+(job.deposit&&job.depAmt?'RM '+job.depAmt:'')+'</span></div>'
+    +'<div class="info-row"><span class="lbl">TOTAL AMOUNT</span><span class="val">RM '+job.total+'</span></div>'
+    +(job.deposit&&job.depAmt?'<div class="info-row"><span class="lbl">DEPOSIT PAID</span><span class="val">RM '+job.depAmt+'</span></div>'
+    +'<div class="info-row" style="font-weight:700;color:#c00"><span class="lbl">BALANCE DUE</span><span class="val">RM '+(parseFloat(job.total||0)-parseFloat(job.depAmt||0)).toFixed(2)+'</span></div>':'')
+    +'<div class="info-row"><span class="lbl">PAYMENT</span><span class="val"></span></div>'
+    +'<div class="info-row"><span class="lbl">PAYMENT DATE:</span><span class="val">'+(job.status==='held'?'':job.date)+'</span></div>'
+    +'</div>'
+    +'<div>'
+    +'<div style="font-weight:700;font-size:11px;text-decoration:underline;margin-bottom:6px">PAYMENT METHOD:</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'
+    +'<div style="font-size:11px;font-weight:700"><span class="pm-box">'+(isPoint?chk:'')+'</span>POINT (CREDIT)</div>'
+    +'<div style="font-size:11px;font-weight:700"><span class="pm-box">'+(isCash?chk:'')+'</span>CASH</div>'
+    +'<div style="font-size:11px;font-weight:700"><span class="pm-box">'+(isOnline?chk:'')+'</span>ONLINE</div>'
+    +'<div style="font-size:11px;font-weight:700"><span class="pm-box">'+(isCreditCard?chk:'')+'</span>CREDIT CARD</div>'
+    +'<div style="font-size:11px;font-weight:700"><span class="pm-box">'+(isDebitCard?chk:'')+'</span>DEBIT CARD</div>'
+    +'<div style="font-size:11px;font-weight:700"><span class="pm-box">'+(isTng?chk:'')+'</span>TNG / QR PAY</div>'
+    +'</div></div></div>'
+    +'<div class="admin-grid">'
+    +'<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700"><div class="pm-box">'+(job.mochiDone?chk:'')+'</div>MOCHI:</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700"><div class="pm-box">'+(job.excelDone?chk:'')+'</div>EXCEL:</div>'
+    +'<div><div style="font-size:12px;font-weight:700">MOCHI RECEIPT:</div><div class="admin-line">'+(job.mochiReceipt||'')+'</div></div>'
+    +'<div><div style="font-size:12px;font-weight:700">SQL INVOICE:</div><div class="admin-line">'+(job.sqlInvoice||'')+'</div></div>'
+    +'<div style="grid-column:span 2"><div style="font-size:12px;font-weight:700">SQL KNOCK OFF:</div><div class="admin-line">'+(job.sqlKnockoff||'')+'</div></div>'
+    +'</div>'
+    +'<div class="footnotes">*PLEASE FILL IN STAFF CODE FOLLOW BY THE REFER CODE WHICH STAFF ARE DOING THE SERVICES.<br>'
+    +'*PLEASE ALWAYS PASS THE SALES ORDER FORM TO RECEPTION AFTER COMPLETED JOB.<br>'
+    +'*FOR PPF / WRAP / TINTED JOB PLEASE ATTACH A PHOTO OF SALES ORDER FORM, A5 COMM SCHEME, CAR PHOTO TO WHATSAPP GROUP.</div>'
+    +'<div style="position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;padding:10px 16px;display:flex;gap:8px;justify-content:center;-webkit-print-color-adjust:exact" class="no-print">'
+    +'<button onclick="window.print()" style="background:#fff;color:#111;border:none;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">🖨 Print</button>'
+    +'<button onclick="window.close()" style="background:#555;color:#fff;border:none;border-radius:6px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">✕ Close</button>'
+    +'</div>'
+    +'<div style="height:60px"></div>'
+    +'</body></html>';
+}
+
+function printCurrentForm(){
+  const job=collectForm();
+  if(!job.plate){alert('Please fill in the car plate first.');return;}
+  const w=window.open('','_blank');
+  if(w){w.document.write(buildSlip(job));w.document.close();setTimeout(function(){w.print();},800);}
+}
+
+function printVisit(id){
+  const job=getJobs().find(j=>j.id===id);
+  if(job){const w=window.open('','_blank');if(w){w.document.write(buildSlip(job));w.document.close();setTimeout(function(){w.print();},800);}}
+}
+
+function toggleBox(id){document.getElementById(id).classList.toggle('open');}
+
+function sendWhatsApp(){
+  const job=collectForm();
+  if(!job.plate){alert('Please fill in car plate first.');return;}
+  const svcs=(job.services||[]).filter(s=>s.desc).map((s,i)=>(i+1)+'. '+s.desc+(s.price?' - RM'+s.price:'')).join('\n');
+  const msg=[
+    '🚗 *GRANDLAB JOB ORDER*',
+    '━━━━━━━━━━━━━━━━━━',
+    '*SO:* '+job.soNum,
+    '*Date:* '+job.date+' '+job.time,
+    '',
+    '*Customer:* '+job.name,
+    '*H/P:* '+job.hp,
+    '*Car Plate:* '+job.plate,
+    '*Car Model:* '+job.model,
+    '',
+    '*Services:*',
+    svcs||'—',
+    '',
+    '*Total:* RM '+job.total,
+    '*Payment:* '+(job.payment||'Pending'),
+    '*Staff:* '+job.staff,
+    '━━━━━━━━━━━━━━━━━━',
+    '📸 Please attach car & defect photos to this message'
+  ].join('\n');
+  const encoded=encodeURIComponent(msg);
+  window.open('https://wa.me/?text='+encoded,'_blank');
+}
+
+function saveImgbbKey(){
+  const key=(document.getElementById('imgbb-key').value||'').trim();
+  if(!key){alert('Please paste your ImgBB API key.');return;}
+  localStorage.setItem('gl_imgbb_key',key);
+  document.getElementById('imgbb-status').textContent='Saved! Photo upload is now active.';
+  document.getElementById('imgbb-key').value=key;
+  // Save to sheet config
+  saveConfigToSheet();
+}
+
+function saveGsUrl(){
+  const url=(document.getElementById('gs-url').value||'').trim();
+  if(!url){alert('Please paste the Google Apps Script URL first.');return;}
+  localStorage.setItem('gl_gs_url',url);setSyncStatus(true);
+  document.getElementById('gs-status').textContent='Saved! Sync is now active.';
+}
+
+async function testGs(){
+  const url=getGsUrl();
+  if(!url){alert('Save a URL first.');return;}
+  document.getElementById('gs-status').textContent='Testing...';
+  try{
+    const testData={plate:'TEST',model:'Test',name:'Test',hp:'012',email:'',intro:'',staff:'',services:[{desc:'Test',price:'100'}],defects:[],total:'100',deposit:false,depAmt:'0',payment:'Cash',date:new Date().toLocaleDateString('en-MY'),time:'12:00',id:0,soNum:'SO-TEST',photos:[],mochiDone:false,excelDone:false,mochiReceipt:'',sqlInvoice:'',sqlKnockoff:'',paymentStatus:'PAID'};
+    await fetch(url,{method:'POST',body:JSON.stringify(testData),mode:'no-cors',headers:{}});
+    document.getElementById('gs-status').style.color='var(--success-text)';
+    document.getElementById('gs-status').textContent='Request sent! Check your Google Sheet for a TEST tab.';
+  }catch(e){
+    document.getElementById('gs-status').style.color='var(--danger-text)';
+    document.getElementById('gs-status').textContent='Network error: '+e.message;
+  }
+}
+
+function copyScript(){
+  navigator.clipboard.writeText(GS_CODE)
+    .then(()=>alert('Script copied! Paste it in Google Apps Script.'))
+    .catch(()=>{const ta=document.createElement('textarea');ta.value=GS_CODE;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);alert('Script copied!');});
+}
+
+
+// ========== PHOTO UPLOAD VIA IMGBB ==========
+// ImgBB: free image hosting with proper CORS support
+// Get free API key at imgbb.com -> API -> get API key
+const IMGBB_KEY=localStorage.getItem('gl_imgbb_key')||'';
+
+async function uploadAllPhotos(job){
+  const photos=job.photos||[];
+  if(!photos.length) return '';
+  const key=localStorage.getItem('gl_imgbb_key')||'';
+  if(!key){
+    console.warn('ImgBB key not set - photos not uploaded');
+    return '';
+  }
+  const links=[];
+  for(let i=0;i<photos.length;i++){
+    const p=photos[i];
+    if(!p||!p.base64) continue;
+    try{
+      const form=new FormData();
+      form.append('key',key);
+      form.append('image',p.base64);
+      form.append('name',job.plate+'_'+job.soNum+'_photo'+(i+1));
+      const res=await fetch('https://api.imgbb.com/1/upload',{method:'POST',body:form});
+      const data=await res.json();
+      if(data.success) links.push(data.data.url);
+    }catch(e){
+      console.warn('ImgBB photo '+(i+1)+' failed:',e.message);
+    }
+  }
+  return links.join(' | ');
+}
+// ========== END PHOTO UPLOAD ==========
+
+
+// ============================================================
+// SETTINGS - Staff, Presets, Theme, WhatsApp template
+// ============================================================
+function getSettings(){
+  try{return JSON.parse(localStorage.getItem('gl_settings')||'{}');}catch{return {};}
+}
+function saveSettings(s){localStorage.setItem('gl_settings',JSON.stringify(s));}
+
+function getStaffList(){
+  const s=getSettings();
+  return s.staff||['IQA','SHAFIQ','ALEX','JIMMY'];
+}
+function getPresets(){
+  const s=getSettings();
+  return s.presets||[];
+}
+function getWaTemplate(){var s=getSettings();return s.waTemplate||["Hi NAME, your car PLATE (MODEL)","service at Grandlab is complete.","","Services: SERVICES","Total: RMTOTAL","Date: DATE","","Thank you! - Grandlab"].join("\n");}
+function isDarkMode(){
+  return localStorage.getItem('gl_dark')==='1';
+}
+
+function applyTheme(){
+  const dark=isDarkMode();
+  document.body.classList.toggle('dark-mode',dark);
+  const knob=document.getElementById('theme-knob');
+  const toggle=document.getElementById('theme-toggle');
+  if(knob){knob.style.left=dark?'21px':'3px';}
+  if(toggle){toggle.style.background=dark?'var(--accent)':'var(--border2)';}
+}
+
+function toggleTheme(){
+  const dark=!isDarkMode();
+  localStorage.setItem('gl_dark',dark?'1':'0');
+  applyTheme();
+}
+
+function renderStaffSettings(){
+  const staff=getStaffList();
+  const el=document.getElementById('staff-list-settings');
+  if(!el)return;
+  el.innerHTML='';
+  staff.forEach(function(s,i){
+    const row=document.createElement('div');row.className='setting-item';
+    const inp=document.createElement('input');inp.type='text';inp.value=s;
+    inp.onchange=function(){updateStaff(i,this.value);};
+    const btn=document.createElement('button');btn.className='sdel';btn.innerHTML='<i class="ti ti-trash" style="color:var(--danger-text)"></i>';
+    btn.onclick=function(){removeStaff(i);};
+    row.appendChild(inp);row.appendChild(btn);
+    el.appendChild(row);
+  });
+}
+
+function addStaffSetting(){
+  const settings=getSettings();
+  const staff=getStaffList();
+  staff.push('NEW STAFF');
+  settings.staff=staff;
+  saveSettings(settings);
+  renderStaffSettings();
+  refreshStaffGrid();
+}
+
+function updateStaff(i,val){
+  const settings=getSettings();
+  const staff=getStaffList();
+  staff[i]=val.toUpperCase();
+  settings.staff=staff;
+  saveSettings(settings);
+  refreshStaffGrid();
+}
+
+function removeStaff(i){
+  if(!confirm('Remove this staff?'))return;
+  const settings=getSettings();
+  const staff=getStaffList();
+  staff.splice(i,1);
+  settings.staff=staff;
+  saveSettings(settings);
+  renderStaffSettings();
+  refreshStaffGrid();
+}
+
+function refreshStaffGrid(){
+  const sg=document.getElementById('staff-grid');
+  if(!sg)return;
+  sg.innerHTML='';
+  selStaff=[];
+  const staff=getStaffList();
+  staff.forEach(function(s){
+    const b=document.createElement('div');b.className='sc';b.textContent=s;
+    b.onclick=function(){selStaff.includes(s)?selStaff=selStaff.filter(function(x){return x!==s;}):selStaff.push(s);b.classList.toggle('sel',selStaff.includes(s));};
+    sg.appendChild(b);
+  });
+}
+
+function renderPresetSettings(){
+  const presets=getPresets();
+  const el=document.getElementById('preset-list-settings');
+  if(!el)return;
+  el.innerHTML='';
+  presets.forEach(function(p,i){
+    const row=document.createElement('div');row.className='setting-item';
+    const ni=document.createElement('input');ni.type='text';ni.value=p.name||'';ni.placeholder='Service name';
+    ni.onchange=function(){updatePreset(i,'name',this.value);};
+    const pi=document.createElement('input');pi.type='number';pi.className='price-inp';pi.value=p.price||'';pi.placeholder='RM';
+    pi.onchange=function(){updatePreset(i,'price',this.value);};
+    const db=document.createElement('button');db.className='sdel';db.innerHTML='<i class="ti ti-trash" style="color:var(--danger-text)"></i>';
+    db.onclick=function(){removePreset(i);};
+    row.appendChild(ni);row.appendChild(pi);row.appendChild(db);
+    el.appendChild(row);
+  });
+}
+
+function addPresetSetting(){
+  const settings=getSettings();
+  const presets=getPresets();
+  presets.push({name:'NEW SERVICE',price:''});
+  settings.presets=presets;
+  saveSettings(settings);
+  renderPresetSettings();
+  renderPresetsBar();
+}
+
+function updatePreset(i,field,val){
+  const settings=getSettings();
+  const presets=getPresets();
+  presets[i][field]=field==='name'?val.toUpperCase():val;
+  settings.presets=presets;
+  saveSettings(settings);
+  renderPresetsBar();
+}
+
+function removePreset(i){
+  if(!confirm('Remove this preset?'))return;
+  const settings=getSettings();
+  const presets=getPresets();
+  presets.splice(i,1);
+  settings.presets=presets;
+  saveSettings(settings);
+  renderPresetSettings();
+  renderPresetsBar();
+}
+
+function renderPresetsBar(){
+  const presets=getPresets();
+  const bar=document.getElementById('presets-bar');
+  if(!bar)return;
+  if(!presets.length){bar.style.display='none';return;}
+  bar.style.display='flex';
+  bar.innerHTML='<div class="presets-bar-label" style="width:100%">Quick add:</div>';
+  presets.forEach(function(p){
+    const chip=document.createElement('div');chip.className='preset-chip';
+    chip.style.cssText='display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border:1.5px solid var(--border2);border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;background:var(--bg2);color:var(--text);margin:3px;white-space:nowrap;transition:.15s;';
+    chip.innerHTML='<i class="ti ti-plus" style="font-size:12px;color:var(--accent)"></i>'+p.name+(p.price?'<span style="color:var(--text3);font-size:11px;margin-left:4px">RM'+p.price+'</span>':'');
+    chip.onclick=function(){
+      svcN++;const sid='sv'+svcN;
+      const d=document.createElement('div');d.className='svc-row';d.id=sid;
+      const di=document.createElement('input');di.className='s-desc';di.type='text';di.setAttribute('autocapitalize','characters');di.style.textTransform='uppercase';di.placeholder='Service...';di.oninput=calcTotal;
+      const dp=document.createElement('input');dp.className='s-price';dp.type='number';dp.placeholder='RM';dp.oninput=calcTotal;
+      const dx=document.createElement('button');dx.className='sdel';dx.innerHTML='<i class="ti ti-x"></i>';
+      dx.onclick=function(){document.getElementById(sid).remove();calcTotal();};
+      d.appendChild(di);d.appendChild(dp);d.appendChild(dx);
+      di.value=p.name;dp.value=p.price||'';
+      document.getElementById('svc-list').appendChild(d);
+      d.querySelectorAll('input')[0].value=p.name;
+      d.querySelectorAll('input')[1].value=p.price||'';
+      calcTotal();
+    };
+    bar.appendChild(chip);
+  });
+}
+
+function saveWaTemplate(){
+  const tmpl=document.getElementById('wa-template').value;
+  const settings=getSettings();
+  settings.waTemplate=tmpl;
+  saveSettings(settings);
+  alert('WhatsApp template saved!');
+}
+
+function sendCustomerWa(){
+  const job=collectForm();
+  if(!job.plate){alert('Please fill in car plate first.');return;}
+  if(!job.hp){alert('Please fill in customer H/P number.');return;}
+  const tmpl=getWaTemplate();
+  console.log('Template:',JSON.stringify(tmpl));
+  const svcs=(job.services||[]).filter(function(s){return s.desc;}).map(function(s){return s.desc+(s.price?' (RM'+s.price+')':'');}).join(', ')||'—';
+  const totalVal=job.total||'0';
+  // Use placeholder to avoid partial replacement of RMTOTAL
+  // Replace all placeholders safely - SERVICES last to avoid conflicts
+  const msg=(tmpl||'')
+    .replace(/NAME/g,job.name||'')
+    .replace(/PLATE/g,job.plate||'')
+    .replace(/MODEL/g,job.model||'')
+    .replace(/DATE/g,job.date||'')
+    .replace(/RMTOTAL/gi,'RM'+totalVal)
+    .replace(/SERVICES/g,svcs);
+  const phone=job.hp.replace(/[^0-9]/g,'');
+  const waPhone=phone.startsWith('0')?'6'+phone:phone;
+  window.open('https://wa.me/'+waPhone+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+function initSettings(){
+  applyTheme();
+  renderStaffSettings();
+  renderPresetSettings();
+  renderPresetsBar();
+  // Fix old template format if saved
+  const settings=getSettings();
+  if(settings.waTemplate&&(settings.waTemplate.includes('RM TOTAL')||settings.waTemplate.includes('Total: RM'))){
+    delete settings.waTemplate;
+    saveSettings(settings);
+  }
+  const tmpl=document.getElementById('wa-template');
+  if(tmpl) tmpl.value=getWaTemplate();
+  // Load custom dark toggle state
+  const knob=document.getElementById('theme-knob');
+  const toggle=document.getElementById('theme-toggle');
+  if(isDarkMode()){
+    if(knob)knob.style.left='21px';
+    if(toggle)toggle.style.background='var(--accent)';
+  }
+}
+
+
+// ============================================================
+// EXPORT HISTORY AS PDF
+// ============================================================
+function exportHistory(){
+  const plate=currentPlate;
+  if(!plate){alert('No plate selected.');return;}
+  // Get visits - local first, then sheet
+  let visits=getJobs().filter(function(j){return j.plate===plate&&j.status!=='held';}).sort(function(a,b){return b.id-a.id;});
+  const sheetVisits=(window._sheetVisits&&window._sheetVisits[plate])||[];
+  // Merge - prefer local data
+  if(sheetVisits.length>visits.length) visits=sheetVisits;
+
+  if(!visits.length){alert('No visit history found for '+plate+'.');return;}
+
+  const info=visits[0];
+  const totalSpent=visits.reduce(function(s,v){
+    const t=parseFloat((v.total||'0').toString().replace('RM',''))||0;
+    return s+t;
+  },0);
+
+  let html='<!DOCTYPE html><html><head><meta charset="utf-8">';
+  html+='<title>History - '+plate+'</title>';
+  html+='<style>';
+  html+='*{box-sizing:border-box;margin:0;padding:0}';
+  html+='body{font-family:Arial,sans-serif;font-size:12px;color:#111;padding:20px;max-width:700px;margin:0 auto}';
+  html+='.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:12px;border-bottom:2px solid #111}';
+  html+='.brand{font-size:18px;font-weight:900;letter-spacing:1px}';
+  html+='.brand span{color:#f5a623}';
+  html+='.plate{font-size:28px;font-weight:900;letter-spacing:2px}';
+  html+='.info{font-size:12px;color:#555;margin-top:2px}';
+  html+='.summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}';
+  html+='.sum-box{border:1px solid #ddd;border-radius:6px;padding:8px 12px}';
+  html+='.sum-label{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.05em}';
+  html+='.sum-val{font-size:16px;font-weight:700;margin-top:2px}';
+  html+='.visit{border:1px solid #ddd;border-radius:6px;margin-bottom:10px;overflow:hidden}';
+  html+='.visit-head{background:#f5f5f5;padding:8px 12px;display:flex;justify-content:space-between;align-items:center}';
+  html+='.visit-date{font-weight:700;font-size:13px}';
+  html+='.visit-total{font-weight:700;font-size:14px}';
+  html+='.visit-meta{font-size:11px;color:#666;margin-top:2px}';
+  html+='.visit-body{padding:10px 12px}';
+  html+='.svc-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0}';
+  html+='.no-print{position:fixed;bottom:16px;right:16px;display:flex;gap:8px}';
+  html+='.btn-print{background:#111;color:#fff;border:none;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer}';
+  html+='.btn-close{background:#fff;color:#111;border:1.5px solid #111;border-radius:6px;padding:10px 20px;font-size:13px;font-weight:700;cursor:pointer}';
+  html+='@media print{.no-print{display:none}}';
+  html+='</style></head><body>';
+
+  html+='<div class="header">';
+  html+='<div><div class="brand">GRAND<span>LAB</span> DETAILING</div><div class="info">Vehicle Service History Report</div></div>';
+  html+='<div style="text-align:right"><div class="plate">'+plate+'</div>';
+  html+='<div class="info">'+(info.model||'—')+' · '+(info.name||'—')+'</div>';
+  html+='<div class="info">H/P: '+(info.hp||'—')+'</div></div>';
+  html+='</div>';
+
+  html+='<div class="summary">';
+  html+='<div class="sum-box"><div class="sum-label">Total Visits</div><div class="sum-val">'+visits.length+'</div></div>';
+  html+='<div class="sum-box"><div class="sum-label">Total Spent</div><div class="sum-val">RM '+totalSpent.toFixed(2)+'</div></div>';
+  html+='<div class="sum-box"><div class="sum-label">Last Visit</div><div class="sum-val" style="font-size:13px">'+(visits[0].date||'—')+'</div></div>';
+  html+='</div>';
+
+  visits.forEach(function(v,i){
+    const svcs=typeof v.services==='string'
+      ?v.services.split('; ').filter(Boolean)
+      :(v.services||[]).filter(function(s){return s.desc;}).map(function(s){return s.desc+' RM'+(s.price||0);});
+    html+='<div class="visit">';
+    html+='<div class="visit-head">';
+    html+='<div><div class="visit-date">'+(v.date||'—')+(i===0?' <span style="background:#111;color:#fff;font-size:9px;padding:2px 6px;border-radius:10px;margin-left:6px">LATEST</span>':'')+'</div>';
+    html+='<div class="visit-meta">SO: '+(v.soNum||'—')+' · '+(v.staff||'—')+' · '+(v.payment||'—')+'</div></div>';
+    html+='<div class="visit-total">'+(v.total||'—')+'</div>';
+    html+='</div>';
+    html+='<div class="visit-body">';
+    svcs.forEach(function(s){
+      const parts=s.split(' RM');
+      html+='<div class="svc-row"><span>'+parts[0]+'</span><span>'+(parts[1]?'RM '+parts[1]:'')+'</span></div>';
+    });
+    if(v.defects&&v.defects!=='None'&&v.defects!==''){
+      html+='<div style="margin-top:6px;font-size:11px;color:#888">Defects: '+v.defects+'</div>';
+    }
+    html+='</div></div>';
+  });
+
+  html+='<div style="margin-top:16px;font-size:10px;color:#aaa;text-align:center">Generated '+new Date().toLocaleDateString('en-MY')+' · Grandlab Detailing</div>';
+  html+='<div class="no-print">';
+  html+='<button class="btn-close" onclick="window.close()">✕ Close</button>';
+  html+='<button class="btn-print" onclick="window.print()">🖨 Print / Save PDF</button>';
+  html+='</div>';
+  html+='</body></html>';
+
+  const w=window.open('','_blank');
+  if(w){w.document.write(html);w.document.close();}
+}
+
+// ============================================================
+// REMARKS / CRM NOTES SYSTEM
+// ============================================================
+function getRemarksKey(plate){return 'gl_remarks_'+plate.replace(/[^A-Z0-9]/gi,'').toUpperCase();}
+
+function getRemarks(plate){
+  try{return JSON.parse(localStorage.getItem(getRemarksKey(plate))||'[]');}catch(e){return [];}
+}
+
+function saveRemarks(plate,remarks){
+  localStorage.setItem(getRemarksKey(plate),JSON.stringify(remarks));
+  // Sync to sheet via GET to avoid CORS issues
+  const url=getGsUrl();
+  if(url){
+    const cleanPlate=plate.replace(/[^A-Z0-9]/gi,'').toUpperCase();
+    const encoded=encodeURIComponent(JSON.stringify(remarks));
+    fetch(url+'?action=save_remarks&plate='+encodeURIComponent(cleanPlate)+'&data='+encoded,{redirect:'follow'})
+      .then(function(r){return r.json();})
+      .then(function(d){console.log('Remarks synced:',d.result);})
+      .catch(function(e){console.warn('Remarks sync failed:',e);});
+  }
+}
+
+function showRemarks(platePar){
+  const plate=platePar||currentPlate;
+  if(!plate){alert('Please open a car record first.');return;}
+  currentPlate=plate;
+  document.getElementById('remarks-plate-title').textContent=plate;
+  // Fill staff selector
+  const sel=document.getElementById('remarks-staff-sel');
+  sel.innerHTML='';
+  getStaffList().forEach(function(s){
+    const opt=document.createElement('option');opt.value=s;opt.textContent=s;sel.appendChild(opt);
+  });
+  // Load remarks - local first, then try sheet
+  renderRemarksList(plate);
+  const rm=document.getElementById('remarks-modal');if(rm){rm.style.display='flex';}
+  // Fetch from sheet in background
+  fetchRemarksFromSheet(plate);
+}
+
+function openRemarksFromForm(){
+  const plate=(document.getElementById('f-plate').value||'').trim().toUpperCase();
+  if(!plate){alert('Please fill in car plate first.');return;}
+  showRemarks(plate);
+}
+
+function closeRemarks(){
+  const rm=document.getElementById('remarks-modal');if(rm)rm.style.display='none';
+  const ri=document.getElementById('remarks-input');if(ri)ri.value='';
+}
+
+async function fetchRemarksFromSheet(plate){
+  const url=getGsUrl();
+  if(!url)return;
+  try{
+    const cleanPlate=plate.replace(/[^A-Z0-9]/gi,'').toUpperCase();
+    const res=await fetch(url+'?action=get_remarks&plate='+encodeURIComponent(cleanPlate),{redirect:'follow'});
+    const data=await res.json();
+    if(data.result==='ok'&&data.remarks&&data.remarks.length>0){
+      // Replace local with sheet data (sheet is source of truth)
+      data.remarks.sort(function(a,b){return b.id-a.id;});
+      localStorage.setItem(getRemarksKey(plate),JSON.stringify(data.remarks));
+      renderRemarksList(plate);
+    }
+  }catch(e){console.warn('Remarks fetch failed:',e);}
+}
+
+function renderRemarksList(plate){
+  const remarks=getRemarks(plate).sort(function(a,b){return b.id-a.id;});
+  const el=document.getElementById('remarks-list');
+  if(!el)return;
+  if(!remarks.length){
+    el.innerHTML='<div style="text-align:center;color:var(--text3);font-size:13px;padding:30px 0"><i class="ti ti-notes" style="font-size:32px;display:block;margin-bottom:8px"></i>No remarks yet.<br>Add the first note below.</div>';
+    return;
+  }
+  el.innerHTML='';
+  remarks.forEach(function(r){
+    const card=document.createElement('div');card.className='remark-card';
+    card.innerHTML='<div class="remark-meta"><span><i class="ti ti-user" style="font-size:10px"></i> '+r.staff+'</span><span>'+r.date+'</span></div>'
+      +'<div class="remark-text">'+r.text+'</div>'
+      +'<div style="margin-top:6px;text-align:right"><button class="remark-del" onclick="deleteRemark(this)"><i class="ti ti-trash" style="font-size:11px"></i> Delete</button></div>';
+    card.querySelector('.remark-del').setAttribute('data-plate',plate);
+    card.querySelector('.remark-del').setAttribute('data-id',r.id);
+    el.appendChild(card);
+  });
+}
+
+function saveRemark(){
+  const plate=currentPlate;
+  const text=(document.getElementById('remarks-input').value||'').trim().toUpperCase();
+  if(!text){alert('Please type a remark first.');return;}
+  const staff=document.getElementById('remarks-staff-sel').value||'Staff';
+  const now=new Date();
+  const date=String(now.getDate()).padStart(2,'0')+'/'+String(now.getMonth()+1).padStart(2,'0')+'/'+now.getFullYear()+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  const remark={id:Date.now(),staff:staff,date:date,text:text};
+  const remarks=getRemarks(plate);
+  remarks.unshift(remark);
+  saveRemarks(plate,remarks);
+  document.getElementById('remarks-input').value='';
+  renderRemarksList(plate);
+}
+
+function deleteRemark(btn){
+  const plate=btn.getAttribute('data-plate');
+  const id=parseInt(btn.getAttribute('data-id'));
+  if(!confirm('Delete this remark?'))return;
+  const remarks=getRemarks(plate).filter(function(r){return r.id!==id;});
+  saveRemarks(plate,remarks);
+  renderRemarksList(plate);
+}
+
+// Show remark count badge on detail view
+function updateRemarksBadge(plate){
+  const count=getRemarks(plate).length;
+  const btn=document.querySelector('[onclick="showRemarks()"]');
+  if(btn){
+    var badgeHtml=count>0?(' <span style="background:var(--info-text);color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700">'+count+'</span>'):'';
+    btn.innerHTML='<i class="ti ti-notes"></i> Customer remarks / notes'+badgeHtml;
+  }
+}
+
+// ============================================================
+// LOGIN SYSTEM
+// ============================================================
+// ============================================================
+// DEFAULT CONFIG - Set by admin, auto-syncs to all phones
+// ============================================================
+// This URL is embedded when admin saves from Admin Panel
+// New phones use this as fallback if localStorage is empty
+const DEFAULT_GS_URL='https://script.google.com/macros/s/AKfycbzKmRCOdBSMDO6optpS_WKZXwRFZJG1QztEGKkMNo6Xx7pc74xF8dPcwz9Mgy21ynBG/exec';
+const ADMIN_USER='grandlab';
+
+function getGsUrl(){
+  const stored=localStorage.getItem('gl_gs_url');
+  // If stored URL is different from default, use default (admin updated it)
+  // This ensures latest URL is always used
+  if(stored&&DEFAULT_GS_URL&&stored!==DEFAULT_GS_URL){
+    // Update localStorage to match the hardcoded default
+    localStorage.setItem('gl_gs_url',DEFAULT_GS_URL);
+    return DEFAULT_GS_URL;
+  }
+  return stored||DEFAULT_GS_URL||'';
+}
+const ADMIN_PASS='Gldetailing2019';
+
+function getStaffAccounts(){
+  try{return JSON.parse(localStorage.getItem('gl_staff_accounts')||'[]');}catch(e){return [];}
+}
+async function syncStaffNow(){
+  const accounts=getStaffAccounts();
+  saveStaffAccounts(accounts);
+  const btn=document.querySelector('[onclick="syncStaffNow()"]');
+  if(btn){btn.textContent='Syncing...';btn.disabled=true;}
+  const ok=await syncAccountsToSheet(accounts);
+  if(btn){btn.innerHTML='<i class="ti ti-refresh"></i> Sync accounts to all phones';btn.disabled=false;}
+  if(ok){alert('Synced! '+accounts.length+' staff account(s) saved to sheet.');}
+  else{alert('Sync failed. Check your script URL in App Configuration.');}
+}
+
+function saveStaffAccounts(accounts){
+  localStorage.setItem('gl_staff_accounts',JSON.stringify(accounts));
+}
+
+async function syncAccountsToSheet(accounts){
+  const url=getGsUrl();
+  if(!url){alert('No script URL configured.');return false;}
+  try{
+    // POST with no-cors then verify with GET
+    fetch(url,{method:'POST',body:JSON.stringify({action:'save_accounts',accounts:accounts}),mode:'no-cors',headers:{}}).catch(function(){});
+    // Wait then verify
+    await new Promise(function(r){setTimeout(r,3000);});
+    const res=await fetch(url+'?action=get_accounts',{redirect:'follow'});
+    const data=await res.json();
+    if(data.result==='ok'&&data.accounts&&data.accounts.length>0)return true;
+    // Fallback: try GET with encoded data
+    const encoded=encodeURIComponent(JSON.stringify(accounts));
+    if(encoded.length<1500){
+      const res2=await fetch(url+'?action=save_accounts&data='+encoded,{redirect:'follow'});
+      const data2=await res2.json();
+      return data2.result==='ok';
+    }
+    return false;
+  }catch(e){
+    console.warn('Account sync failed:',e);
+    return false;
+  }
+}
+
+function getCurrentUser(){
+  return localStorage.getItem('gl_current_user')||'';
+}
+
+async function connectFromLogin(){
+  const url=(document.getElementById('login-url-input').value||'').trim();
+  if(!url){alert('Please paste the script URL.');return;}
+  try{
+    const res=await fetch(url+'?action=get_config',{redirect:'follow'});
+    const data=await res.json();
+    if(data.result==='ok'){
+      localStorage.setItem('gl_gs_url',url);
+      const cfg=data.config||{};
+      if(cfg.gl_imgbb_key)localStorage.setItem('gl_imgbb_key',cfg.gl_imgbb_key);
+      await fetchAccountsFromSheet();
+      document.getElementById('login-url-prompt').style.display='none';
+      alert('Connected! You can now login.');
+    } else {throw new Error('bad response');}
+  }catch(e){alert('Could not connect. Check the URL.');}
+}
+
+function doLogin(){
+  const user=(document.getElementById('login-user').value||'').trim().toLowerCase();
+  const pass=document.getElementById('login-pass').value||'';
+  const remember=document.getElementById('login-remember')&&document.getElementById('login-remember').checked;
+  const err=document.getElementById('login-err');
+  // Check admin
+  if(user===ADMIN_USER.toLowerCase()&&pass===ADMIN_PASS){
+    localStorage.setItem('gl_current_user',ADMIN_USER);
+    localStorage.setItem('gl_current_role','admin');
+    if(remember){localStorage.setItem('gl_saved_user',ADMIN_USER);localStorage.setItem('gl_saved_pass',pass);localStorage.setItem('gl_remember','1');}
+    else{localStorage.removeItem('gl_saved_user');localStorage.removeItem('gl_saved_pass');localStorage.removeItem('gl_remember');}
+    showApp();
+    return;
+  }
+  // Check staff accounts
+  const accounts=getStaffAccounts();
+  const match=accounts.find(function(a){return a.username.toLowerCase()===user&&a.password===pass;});
+  if(match){
+    localStorage.setItem('gl_current_user',match.username);
+    localStorage.setItem('gl_current_role','staff');
+    localStorage.setItem('gl_current_staff_name',match.staffName||match.username);
+    if(remember){localStorage.setItem('gl_saved_user',match.username);localStorage.setItem('gl_saved_pass',pass);localStorage.setItem('gl_remember','1');}
+    else{localStorage.removeItem('gl_saved_user');localStorage.removeItem('gl_saved_pass');localStorage.removeItem('gl_remember');}
+    selStaff=[match.staffName||match.username];
+    showApp();
+    return;
+  }
+  err.style.display='block';
+  document.getElementById('login-pass').value='';
+}
+
+function showApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  const user=getCurrentUser();
+  const role=localStorage.getItem('gl_current_role');
+  const isAdmin=role==='admin';
+  // Show/hide admin button
+  const adminBtn=document.getElementById('admin-btn');
+  if(adminBtn)adminBtn.style.display=isAdmin?'inline-flex':'none';
+  // Show/hide settings and setup tabs based on role
+  const nbSettings=document.getElementById('nb-settings');
+  const nbSetup=document.getElementById('nb-setup');
+  const nbReport=document.getElementById('nb-report');
+  if(nbSettings)nbSettings.style.display=isAdmin?'':'none';
+  if(nbSetup)nbSetup.style.display=isAdmin?'':'none';
+  if(nbReport)nbReport.style.display=isAdmin?'':'none';
+  // If currently on settings/setup and staff, redirect to cars
+  if(!isAdmin){
+    const curView=document.querySelector('.view.a');
+    if(curView&&(curView.id==='view-settings'||curView.id==='view-setup')){
+      showView('cars');
+    }
+  }
+  // Pre-select staff if logged in as staff
+  if(role==='staff'){
+    const staffName=localStorage.getItem('gl_current_staff_name');
+    if(staffName){
+      selStaff=[staffName];
+      setTimeout(function(){
+        document.querySelectorAll('.sc').forEach(function(b){b.classList.toggle('sel',selStaff.includes(b.textContent));});
+      },100);
+    }
+  }
+}
+
+function doLogout(){
+  localStorage.removeItem('gl_current_user');
+  localStorage.removeItem('gl_current_role');
+  localStorage.removeItem('gl_remember');
+  localStorage.removeItem('gl_saved_user');
+  localStorage.removeItem('gl_saved_pass');
+  localStorage.removeItem('gl_current_staff_name');
+  document.getElementById('app').style.display='none';
+  document.getElementById('admin-panel').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-err').style.display='none';
+}
+
+async function openAdmin(){
+  if(localStorage.getItem('gl_current_role')!=='admin'){return;}
+  // Show panel first so elements exist in DOM
+  document.getElementById('admin-panel').style.display='flex';
+  document.getElementById('admin-logged-as').textContent=getCurrentUser();
+  renderAdminConfig();
+  renderAdminStaffList();
+  // Fetch latest in background
+  fetchAccountsFromSheet().then(function(){renderAdminStaffList();});
+}
+
+function renderAdminConfig(){
+  const el=document.getElementById('admin-config-section');
+  if(!el)return;
+  const gsUrl=localStorage.getItem('gl_gs_url')||'';
+  const imgbb=localStorage.getItem('gl_imgbb_key')||'';
+  el.innerHTML='';
+  // GS URL field
+  const gsDiv=document.createElement('div');gsDiv.style.cssText='margin-bottom:12px';
+  const gsLbl=document.createElement('div');gsLbl.style.cssText='font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em';gsLbl.textContent='Google Sheets Script URL';
+  const gsInp=document.createElement('input');gsInp.type='text';gsInp.value=gsUrl;gsInp.placeholder='https://script.google.com/macros/s/.../exec';
+  gsInp.style.cssText='width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;outline:none';
+  const gsBtn=document.createElement('button');gsBtn.style.cssText='margin-top:6px;padding:7px 14px;background:var(--accent);color:var(--accent-fg);border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer';
+  gsBtn.textContent='Save & sync to all phones';
+  gsBtn.onclick=function(){
+    const val=gsInp.value.trim();
+    if(!val)return;
+    localStorage.setItem('gl_gs_url',val);
+    saveConfigToSheet();
+    setSyncStatus(true);
+    alert('Script URL saved! Staff phones will auto-sync on next login.');
+  };
+  gsDiv.appendChild(gsLbl);gsDiv.appendChild(gsInp);gsDiv.appendChild(gsBtn);
+  // ImgBB field
+  const ibDiv=document.createElement('div');ibDiv.style.cssText='margin-bottom:12px';
+  const ibLbl=document.createElement('div');ibLbl.style.cssText='font-size:10px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em';ibLbl.textContent='ImgBB API Key (for photos)';
+  const ibInp=document.createElement('input');ibInp.type='text';ibInp.value=imgbb;ibInp.placeholder='Paste ImgBB API key...';
+  ibInp.style.cssText='width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;outline:none';
+  const ibBtn=document.createElement('button');ibBtn.style.cssText='margin-top:6px;padding:7px 14px;background:var(--accent);color:var(--accent-fg);border:none;border-radius:var(--radius-sm);font-size:12px;font-weight:700;cursor:pointer';
+  ibBtn.textContent='Save & sync to all phones';
+  ibBtn.onclick=function(){
+    const val=ibInp.value.trim();
+    if(!val)return;
+    localStorage.setItem('gl_imgbb_key',val);
+    saveConfigToSheet();
+    alert('ImgBB key saved and synced to all phones!');
+  };
+  ibDiv.appendChild(ibLbl);ibDiv.appendChild(ibInp);ibDiv.appendChild(ibBtn);
+  el.appendChild(gsDiv);el.appendChild(ibDiv);
+}
+
+function closeAdmin(){
+  document.getElementById('admin-panel').style.display='none';
+}
+
+function renderAdminStaffList(){
+  const accounts=getStaffAccounts();
+  const el=document.getElementById('admin-staff-list');
+  if(!el)return;
+  if(!accounts.length){
+    el.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:20px 0">No staff accounts yet.<br>Add one below.</div>';
+    return;
+  }
+  el.innerHTML='';
+  accounts.forEach(function(acc,i){
+    const card=document.createElement('div');
+    card.style.cssText='background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px';
+    // Header row
+    const hrow=document.createElement('div');hrow.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px';
+    const nameDiv=document.createElement('div');nameDiv.style.cssText='font-weight:700;font-size:13px';nameDiv.textContent=acc.staffName;
+    const delBtn=document.createElement('button');delBtn.style.cssText='background:none;border:none;color:#e53935;cursor:pointer;font-size:12px';
+    delBtn.innerHTML='<i class="ti ti-trash"></i> Remove';
+    delBtn.onclick=function(){deleteStaffAccount(i);};
+    hrow.appendChild(nameDiv);hrow.appendChild(delBtn);card.appendChild(hrow);
+    // Grid
+    const grid=document.createElement('div');grid.style.cssText='display:grid;grid-template-columns:1fr 1fr;gap:6px';
+    // Username field
+    const uDiv=document.createElement('div');
+    const uLbl=document.createElement('div');uLbl.style.cssText='font-size:10px;color:var(--text3);margin-bottom:2px';uLbl.textContent='USERNAME';
+    const uInp=document.createElement('input');uInp.value=acc.username;uInp.style.cssText='width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;outline:none';
+    uInp.onchange=function(){updateStaffAccount(i,'username',this.value);};
+    uDiv.appendChild(uLbl);uDiv.appendChild(uInp);
+    // Password field
+    const pDiv=document.createElement('div');
+    const pLbl=document.createElement('div');pLbl.style.cssText='font-size:10px;color:var(--text3);margin-bottom:2px';pLbl.textContent='PASSWORD';
+    const pInp=document.createElement('input');pInp.value=acc.password;pInp.style.cssText='width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:var(--bg);color:var(--text);font-family:inherit;outline:none';
+    pInp.onchange=function(){updateStaffAccount(i,'password',this.value);};
+    pDiv.appendChild(pLbl);pDiv.appendChild(pInp);
+    grid.appendChild(uDiv);grid.appendChild(pDiv);card.appendChild(grid);
+    el.appendChild(card);
+  });
+}
+
+function addStaffAccount(){
+  const accounts=getStaffAccounts();
+  const staffList=getStaffList();
+  // Find first staff without an account
+  const taken=accounts.map(function(a){return a.staffName;});
+  const available=staffList.filter(function(s){return !taken.includes(s);});
+  const name=available.length>0?available[0]:'NEW STAFF';
+  accounts.push({staffName:name,username:name.toLowerCase(),password:'pass123'});
+  saveStaffAccounts(accounts);
+  renderAdminStaffList();
+}
+
+function updateStaffAccount(i,field,val){
+  const accounts=getStaffAccounts();
+  if(accounts[i])accounts[i][field]=val;
+  saveStaffAccounts(accounts);
+}
+
+function deleteStaffAccount(i){
+  if(!confirm('Remove this staff account?'))return;
+  const accounts=getStaffAccounts();
+  accounts.splice(i,1);
+  saveStaffAccounts(accounts);
+  renderAdminStaffList();
+}
+
+
+
+async function saveConfigToSheet(){
+  const url=getGsUrl();
+  if(!url)return;
+  const config={gl_gs_url:url,gl_imgbb_key:localStorage.getItem('gl_imgbb_key')||''};
+  try{
+    // Try POST first
+    fetch(url,{method:'POST',body:JSON.stringify({action:'save_config',config:config}),mode:'no-cors',headers:{}}).catch(function(){});
+    // Also try GET as backup
+    const encoded=encodeURIComponent(JSON.stringify(config));
+    await fetch(url+'?action=save_config&data='+encoded,{redirect:'follow'});
+  }catch(e){console.warn('Config sync failed:',e);}
+}
+
+async function fetchConfigFromSheet(gsUrl){
+  if(!gsUrl)return;
+  try{
+    const res=await fetch(gsUrl+'?action=get_config',{redirect:'follow'});
+    const data=await res.json();
+    if(data.result==='ok'&&data.config){
+      const cfg=data.config;
+      if(cfg.gl_imgbb_key&&!localStorage.getItem('gl_imgbb_key')){
+        localStorage.setItem('gl_imgbb_key',cfg.gl_imgbb_key);
+        const el=document.getElementById('imgbb-key');
+        if(el)el.value=cfg.gl_imgbb_key;
+        console.log('ImgBB key auto-fetched from sheet');
+      }
+      console.log('Config synced from sheet');
+    }
+  }catch(e){console.warn('Config fetch failed:',e);}
+}
+
+async function fetchAccountsFromSheet(){
+  const url=getGsUrl();
+  if(!url) return;
+  try{
+    const res=await fetch(url+'?action=get_accounts',{redirect:'follow'});
+    const data=await res.json();
+    if(data.result==='ok'&&data.accounts&&data.accounts.length>0){
+      localStorage.setItem('gl_staff_accounts',JSON.stringify(data.accounts));
+    }
+  }catch(e){console.warn('Account fetch failed:',e);}
+}
+
+function checkLogin(){
+  // ---- Hub SSO: if opened from the Grandpride Hub (?u=username), log in automatically ----
+  try{
+    var ssoUser=new URLSearchParams(window.location.search).get('u');
+    if(ssoUser){
+      ssoUser=ssoUser.trim();
+      var uLower=ssoUser.toLowerCase();
+      // admin usernames from the Hub get admin role here too
+      if(uLower==='admin'||uLower===ADMIN_USER.toLowerCase()){
+        localStorage.setItem('gl_current_user',ADMIN_USER);
+        localStorage.setItem('gl_current_role','admin');
+        showApp();
+        return;
+      }
+      // otherwise match against synced staff accounts; fall back to a plain staff session
+      var finishSso=function(){
+        var accts=getStaffAccounts();
+        var m=accts.find(function(a){return a.username.toLowerCase()===uLower;});
+        localStorage.setItem('gl_current_user', m?m.username:ssoUser);
+        localStorage.setItem('gl_current_role','staff');
+        localStorage.setItem('gl_current_staff_name', m?(m.staffName||m.username):ssoUser);
+        selStaff=[ m?(m.staffName||m.username):ssoUser ];
+        showApp();
+      };
+      var gsU=getGsUrl();
+      if(gsU&&!localStorage.getItem('gl_staff_accounts')){
+        document.getElementById('login-screen').style.display='flex';
+        document.getElementById('login-loading').style.display='block';
+        document.getElementById('login-form-area').style.display='none';
+        fetchConfigFromSheet(gsU).then(function(){return fetchAccountsFromSheet();})
+          .then(finishSso).catch(finishSso);
+      } else {
+        if(gsU){ fetchConfigFromSheet(gsU); fetchAccountsFromSheet(); }
+        finishSso();
+      }
+      return;
+    }
+  }catch(e){}
+
+  if(!localStorage.getItem('gl_login_v2')){
+    localStorage.setItem('gl_login_v2','1');
+    localStorage.removeItem('gl_current_user');
+    localStorage.removeItem('gl_current_role');
+    localStorage.removeItem('gl_remember');
+    localStorage.removeItem('gl_saved_user');
+    localStorage.removeItem('gl_saved_pass');
+  }
+  const remember=localStorage.getItem('gl_remember')==='1';
+  const savedUser=localStorage.getItem('gl_saved_user');
+  const savedPass=localStorage.getItem('gl_saved_pass');
+  if(remember&&savedUser&&savedPass){
+    document.getElementById('login-user').value=savedUser;
+    document.getElementById('login-pass').value=savedPass;
+    doLogin();
+    return;
+  }
+  localStorage.removeItem('gl_current_user');
+  localStorage.removeItem('gl_current_role');
+  document.getElementById('app').style.display='none';
+  // Show loading while fetching accounts
+  const gsUrl=getGsUrl();
+  if(gsUrl&&!localStorage.getItem('gl_staff_accounts')){
+    // First time - show loading, wait for accounts
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('login-loading').style.display='block';
+    document.getElementById('login-form-area').style.display='none';
+    fetchConfigFromSheet(gsUrl).then(function(){
+      return fetchAccountsFromSheet();
+    }).then(function(){
+      document.getElementById('login-loading').style.display='none';
+      document.getElementById('login-form-area').style.display='block';
+    }).catch(function(){
+      document.getElementById('login-loading').style.display='none';
+      document.getElementById('login-form-area').style.display='block';
+    });
+  } else {
+    // Already have accounts cached - show login immediately
+    // Still refresh in background
+    document.getElementById('login-screen').style.display='flex';
+    if(gsUrl){
+      fetchConfigFromSheet(gsUrl);
+      fetchAccountsFromSheet();
+    }
+  }
+}
+
+// ============================================================
+// PAYMENT PROOF PHOTO
+// ============================================================
+function handleProofPhoto(input){
+  if(!input.files||!input.files[0])return;
+  var file=input.files[0];
+  var reader=new FileReader();
+  reader.onload=function(e){
+    window._proofPhotoData=e.target.result;
+    window._proofPhotoFile=file;
+    document.getElementById('proof-label').textContent=file.name.length>20?file.name.substring(0,20)+'...':file.name;
+    var thumb=document.getElementById('proof-thumb');
+    thumb.src=e.target.result;thumb.style.display='block';
+    document.getElementById('proof-clear-btn').style.display='block';
+  };
+  reader.readAsDataURL(file);
+}
+function clearProofPhoto(){
+  window._proofPhotoData=null;window._proofPhotoFile=null;
+  document.getElementById('proof-label').textContent='Tap to upload proof';
+  document.getElementById('proof-thumb').style.display='none';
+  document.getElementById('proof-clear-btn').style.display='none';
+  document.getElementById('proof-photo-input').value='';
+}
+function togglePaymentProof(pm){
+  var proofPms=['Online Transfer','Credit Card','Debit Card','TNG / QR Pay'];
+  var wrap=document.getElementById('payment-proof-wrap');
+  if(wrap)wrap.style.display=proofPms.includes(pm)?'block':'none';
+  if(!proofPms.includes(pm))clearProofPhoto();
+}
+
+// ============================================================
+// SALES REPORT
+// ============================================================
+function setReportRange(range){
+  var now=new Date();
+  var pad=function(n){return n.toString().padStart(2,'0');};
+  var fmt=function(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());};
+  if(range==='today'){
+    document.getElementById('report-from').value=fmt(now);
+    document.getElementById('report-to').value=fmt(now);
+  }else if(range==='week'){
+    var start=new Date(now);start.setDate(now.getDate()-now.getDay()+1);
+    document.getElementById('report-from').value=fmt(start);
+    document.getElementById('report-to').value=fmt(now);
+  }else if(range==='month'){
+    var start=new Date(now.getFullYear(),now.getMonth(),1);
+    document.getElementById('report-from').value=fmt(start);
+    document.getElementById('report-to').value=fmt(now);
+  }
+}
+async function generateReport(){
+  var from=document.getElementById('report-from').value;
+  var to=document.getElementById('report-to').value;
+  if(!from||!to){alert('Please select date range.');return;}
+  var url=getGsUrl();
+  if(!url){alert('No Google Sheets URL configured.');return;}
+  document.getElementById('report-output').style.display='none';
+  document.getElementById('report-loading').style.display='block';
+  document.getElementById('report-loading').textContent='Loading plates from sheet...';
+  try{
+    var res=await fetch(url+'?action=list_plates',{redirect:'follow'});
+    var data=await res.json();
+    if(data.result!=='ok')throw new Error('Failed to load plates');
+    var plates=data.plates||[];
+    if(!plates.length){
+      document.getElementById('report-loading').style.display='none';
+      document.getElementById('report-output').style.display='block';
+      document.getElementById('report-title').textContent='No data found';
+      document.getElementById('report-total-sales').textContent='RM0.00';
+      document.getElementById('report-total-jobs').textContent='0';
+      document.getElementById('report-breakdown').innerHTML='';
+      return;
+    }
+    document.getElementById('report-loading').textContent='Loading '+plates.length+' plates...';
+    var totalSales=0,totalJobs=0;
+    var pmBreakdown={},staffBreakdown={},dailyBreakdown={};
+    var fromDate=new Date(from);
+    var toDate=new Date(to);toDate.setHours(23,59,59);
+    // Fetch all plates in parallel batches of 5
+    var batchSize=5;
+    for(var bi=0;bi<plates.length;bi+=batchSize){
+      var batch=plates.slice(bi,bi+batchSize);
+      document.getElementById('report-loading').textContent='Loading '+(bi+1)+' - '+Math.min(bi+batchSize,plates.length)+' of '+plates.length+'...';
+      var results=await Promise.all(batch.map(function(p){
+        return fetch(url+'?action=search&plate='+encodeURIComponent(p.plate),{redirect:'follow'})
+          .then(function(r){return r.json();}).catch(function(){return {result:'ok',visits:[]};});
+      }));
+      results.forEach(function(data2){
+        if(data2.result!=='ok')return;
+        (data2.visits||[]).forEach(function(v){
+          var parts=(v.date||'').split('/');
+          if(parts.length!==3)return;
+          var vDate=new Date(parts[2],parts[1]-1,parts[0]);
+          if(vDate<fromDate||vDate>toDate)return;
+          if(v.status==='PENDING')return;
+          var amt=parseFloat((v.total||'').replace('RM',''))||0;
+          totalSales+=amt;totalJobs++;
+          var pm=v.payment||'Unknown';
+          pmBreakdown[pm]=(pmBreakdown[pm]||0)+amt;
+          var st=v.staff||'Unknown';
+          staffBreakdown[st]=(staffBreakdown[st]||0)+1;
+          var dk=parts[2]+'-'+parts[1]+'-'+parts[0];
+          dailyBreakdown[dk]=(dailyBreakdown[dk]||0)+amt;
+        });
+      });
+    }
+    document.getElementById('report-loading').style.display='none';
+    document.getElementById('report-output').style.display='block';
+    document.getElementById('report-title').textContent='Report: '+from.split('-').reverse().join('/')+' to '+to.split('-').reverse().join('/');
+    document.getElementById('report-total-sales').textContent='RM'+totalSales.toFixed(2);
+    document.getElementById('report-total-jobs').textContent=totalJobs;
+    var html='';
+    // Payment breakdown
+    html+='<div style="margin-bottom:8px;font-size:12px;font-weight:700;color:var(--text)">By Payment Method:</div>';
+    var maxPm=Math.max.apply(null,Object.values(pmBreakdown).concat([1]));
+    Object.keys(pmBreakdown).sort(function(a,b){return pmBreakdown[b]-pmBreakdown[a];}).forEach(function(pm){
+      var pct=Math.round(pmBreakdown[pm]/maxPm*100);
+      html+='<div style="margin-bottom:8px">';
+      html+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+pm+'</span><span style="font-weight:700">RM'+pmBreakdown[pm].toFixed(2)+'</span></div>';
+      html+='<div style="background:var(--border);border-radius:4px;height:6px"><div style="background:var(--accent);height:6px;border-radius:4px;width:'+pct+'%"></div></div>';
+      html+='</div>';
+    });
+    // Staff breakdown
+    html+='<div style="margin:12px 0 8px;font-size:12px;font-weight:700;color:var(--text)">By Staff:</div>';
+    var maxSt=Math.max.apply(null,Object.values(staffBreakdown).concat([1]));
+    Object.keys(staffBreakdown).sort(function(a,b){return staffBreakdown[b]-staffBreakdown[a];}).forEach(function(st){
+      var pct=Math.round(staffBreakdown[st]/maxSt*100);
+      html+='<div style="margin-bottom:8px">';
+      html+='<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+st+'</span><span style="font-weight:700">'+staffBreakdown[st]+' job(s)</span></div>';
+      html+='<div style="background:var(--border);border-radius:4px;height:6px"><div style="background:#1565a8;height:6px;border-radius:4px;width:'+pct+'%"></div></div>';
+      html+='</div>';
+    });
+    // Daily chart
+    var days=Object.keys(dailyBreakdown).sort();
+    if(days.length>1){
+      html+='<div style="margin:12px 0 8px;font-size:12px;font-weight:700;color:var(--text)">Daily Sales:</div>';
+      var maxDay=Math.max.apply(null,Object.values(dailyBreakdown));
+      html+='<div style="overflow-x:auto"><div style="display:flex;align-items:flex-end;gap:4px;height:80px;min-width:'+(days.length*36)+'px;padding-bottom:20px;position:relative">';
+      days.forEach(function(d){
+        var h=Math.round(dailyBreakdown[d]/maxDay*60);
+        var label=d.split('-')[2]+'/'+d.split('-')[1];
+        html+='<div style="flex:1;min-width:28px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">';
+        html+='<div style="font-size:9px;color:var(--text3);margin-bottom:2px">RM'+Math.round(dailyBreakdown[d])+'</div>';
+        html+='<div style="background:var(--accent);width:100%;border-radius:3px 3px 0 0;height:'+h+'px"></div>';
+        html+='<div style="font-size:9px;color:var(--text3);margin-top:3px;white-space:nowrap">'+label+'</div>';
+        html+='</div>';
+      });
+      html+='</div></div>';
+    }
+    document.getElementById('report-breakdown').innerHTML=html;
+    window._lastReport={from:from,to:to,totalSales:totalSales,totalJobs:totalJobs,pmBreakdown:pmBreakdown,staffBreakdown:staffBreakdown,dailyBreakdown:dailyBreakdown};
+  }catch(e){
+    document.getElementById('report-loading').style.display='none';
+    alert('Failed: '+e.message);
+  }
+}
+function buildReportText(){
+  var r=window._lastReport;
+  if(!r)return '';
+  var nl='\n';
+  var txt='*GRANDLAB DETAILING*'+nl+'*Sales Report*'+nl;
+  txt+=r.from.split('-').reverse().join('/')+' to '+r.to.split('-').reverse().join('/')+nl+nl;
+  txt+='Total Sales: RM'+r.totalSales.toFixed(2)+nl;
+  txt+='Total Jobs: '+r.totalJobs+nl+nl;
+  txt+='Payment Breakdown:'+nl;
+  Object.keys(r.pmBreakdown).sort().forEach(function(pm){txt+='- '+pm+': RM'+r.pmBreakdown[pm].toFixed(2)+nl;});
+  txt+=nl+'Staff:'+nl;
+  Object.keys(r.staffBreakdown).sort().forEach(function(st){txt+='- '+st+': '+r.staffBreakdown[st]+' job(s)'+nl;});
+  return txt;
+}
+function sendReportWa(){
+  var txt=buildReportText();
+  if(!txt){alert('Generate report first.');return;}
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
+function copyReport(){
+  var txt=buildReportText();
+  if(!txt){alert('Generate report first.');return;}
+  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(function(){alert('Copied!');});}
+  else{alert(txt);}
+}
+
+
+init();
+initSettings();
+checkLogin();
+
+</script>
+</body>
+</html>
