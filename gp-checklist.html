@@ -135,6 +135,12 @@ async function sbUpsert(row){
     method:'POST', headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
     body: JSON.stringify(row)
   });
+  if(!r.ok){
+    let msg='';
+    try{ msg=await r.text(); }catch(e){}
+    window.__lastSbError = r.status+' '+msg;
+    console.error('sbUpsert failed:', r.status, msg);
+  }
   return r.ok;
 }
 async function sbPending(){
@@ -623,8 +629,9 @@ function rowFor(a){
 }
 async function saveChecklist(silent){
   readForm();
+  window.__lastSbError='';
   const ok=await sbUpsert(rowFor(STATE.current));
-  if(!silent) toast(ok?'Saved ✓':'Saved (cloud off)');
+  if(!silent) toast(ok?'Saved ✓':('Saved (cloud off) — '+(window.__lastSbError||'no response')));
   return ok;
 }
 
