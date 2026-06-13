@@ -126,7 +126,7 @@ function sbBase(){ return (SB_URL||'').replace(/\/rest\/v1\/?$/,''); }
 function sbHeaders(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
 var CLOUD = !!(SB_URL && SB_KEY);
 
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwXYDim7Kwk3tiVGK2Vo9y34W4JKsQ6MrI8tBHy2pYVQIs_PYa8T6AJmTAL-wyo4Ls/exec';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwcGj9D1K4UHrlBVcQAC-xf1_BIYEANq62ldCzVtr2WQ_GnGq6eq5Up5Uqfpl2RIFU/exec';
 
 /* ---- Supabase REST ---- */
 async function sbUpsert(row){
@@ -213,10 +213,6 @@ function showChooser(){
         <div class="ico">📥</div><h3>Return (BACK)</h3>
         <p>Car came back? Find the open checklist by plate and do the return inspection.</p>
       </div>
-      <div class="type-card" onclick="testPdf()" style="opacity:.92">
-        <div class="ico">🧪</div><h3>Test PDF</h3>
-        <p>Generate a sample delivery PDF (with car diagram) to check the layout &amp; sizing.</p>
-      </div>
     </div>`;
 }
 
@@ -235,54 +231,6 @@ function blankChecklist(){
 function startDelivery(){
   STATE.current=blankChecklist(); STATE.stage='out';
   showForm();
-}
-
-/* ====== TEST PDF — generate a sample with a real car diagram ====== */
-async function testPdf(){
-  toast('Generating test PDF…');
-  // build a real car diagram PNG (sedan) with a couple of sample defect marks
-  const diagramPng = await renderTestDiagramPng('sedan');
-  const payload = {
-    id:'TEST_'+Date.now(), plan:'lease', plan_name:'Car Leasing',
-    car_type:'sedan', stage:'out', stage_name:'DELIVERY',
-    customer_name:'TEST CUSTOMER', customer_contact:'012-345 6789',
-    car_model:'PROTON X70', car_plate:'TEST1234',
-    date:todayISO(), time:nowTime(), mileage:'35000', petrol:'4',
-    chk_inspection:'YES', chk_features:'YES', chk_bluetooth:'YES', chk_smoking:'YES', chk_fuel:'YES',
-    car_diagram:diagramPng, sig_inspector:'', sig_customer:'', photos:[],
-    created_by:curUser()||'test'
-  };
-  try{
-    const res=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-    const data=await res.json();
-    if(data && data.url){
-      showResult(data.url, {customer_name:'TEST CUSTOMER',car_model:'PROTON X70',car_plate:'TEST1234'}, 'out');
-      toast('Test PDF ready');
-    } else { toast('Test failed: '+(data&&data.error?data.error:'no url returned')); }
-  }catch(e){ toast('Test failed: '+e.message); }
-}
-
-/* rasterize a car diagram offscreen (no live form needed) */
-function renderTestDiagramPng(carType){
-  return new Promise(resolve=>{
-    const t=(CAR_DIMS[carType]?carType:'sedan');
-    const d=CAR_DIMS[t]||{w:751,h:976};
-    // sample defect marks so the diagram isn't blank
-    const marks=[{x:Math.round(d.w*0.30),y:Math.round(d.h*0.25),code:'S'},
-                 {x:Math.round(d.w*0.65),y:Math.round(d.h*0.60),code:'D'}];
-    const mkSvg=marks.map(m=>`<g><circle cx="${m.x}" cy="${m.y}" r="13" fill="#e0322f" stroke="#fff" stroke-width="2"/>`+
-      `<text x="${m.x}" y="${m.y+4}" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">${m.code}</text></g>`).join('');
-    const svg=`<svg viewBox="0 0 ${d.w} ${d.h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`+
-      `<image href="${CAR_IMAGES[t]}" xlink:href="${CAR_IMAGES[t]}" x="0" y="0" width="${d.w}" height="${d.h}"/>${mkSvg}</svg>`;
-    const scale=760/d.h, cw=Math.round(d.w*scale), ch=Math.round(d.h*scale);
-    const svg64='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(svg)));
-    const img=new Image();
-    img.onload=()=>{ const cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
-      const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch);
-      ctx.drawImage(img,0,0,cw,ch); resolve(cv.toDataURL('image/png')); };
-    img.onerror=()=>resolve('');
-    img.src=svg64;
-  });
 }
 
 /* ====== PENDING RETURNS (search by plate) ====== */
@@ -365,11 +313,9 @@ function showForm(){
       </div>
     </div>
     <label style="margin-top:10px">Car type</label>
-    ${lockShared
-      ? `<input value="${(CAR_TYPES.find(t=>t.k===(a.car_type||'sedan'))||CAR_TYPES[0]).name}" disabled>`
-      : `<div class="seg" id="carTypeSeg">
-      ${CAR_TYPES.map(t=>`<button type="button" class="${(a.car_type||'sedan')===t.k?'on':''}" onclick="setCarType('${t.k}')">${t.name}</button>`).join('')}
-    </div>`}
+    <div class="seg" id="carTypeSeg">
+      ${CAR_TYPES.map(t=>`<button type="button" class="${(a.car_type||'sedan')===t.k?'on':''}" ${lockShared?'disabled':''} onclick="setCarType('${t.k}')">${t.name}</button>`).join('')}
+    </div>
   </div>
 
   <div class="panel">
@@ -765,8 +711,8 @@ function renderDiagramPng(){
     const svg=$('carSvg'); if(!svg){ resolve(''); return; }
     const t=(STATE.current.car_type && CAR_DIMS[STATE.current.car_type])?STATE.current.car_type:'sedan';
     const d=CAR_DIMS[t]||{w:751,h:976};
-    // scale longest side to ~760px, keep aspect ratio (no distortion)
-    const scale=760/d.h;
+    // scale longest side to ~1000px, keep aspect ratio (no distortion)
+    const scale=1000/d.h;
     const cw=Math.round(d.w*scale), ch=Math.round(d.h*scale);
     const xml=new XMLSerializer().serializeToString(svg);
     const svg64='data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(xml)));
@@ -775,7 +721,8 @@ function renderDiagramPng(){
       const cv=document.createElement('canvas'); cv.width=cw; cv.height=ch;
       const ctx=cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch);
       ctx.drawImage(img,0,0,cw,ch);
-      resolve(cv.toDataURL('image/png'));
+      // JPEG @ 0.82 — photographic car image, much lighter payload than PNG; white bg already painted
+      resolve(cv.toDataURL('image/jpeg', 0.82));
     };
     img.onerror=()=>resolve('');
     img.src=svg64;
