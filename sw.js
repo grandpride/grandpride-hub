@@ -1,7 +1,7 @@
 /* ============================================================
    GRANDPRIDE HUB — SERVICE WORKER  (network-first)
    ------------------------------------------------------------
-   Strategy: ALWAYS try the network first, so every GitHub Pages
+   Strategy: ALWAYS try the network first, so every Netlify
    deploy reaches staff immediately. The cache is only a
    fallback for when the phone is offline.
 
@@ -9,7 +9,7 @@
    the CACHE version below and redeploy.
    ============================================================ */
 
-const CACHE = 'gp-hub-v4';
+const CACHE = 'gp-hub-v5';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

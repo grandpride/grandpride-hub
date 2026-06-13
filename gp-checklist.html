@@ -402,6 +402,7 @@ function showForm(){
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
     <button class="btn" onclick="saveChecklist(false)">Save</button>
     <button class="btn ok" id="genBtn" onclick="generateChecklist()">Generate PDF</button>
+    <button class="btn sec" onclick="testGeneratePdf()">🧪 Test PDF</button>
     <button class="btn sec" onclick="showChooser()">Exit</button>
   </div>`;
 
@@ -674,6 +675,51 @@ async function generateChecklist(){
     } else { toast('Failed: '+(out.error||'unknown')); }
   }catch(e){ toast('Error: '+e.message); }
   finally{ restore(); }
+}
+
+/* TEST: fire a full PDF generate with sample data — no form filling needed.
+   Uses the current on-screen car diagram if present, else a blank one.
+   Shows the result link or the exact error from Apps Script. */
+var TESTING_PDF=false;
+async function testGeneratePdf(){
+  if(TESTING_PDF){ toast('Test already running…'); return; }
+  TESTING_PDF=true;
+  toast('Sending test PDF…');
+  try{
+    let diagramPng='';
+    try{ diagramPng=await renderDiagramPng(); }catch(e){}
+    const payload={
+      id:'TEST_'+Date.now(),
+      plan:'lease', plan_name:'Car Leasing', car_type:'sedan',
+      stage:'out', stage_name:'DELIVERY',
+      customer_name:'TEST CUSTOMER', customer_contact:'0123456789',
+      car_model:'TEST CAR', car_plate:'TEST123',
+      date:new Date().toISOString().slice(0,10), time:'12:00',
+      mileage:'10000', petrol:'4',
+      car_diagram:diagramPng,
+      sig_inspector:'', sig_customer:'', photos:[],
+      chk_inspection:'YES', chk_features:'YES', chk_bluetooth:'YES', chk_smoking:'YES', chk_fuel:'YES',
+      created_by:'test-button'
+    };
+    const res=await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+    const out=await res.json();
+    if(out.ok && out.url){
+      const overlay=document.createElement('div');
+      overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center';
+      overlay.innerHTML=`
+        <div style="color:#fff;font-weight:700;font-size:18px">✅ Test PDF created</div>
+        <div style="color:#bbb;font-size:13px;word-break:break-all;max-width:90%">${out.name||''}</div>
+        <a class="btn ok" href="${out.url}" target="_blank" style="text-decoration:none">Open test PDF</a>
+        <button class="btn sec" id="closeTestPdf">Close</button>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#closeTestPdf').onclick=()=>overlay.remove();
+      overlay.onclick=e=>{ if(e.target===overlay) overlay.remove(); };
+    } else {
+      alert('Test PDF FAILED:\n\n'+(out.error||'unknown error'));
+    }
+  }catch(e){
+    alert('Test PDF ERROR:\n\n'+e.message);
+  }finally{ TESTING_PDF=false; }
 }
 
 function buildPayload(a, st, diagramPng){
