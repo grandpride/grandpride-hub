@@ -79,6 +79,9 @@ input:focus,textarea:focus,select:focus{border-color:var(--gold)}
 .photo-slot .ico{font-size:22px;margin-bottom:4px;opacity:.7}
 .photo-slot .rm{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);border:1px solid var(--red);color:var(--red);border-radius:6px;font-size:11px;padding:2px 6px;cursor:pointer;z-index:2}
 .photo-slot input[type="file"]{display:none}
+.bulk-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.bulk-btn{cursor:pointer;display:inline-flex;align-items:center}
+.bulk-btn input[type="file"]{display:none}
 
 /* signature pad */
 .sigwrap{margin-top:8px}
@@ -93,6 +96,10 @@ input:focus,textarea:focus,select:focus{border-color:var(--gold)}
 .pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
 .pill.wait{background:#2a3550;border:1px solid var(--blue);color:#9cc0ff}
 .pill.done{background:#1f3a28;border:1px solid var(--green);color:#7be0a0}
+.sumrow{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.sumrow:last-child{border-bottom:none}
+.sumrow>span{color:var(--grey);font-weight:600;flex:0 0 90px}
+.sumrow>div{text-align:right;flex:1}
 
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--text);padding:11px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:100;max-width:90%;text-align:center}
 #toast.show{opacity:1}
@@ -146,6 +153,11 @@ async function sbUpsert(row){
 async function sbPending(){
   if(!CLOUD) return [];
   const r = await fetch(sbBase()+"/rest/v1/gp_checklists?status=eq.awaiting_return&select=*&order=created_at.desc", {headers:sbHeaders()});
+  if(!r.ok) return []; return await r.json();
+}
+async function sbAll(){
+  if(!CLOUD) return [];
+  const r = await fetch(sbBase()+"/rest/v1/gp_checklists?select=*&order=created_at.desc", {headers:sbHeaders()});
   if(!r.ok) return []; return await r.json();
 }
 async function sbByPlate(plate){
@@ -218,6 +230,10 @@ function showChooser(){
       <div class="type-card" onclick="showPending()">
         <div class="ico">📥</div><h3>Return (BACK)</h3>
         <p>Car came back? Find the open checklist by plate and do the return inspection.</p>
+      </div>
+      <div class="type-card" onclick="showHistory()">
+        <div class="ico">📚</div><h3>History</h3>
+        <p>All jobs ever done. Search by plate or customer, open to see both PDFs and the return summary.</p>
       </div>
     </div>`;
 }
@@ -293,6 +309,100 @@ async function openReturn(id){
   showForm();
 }
 
+/* ====== HISTORY (all jobs) ====== */
+async function showHistory(){
+  STATE.view='history'; setSub('History — all jobs'); $('listBtn').style.display='none';
+  $('view').innerHTML=`
+    <div class="panel">
+      <h3>All Jobs</h3>
+      <label>Search by plate or customer</label>
+      <input id="histSearch" placeholder="e.g. VNS31 or John" oninput="filterHistory()">
+      <div id="histBody" style="margin-top:12px">Loading…</div>
+    </div>
+    <button class="btn sec full" style="margin-top:14px" onclick="showChooser()">‹ Back</button>`;
+  const rows=await sbAll();
+  window._history=rows;
+  renderHistory(rows);
+}
+function filterHistory(){
+  const q=($('histSearch').value||'').trim().toUpperCase();
+  const rows=(window._history||[]).filter(r=>!q ||
+    (r.car_plate||'').toUpperCase().includes(q) ||
+    (r.customer_name||'').toUpperCase().includes(q));
+  renderHistory(rows);
+}
+function renderHistory(rows){
+  const b=$('histBody'); if(!b) return;
+  if(!rows.length){ b.innerHTML='<p style="color:var(--grey);font-size:13px">No jobs found.</p>'; return; }
+  b.innerHTML=rows.map(r=>{
+    const done=r.status==='completed';
+    const tag=done?'<span class="pill done">Completed</span>':'<span class="pill wait">Awaiting return</span>';
+    return `
+    <div class="rec" onclick="showHistoryDetail('${r.id}')" style="cursor:pointer">
+      <div class="meta"><b>${esc(r.car_plate||'(no plate)')}</b> ${tag}<br>
+        <small>${esc(r.customer_name||'(no name)')}</small></div>
+      <div><button class="btn sec mini" onclick="event.stopPropagation();showHistoryDetail('${r.id}')">View ›</button></div>
+    </div>`;
+  }).join('');
+}
+async function showHistoryDetail(id){
+  const r=(window._history||[]).find(x=>x.id===id) || await sbGet(id);
+  if(!r){ toast('Not found'); return; }
+  STATE.view='historyDetail'; setSub('Job detail');
+
+  // ---- summary calcs ----
+  const ob=parseInt(r.out_mileage,10), ib=parseInt(r.in_mileage,10);
+  let mileageRow='<span style="color:var(--grey)">Not returned yet</span>';
+  if(!isNaN(ob)&&!isNaN(ib)){
+    const used=ib-ob;
+    mileageRow = used>=0
+      ? `${used.toLocaleString()} km used <small style="color:var(--grey)">(${ob.toLocaleString()} → ${ib.toLocaleString()})</small>`
+      : `<span style="color:#e06">Check: return reading lower than delivery</span>`;
+  }
+
+  const op=Number(r.out_petrol)||0, ip=Number(r.in_petrol)||0;
+  let petrolRow='<span style="color:var(--grey)">Not returned yet</span>';
+  if(r.status==='completed'){
+    const diff=ip-op;
+    if(diff===0) petrolRow=`Returned same level (${op}/5) ✓`;
+    else if(diff<0) petrolRow=`<span style="color:#e06">Short by ${Math.abs(diff)} bar — RM80 fuel charge applies</span> <small style="color:var(--grey)">(${op}/5 → ${ip}/5)</small>`;
+    else petrolRow=`Returned higher (${op}/5 → ${ip}/5)`;
+  }
+
+  // new damage: from return-stage check, plus whether extra defects were marked on return
+  let damageRow='<span style="color:var(--grey)">Not returned yet</span>';
+  if(r.status==='completed'){
+    const nd=(r.in_checks&&r.in_checks.new_damage);
+    const extraMarks=(r.in_defects&&r.in_defects.length)?r.in_defects.length:0;
+    if(nd===true) damageRow=`<span style="color:#e06">⚠️ New damage reported${extraMarks?` · ${extraMarks} mark(s) on diagram`:''}</span>`;
+    else if(nd===false) damageRow=`No new damage ✓${extraMarks?` <small style="color:var(--grey)">(but ${extraMarks} mark(s) on return diagram)</small>`:''}`;
+    else damageRow=extraMarks?`${extraMarks} mark(s) on return diagram`:'<span style="color:var(--grey)">Not recorded</span>';
+  }
+
+  const pdfBtn=(url,label)=> url
+    ? `<a class="btn ok full" href="${esc(url)}" target="_blank" style="text-decoration:none;margin-bottom:8px">${label} ›</a>`
+    : `<div class="btn sec full" style="margin-bottom:8px;opacity:.5;cursor:default">${label} — not available</div>`;
+
+  $('view').innerHTML=`
+    <div class="panel">
+      <h3>${esc(r.car_plate||'(no plate)')} · ${esc(r.customer_name||'')}</h3>
+      <p class="hint" style="margin-bottom:14px">${esc(r.car_model||'')} · ${PLAN_NAME[r.plan]||r.plan} · ${r.status==='completed'?'Completed':'Awaiting return'}</p>
+
+      ${pdfBtn(r.out_pdf_url,'📤 Delivery checklist PDF')}
+      ${pdfBtn(r.in_pdf_url,'📥 Return checklist PDF')}
+
+      <div class="panel" style="margin-top:14px;background:var(--bg2,#1a1a1a)">
+        <h4 style="margin:0 0 10px">Return summary</h4>
+        <div class="sumrow"><span>Mileage</span><div>${mileageRow}</div></div>
+        <div class="sumrow"><span>Petrol</span><div>${petrolRow}</div></div>
+        <div class="sumrow"><span>New damage</span><div>${damageRow}</div></div>
+      </div>
+
+      ${r.status!=='completed'?`<button class="btn ok full" style="margin-top:14px" onclick="openReturn('${r.id}')">Do Return now ›</button>`:''}
+    </div>
+    <button class="btn sec full" style="margin-top:14px" onclick="showHistory()">‹ Back to history</button>`;
+}
+
 /* ====== FORM ====== */
 function P(){ return STATE.stage; } // 'out' or 'in'
 function f(key){ return STATE.current[P()+'_'+key]; }
@@ -319,9 +429,11 @@ function showForm(){
       </div>
     </div>
     <label style="margin-top:10px">Car type</label>
-    <div class="seg" id="carTypeSeg">
-      ${CAR_TYPES.map(t=>`<button type="button" class="${(a.car_type||'sedan')===t.k?'on':''}" ${lockShared?'disabled':''} onclick="setCarType('${t.k}')">${t.name}</button>`).join('')}
-    </div>
+    ${st==='in'
+      ? `<input value="${esc((CAR_TYPES.find(t=>t.k===(a.car_type||'sedan'))||{name:'Sedan'}).name)}" disabled>`
+      : `<div class="seg" id="carTypeSeg">
+      ${CAR_TYPES.map(t=>`<button type="button" class="${(a.car_type||'sedan')===t.k?'on':''}" onclick="setCarType('${t.k}')">${t.name}</button>`).join('')}
+    </div>`}
   </div>
 
   <div class="panel">
@@ -389,7 +501,18 @@ function showForm(){
 
   <div class="panel">
     <h3>Photos (4 rims + 4 sides + mileage + petrol)</h3>
-    <p class="hint" style="margin-bottom:8px">Tap each slot to take/upload a photo. All 10 required.</p>
+    <p class="hint" style="margin-bottom:8px">Bulk upload a group, or tap a slot to add/replace one. All 10 required.</p>
+    <div class="bulk-row">
+      <label class="btn sec mini bulk-btn">📷 Add 4 Rim photos
+        <input type="file" accept="image/*" multiple onchange="onBulkPhotos(this,0,4)">
+      </label>
+      <label class="btn sec mini bulk-btn">📷 Add 4 Side photos
+        <input type="file" accept="image/*" multiple onchange="onBulkPhotos(this,4,8)">
+      </label>
+      <label class="btn sec mini bulk-btn">📷 Mileage + Petrol
+        <input type="file" accept="image/*" multiple onchange="onBulkPhotos(this,8,10)">
+      </label>
+    </div>
     <div class="photo-grid" id="photoGrid">
       ${PHOTO_SLOTS.map((lbl,i)=>photoSlot(lbl,i)).join('')}
     </div>
@@ -539,24 +662,51 @@ function photoSlot(lbl,i){
 }
 function onPhoto(i,input){
   const file=input.files&&input.files[0]; if(!file) return;
+  downscalePhoto(file,data=>{
+    const arr=(f('photos')||[]).slice();
+    arr[i]={label:PHOTO_SLOTS[i],data:data};
+    STATE.current[P()+'_photos']=arr;
+    refreshPhotoSlots();
+  });
+}
+/* shared: read a File, downscale to <=1000px JPEG, return data URL via callback */
+function downscalePhoto(file,cb){
   const reader=new FileReader();
   reader.onload=()=>{
-    // downscale to keep payload light
     const img=new Image();
     img.onload=()=>{
       const max=1000; let w=img.width,h=img.height;
       if(w>h && w>max){ h=h*max/w; w=max; } else if(h>max){ w=w*max/h; h=max; }
       const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
       cv.getContext('2d').drawImage(img,0,0,w,h);
-      const data=cv.toDataURL('image/jpeg',0.78);
-      const arr=(f('photos')||[]).slice();
-      arr[i]={label:PHOTO_SLOTS[i],data:data};
-      STATE.current[P()+'_photos']=arr;
-      refreshPhotoSlots();
+      cb(cv.toDataURL('image/jpeg',0.78));
     };
     img.src=reader.result;
   };
   reader.readAsDataURL(file);
+}
+/* bulk: fill EMPTY slots in [start,end) with the selected files, in order */
+function onBulkPhotos(input,start,end){
+  const files=[...(input.files||[])];
+  if(!files.length) return;
+  const arr=(f('photos')||[]).slice();
+  // collect the empty slot indexes in this group
+  let slots=[]; for(let i=start;i<end;i++){ if(!(arr[i]&&arr[i].data)) slots.push(i); }
+  if(!slots.length){ toast('Those slots are already filled — remove one to replace'); input.value=''; return; }
+  const use=files.slice(0,slots.length);
+  if(files.length>slots.length) toast('Only '+slots.length+' empty slot(s) here — extra photos ignored');
+  let done=0;
+  use.forEach((file,k)=>{
+    const slotIdx=slots[k];
+    downscalePhoto(file,data=>{
+      const cur=(f('photos')||[]).slice();
+      cur[slotIdx]={label:PHOTO_SLOTS[slotIdx],data:data};
+      STATE.current[P()+'_photos']=cur;
+      done++;
+      if(done===use.length){ refreshPhotoSlots(); toast(done+' photo(s) added'); }
+    });
+  });
+  input.value=''; // allow re-selecting same files later
 }
 function refreshPhotoSlots(){
   const arr=f('photos')||[];

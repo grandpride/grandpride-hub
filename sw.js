@@ -9,7 +9,7 @@
    the CACHE version below and redeploy.
    ============================================================ */
 
-const CACHE = 'gp-hub-v5';
+const CACHE = 'gp-hub-v8';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
