@@ -160,6 +160,66 @@ async function sbAll(){
   const r = await fetch(sbBase()+"/rest/v1/gp_checklists?select=*&order=created_at.desc", {headers:sbHeaders()});
   if(!r.ok) return []; return await r.json();
 }
+
+/* ===== LOAD FROM AGREEMENT ===== */
+async function sbAgreements(){
+  if(!CLOUD) return [];
+  const r = await fetch(sbBase()+"/rest/v1/gp_agreements?type=eq.lease&select=*&order=created_at.desc", {headers:sbHeaders()});
+  if(!r.ok) return [];
+  return await r.json();
+}
+async function openAgreementPicker(){
+  toast('Loading agreements…');
+  const rows = await sbAgreements();
+  const ov=document.createElement('div');
+  ov.id='agreementPicker';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;flex-direction:column;padding:18px;overflow:auto';
+  let inner=`<div style="max-width:560px;margin:0 auto;width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="color:var(--gold-soft);font-weight:800;font-size:16px">Pick an agreement</div>
+      <button class="btn sec mini" onclick="closeAgreementPicker()">Close</button>
+    </div>`;
+  if(!rows.length){
+    inner+=`<p style="color:var(--grey)">No leasing agreements found.</p>`;
+  } else {
+    inner+=rows.map(r=>{
+      const d=r.data||{};
+      return `<div onclick='fillFromAgreement(${JSON.stringify(JSON.stringify(r)).replace(/'/g,"&#39;")})' style="background:#13110e;border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer">
+        <div style="color:var(--text);font-weight:700">${esc(d.lessee_name||r.lessee_name||'(no name)')} ${(d.v_reg||r.reg_no)?('· '+esc(d.v_reg||r.reg_no)):''}</div>
+        <div style="color:var(--grey);font-size:12px;margin-top:2px">${esc(d.v_make_model||'')} ${d.lease_from?('· '+esc(d.lease_from)):''} ${r.status?('· '+esc(r.status)):''}</div>
+      </div>`;
+    }).join('');
+  }
+  inner+=`</div>`;
+  ov.innerHTML=inner;
+  document.body.appendChild(ov);
+}
+function closeAgreementPicker(){ const o=$('agreementPicker'); if(o) o.remove(); }
+
+function fillFromAgreement(rowJson){
+  let r; try{ r=JSON.parse(rowJson); }catch(e){ toast('Could not read agreement'); return; }
+  const d=r.data||{};
+  const a=STATE.current;
+  a.plan='lease';
+  a.customer_name   = d.lessee_name || '';
+  a.customer_contact= d.contact || a.customer_contact || '';
+  a.car_model       = d.v_make_model || '';
+  a.car_plate       = d.v_reg || r.reg_no || '';
+  a.fuel_type       = d.petrol_type || a.fuel_type;
+  // lease dates + duration + pricing carried from agreement (and its booking)
+  a.out_date        = a.out_date || (d.lease_from||'');
+  a.lease_from      = d.lease_from || '';
+  a.lease_to        = d.lease_to || '';
+  a.duration_days   = d.duration_days || '';
+  a.leasing_price   = d.leasing_price || '';
+  a.deposit         = d.deposit || '';
+  a.mileage_given   = d.mileage_given || '';
+  a.per_km          = d.per_km || '';
+  a.from_agreement_id = r.id;
+  closeAgreementPicker();
+  showForm();
+  toast('Loaded from agreement ✓');
+}
 async function sbByPlate(plate){
   if(!CLOUD) return [];
   const r = await fetch(sbBase()+"/rest/v1/gp_checklists?car_plate=eq."+encodeURIComponent(plate)+"&select=*&order=created_at.desc", {headers:sbHeaders()});
@@ -419,6 +479,11 @@ function showForm(){
   const lockShared = st==='in'; // shared car/customer fields locked on return
   activeDefect = st==='in' ? 'ND' : 'D';
   $('view').innerHTML = `
+  ${st==='out' ? `<div class="panel" style="border:1px solid var(--gold)">
+    <h3>Quick Fill</h3>
+    <button class="btn sec full" onclick="openAgreementPicker()">📥 Load from agreement</button>
+    <p class="hint" style="margin-top:6px">Pull a signed/saved agreement to auto-fill this checklist. Optional — leave blank for manual entry.</p>
+  </div>` : ''}
   <div class="panel">
     <h3>Plan &amp; Stage</h3>
     <div class="row2">

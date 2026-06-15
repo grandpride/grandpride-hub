@@ -198,6 +198,66 @@ async function sbDelete(id){
   return r.ok;
 }
 
+/* ===== LOAD FROM BOOKING ===== */
+async function sbLeasingBookings(){
+  if(!CLOUD) return [];
+  const r = await fetch(sbBase()+"/rest/v1/gp_bookings?service=eq.leasing&select=*&order=created_at.desc", {headers:sbHeaders()});
+  if(!r.ok) return [];
+  return await r.json();
+}
+async function openBookingPicker(){
+  toast('Loading bookings…');
+  const rows = await sbLeasingBookings();
+  const ov = document.createElement('div');
+  ov.id='bookingPicker';
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;flex-direction:column;padding:18px;overflow:auto';
+  let inner = `<div style="max-width:560px;margin:0 auto;width:100%">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="color:#d8bd78;font-weight:800;font-size:16px">Pick a leasing booking</div>
+      <button class="btn sec mini" onclick="closeBookingPicker()">Close</button>
+    </div>`;
+  if(!rows.length){
+    inner += `<p style="color:#9a8f7e">No leasing bookings found.</p>`;
+  } else {
+    inner += rows.map(r=>{
+      const d=r.data||{};
+      return `<div onclick='fillFromBooking(${JSON.stringify(JSON.stringify(r)).replace(/'/g,"&#39;")})' style="background:#15120c;border:1px solid #2a2419;border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer">
+        <div style="color:#f5f0e6;font-weight:700">${esc(r.customer_name||'(no name)')} ${r.car_plate?('· '+esc(r.car_plate)):''}</div>
+        <div style="color:#9a8f7e;font-size:12px;margin-top:2px">${esc(r.car_model||'')} ${d.start?('· '+esc((d.start||'').slice(0,10))):''} ${d.grand_total?('· RM'+d.grand_total):''}</div>
+      </div>`;
+    }).join('');
+  }
+  inner += `</div>`;
+  ov.innerHTML = inner;
+  document.body.appendChild(ov);
+}
+function closeBookingPicker(){ const o=$('bookingPicker'); if(o) o.remove(); }
+
+function fillFromBooking(rowJson){
+  let r; try{ r = JSON.parse(rowJson); }catch(e){ toast('Could not read booking'); return; }
+  const d = r.data || {};
+  const a = STATE.current;
+  // map booking -> agreement fields
+  a.lessee_name   = (d.customer_name||'').toUpperCase();
+  a.v_make_model  = (d.car_model||'').toUpperCase();
+  a.v_reg         = (d.car_plate||'').toUpperCase();
+  a.petrol_type   = d.fuel_type || a.petrol_type;
+  a.lease_from    = (d.start||'').slice(0,10);
+  a.lease_to      = (d.end||'').slice(0,10);
+  a.leasing_price = d.rate!=null ? String(d.rate) : a.leasing_price;
+  if(d.insured_pct){ a.insurance_insured = String(d.insured_pct); }
+  // carry extras for the checklist later (stored on the agreement record)
+  a.from_booking_id = r.id;
+  a.contact         = d.contact || '';
+  a.deposit         = d.deposit!=null ? String(d.deposit) : '';
+  a.mileage_given   = d.mileage_given || '';
+  a.per_km          = d.per_km || '';
+  a.grand_total     = d.grand_total!=null ? String(d.grand_total) : '';
+  closeBookingPicker();
+  showLeaseForm(); // re-render with filled values
+  toast('Loaded from booking ✓');
+}
+
 /* ---- helpers ---- */
 function $(id){ return document.getElementById(id); }
 function nricFmt(el){
@@ -324,6 +384,11 @@ function showLeaseForm(){
   setSub('Car Leasing — '+(a.status==='draft'?'New':'Edit'));
   $('listBtn').style.display=''; $('doc').style.display='none';
   $('view').innerHTML = `
+  <div class="panel" style="border:1px solid var(--gold,#c9a24b)">
+    <h3>Quick Fill</h3>
+    <button class="btn sec full" onclick="openBookingPicker()">📥 Load from booking</button>
+    <p class="hint" style="margin-top:6px">Pull a leasing booking to auto-fill this agreement. Optional — leave blank for manual entry.</p>
+  </div>
   <div class="panel"><h3>Agreement</h3>
     <label>Agreement date</label>
     <input type="date" id="f_agreement_date" value="${esc(a.agreement_date)}" onclick="try{this.showPicker()}catch(e){}">
