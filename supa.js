@@ -8,22 +8,23 @@
 var SUPABASE_URL = "https://iefevjkeckysdluzazeq.supabase.co";
 var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
 
+/* Capture invite/recovery type from the URL hash IMMEDIATELY, before the
+   supabase-js client loads and scrubs the hash. The link looks like:
+   .../#access_token=...&type=invite   (or type=recovery) */
+var _capturedInviteType = (function(){
+  try{
+    var h = window.location.hash || '';
+    var q = window.location.search || '';
+    var m = h.match(/[#&]type=([a-zA-Z_]+)/) || q.match(/[?&]type=([a-zA-Z_]+)/);
+    var hasToken = /access_token=/.test(h) || /access_token=/.test(q) || /code=/.test(q);
+    if(m && hasToken && (m[1]==='invite' || m[1]==='recovery' || m[1]==='signup')) return m[1];
+  }catch(e){}
+  return null;
+})();
+
 var SUPA = (function(){
   var client = null;
   var ready = false;
-
-  // Capture the invite/recovery type IMMEDIATELY at load — before supabase-js is
-  // imported and auto-scrubs the URL hash. Stored so pendingInviteType() is reliable.
-  var _capturedInviteType = (function(){
-    try{
-      var h = (typeof window!=='undefined' && window.location.hash) || '';
-      var q = (typeof window!=='undefined' && window.location.search) || '';
-      if(/type=invite/.test(h) || /type=invite/.test(q)) return 'invite';
-      if(/type=recovery/.test(h) || /type=recovery/.test(q)) return 'recovery';
-      if(/[?&]code=/.test(q)) return 'invite';
-      return null;
-    }catch(e){ return null; }
-  })();
 
   function loadLib(){
     return new Promise(function(resolve){
@@ -88,6 +89,43 @@ var SUPA = (function(){
     }catch(e){ return null; }
   }
 
+  /* ===== INVITE / PASSWORD RECOVERY =====
+     When a user clicks an invite or password-recovery email link, Supabase
+     puts them in a temporary session. We must force them to set a password
+     BEFORE letting them into the app. */
+
+  // 'invite' | 'recovery' | 'signup' | null  (captured before the hash was scrubbed)
+  function pendingInviteType(){ return _capturedInviteType; }
+
+  // True if the current page load came from an invite/recovery link AND a session exists
+  async function hasInviteSession(){
+    if(!_capturedInviteType) return false;
+    if(!isReady()){ var ok = await init(); if(!ok) return false; }
+    try{
+      var r = await client.auth.getSession();
+      return !!(r && r.data && r.data.session);
+    }catch(e){ return false; }
+  }
+
+  // Set (or reset) the password for the user in the current invite/recovery session
+  async function setMyPassword(newPassword){
+    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
+    try{
+      var r = await client.auth.updateUser({ password: newPassword });
+      if(r.error) return { ok:false, error:r.error.message };
+      return { ok:true, user: r.data ? r.data.user : null };
+    }catch(e){ return { ok:false, error:String(e) }; }
+  }
+
+  // Clear the invite type + scrub any leftover auth hash from the URL
+  function clearAuthHash(){
+    _capturedInviteType = null;
+    try{
+      var clean = window.location.pathname + (window.location.search.replace(/[?&](access_token|refresh_token|type|expires_in|token_type|code)=[^&]*/g,'').replace(/^&/,'?') || '');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }catch(e){}
+  }
+
   // upsert one or many rows into a table
   async function up(table, rows, onConflict){
     if(!isReady()) return { ok:false, offline:true };
@@ -123,69 +161,7 @@ var SUPA = (function(){
     }catch(e){ return { ok:false, error:String(e) }; }
   }
 
-  /* ===== INVITE / SET-PASSWORD FLOW ===== */
-  // When a staff member clicks the invite (or reset) email, Supabase appends a
-  // token to the URL. Older links use the hash (#access_token=...&type=invite);
-  // newer links use a one-time ?code=... (PKCE). Either way, after the supabase-js
-  // library loads it auto-exchanges the token and a session exists. We detect that
-  // this session arrived via an invite/recovery link — NOT a normal login — so the
-  // app can show the "set your password" panel instead of dropping them in the Hub.
-  // Returns 'invite', 'recovery', or null — captured at module load (see top).
-  function pendingInviteType(){ return _capturedInviteType; }
-
-  // After init(), confirm a session actually exists (token was valid & exchanged).
-  async function hasInviteSession(){
-    if(!isReady()){ var ok = await init(); if(!ok) return false; }
-    try{
-      var r = await client.auth.getSession();
-      return !!(r && r.data && r.data.session);
-    }catch(e){ return false; }
-  }
-
-  // Staff sets their own password on the invite panel.
-  async function setMyPassword(newPassword){
-    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
-    if(!newPassword || newPassword.length < 8) return { ok:false, error:'Password must be at least 8 characters.' };
-    try{
-      var r = await client.auth.updateUser({ password: newPassword });
-      if(r.error) return { ok:false, error:r.error.message };
-      return { ok:true };
-    }catch(e){ return { ok:false, error:String(e) }; }
-  }
-
-  // Clean the invite token out of the URL bar so a refresh doesn't re-trigger the panel.
-  function clearAuthHash(){
-    try{
-      var clean = window.location.origin + window.location.pathname;
-      window.history.replaceState({}, document.title, clean);
-    }catch(e){}
-  }
-
-  /* ===== ADMIN: SEND INVITE (via Edge Function, never service_role in browser) =====
-     Calls the 'invite-staff' Edge Function. The function verifies the CALLER is an
-     Admin (using their logged-in JWT) before it uses the service_role key to create
-     the Auth user + gp_staff row. If the caller isn't an admin, it returns 403. */
-  async function inviteStaff(payload){
-    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
-    try{
-      var s = await client.auth.getSession();
-      var token = s && s.data && s.data.session ? s.data.session.access_token : null;
-      if(!token) return { ok:false, error:'You must be logged in as admin to invite staff.' };
-      var resp = await client.functions.invoke('invite-staff', {
-        body: payload,
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      if(resp.error){
-        var msg = resp.error.message || 'Invite failed';
-        try{ if(resp.error.context && resp.error.context.json){ var j = await resp.error.context.json(); if(j && j.error) msg = j.error; } }catch(e){}
-        return { ok:false, error:msg };
-      }
-      return { ok:true, data: resp.data };
-    }catch(e){ return { ok:false, error:String(e) }; }
-  }
-
   return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;},
            signInUsername:signInUsername, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile,
-           pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession,
-           setMyPassword:setMyPassword, clearAuthHash:clearAuthHash, inviteStaff:inviteStaff };
+           pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession, setMyPassword:setMyPassword, clearAuthHash:clearAuthHash };
 })();

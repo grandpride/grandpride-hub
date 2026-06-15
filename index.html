@@ -324,6 +324,27 @@
   </div>
 </div>
 
+<!-- ============ SET PASSWORD (invite / recovery) ============ -->
+<div id="setPwScreen" class="screen">
+  <div class="login-card">
+    <div class="crest" id="setPwCrest"></div>
+    <div class="brand-name display">Grandpride</div>
+    <div class="brand-sub" id="setPwSub">Set your password</div>
+    <div class="divider"></div>
+    <p style="font-size:13px;color:var(--grey,#9a8f7e);margin:0 0 10px;text-align:center" id="setPwHello">Welcome! Please create a password to finish setting up your account.</p>
+    <div class="field">
+      <label>New Password</label>
+      <input id="spPass" type="text" style="-webkit-text-security:disc;text-security:disc" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="at least 6 characters">
+    </div>
+    <div class="field">
+      <label>Confirm Password</label>
+      <input id="spPass2" type="text" style="-webkit-text-security:disc;text-security:disc" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="repeat password">
+    </div>
+    <button class="btn" id="btnSetPw">Set Password</button>
+    <div class="err" id="spErr"></div>
+  </div>
+</div>
+
 <!-- ============ HUB ============ -->
 <div id="hubScreen" class="screen">
   <div class="topbar">
@@ -616,6 +637,57 @@ async function doLogin(){
   maybeShowPushBanner();
 }
 function logout(){ current=null; try{ SUPA.signOut(); }catch(e){} forgetUser(); show('loginScreen'); }
+
+/* ===== INVITE / RECOVERY LANDING =====
+   If this page load came from an invite or password-recovery email link,
+   force the user to set a password BEFORE entering the app. Returns true
+   if we showed the set-password screen (caller must then STOP). */
+async function handleInviteLanding(){
+  try{
+    const type = SUPA.pendingInviteType();
+    if(!type) return false;
+    const has = await SUPA.hasInviteSession();
+    if(!has) return false;
+    const sub = document.getElementById('setPwSub');
+    const hello = document.getElementById('setPwHello');
+    if(type==='recovery'){
+      if(sub) sub.textContent = 'Reset your password';
+      if(hello) hello.textContent = 'Please enter a new password for your account.';
+    } else {
+      if(sub) sub.textContent = 'Set your password';
+      if(hello) hello.textContent = 'Welcome! Please create a password to finish setting up your account.';
+    }
+    const crest = document.getElementById('setPwCrest');
+    if(crest && !crest.innerHTML){ try{ crest.innerHTML = document.getElementById('loginCrest').innerHTML; }catch(e){} }
+    show('setPwScreen');
+    return true;
+  }catch(e){ return false; }
+}
+
+async function doSetPassword(){
+  const p1 = document.getElementById('spPass').value.trim();
+  const p2 = document.getElementById('spPass2').value.trim();
+  const err = document.getElementById('spErr');
+  err.textContent = '';
+  if(p1.length < 6){ err.textContent = 'Password must be at least 6 characters.'; return; }
+  if(p1 !== p2){ err.textContent = 'Passwords do not match.'; return; }
+  const btn = document.getElementById('btnSetPw');
+  if(btn){ btn.disabled = true; btn.textContent = 'Saving…'; }
+  const res = await SUPA.setMyPassword(p1);
+  if(!res.ok){
+    err.textContent = res.error || 'Could not set password. Try the link again.';
+    if(btn){ btn.disabled = false; btn.textContent = 'Set Password'; }
+    return;
+  }
+  try{ await SUPA.signOut(); }catch(e){}
+  try{ SUPA.clearAuthHash(); }catch(e){}
+  document.getElementById('spPass').value = '';
+  document.getElementById('spPass2').value = '';
+  if(btn){ btn.disabled = false; btn.textContent = 'Set Password'; }
+  const liErr = document.getElementById('liErr');
+  if(liErr){ liErr.style.color = 'var(--green,#3fae6b)'; liErr.textContent = 'Password set! Please sign in with your username and new password.'; }
+  show('loginScreen');
+}
 
 /* Auto-login: restore an existing Supabase Auth session (stays signed in on device). */
 async function tryAutoLogin(){
@@ -2822,6 +2894,14 @@ async function init(){
 
   const pw=document.getElementById('liPass');
   if(pw) pw.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+  bind('btnSetPw', doSetPassword);
+  const sp2=document.getElementById('spPass2');
+  if(sp2) sp2.addEventListener('keydown',e=>{ if(e.key==='Enter') doSetPassword(); });
+
+  // Invite / password-recovery links must set a password FIRST (before auto-login)
+  const landed = await handleInviteLanding();
+  if(landed) return; // stop here — show set-password screen, don't auto-login
 
   // Remembered device: restore Supabase Auth session if still valid
   await tryAutoLogin();
