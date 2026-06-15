@@ -303,6 +303,8 @@ function blankChecklist(){
   return {
     id:uid(), plan:'lease', car_type:'sedan', status:'awaiting_return', created_by:curUser(), created_at:todayISO(),
     customer_name:'', customer_contact:'', car_model:'', car_plate:'',
+    fuel_type:'RON97', lease_from:'', lease_to:'', duration_days:'',
+    mileage_given:'', per_km:'', leasing_price:'', deposit:'',
     out_date:todayISO(), out_time:nowTime(), out_mileage:'', out_petrol:0,
     out_defects:[], out_checks:{}, out_photos:[], out_sig_inspector:'', out_sig_customer:'', out_pdf_url:'',
     in_date:'', in_time:'', in_mileage:'', in_petrol:0,
@@ -516,6 +518,14 @@ function showForm(){
       <div><label>Car model</label><input id="f_car_model" value="${esc(a.car_model)}" ${lockShared?'disabled':''} oninput="upper(this)"></div>
       <div><label>Car plate number</label><input id="f_car_plate" value="${esc(a.car_plate)}" ${lockShared?'disabled':''} oninput="upper(this)"></div>
     </div>
+    <div class="row2" style="margin-top:8px">
+      <div><label>Petrol fuel type</label>
+        <select id="f_fuel_type" ${lockShared?'disabled':''}>
+          ${['RON95','RON97','RON100','Diesel'].map(ft=>`<option ${(a.fuel_type||'RON97')===ft?'selected':''}>${ft}</option>`).join('')}
+        </select>
+      </div>
+      <div></div>
+    </div>
   </div>
 
   <div class="panel">
@@ -524,6 +534,22 @@ function showForm(){
       <div><label>Date</label><input type="date" id="f_date" value="${esc(f('date'))}" onclick="try{this.showPicker()}catch(e){}"></div>
       <div><label>Time (check)</label><input id="f_time" value="${esc(f('time'))}" placeholder="HH:MM"></div>
     </div>
+    ${st==='out'?`
+    <div class="row2" style="margin-top:8px">
+      <div><label>Lease from</label><input type="date" id="f_lease_from" value="${esc(a.lease_from||'')}" onclick="try{this.showPicker()}catch(e){}"></div>
+      <div><label>Lease to</label><input type="date" id="f_lease_to" value="${esc(a.lease_to||'')}" onclick="try{this.showPicker()}catch(e){}"></div>
+    </div>
+    <div class="row2" style="margin-top:8px">
+      <div><label>Duration (days)</label><input id="f_duration_days" value="${esc(a.duration_days||'')}" placeholder="e.g. 1 DAYS"></div>
+      <div><label>Mileage given (km)</label><input id="f_mileage_given" value="${esc(a.mileage_given||'')}" inputmode="numeric" placeholder="e.g. 200"></div>
+    </div>
+    <div class="row2" style="margin-top:8px">
+      <div><label>Per km exceed (RM)</label><input id="f_per_km" value="${esc(a.per_km||'')}" inputmode="decimal" placeholder="e.g. 2.00"></div>
+      <div><label>Leasing price (RM)</label><input id="f_leasing_price" value="${esc(a.leasing_price||'')}" inputmode="decimal" placeholder="0.00"></div>
+    </div>
+    <label style="margin-top:8px">Deposit (RM)</label>
+    <input id="f_deposit" value="${esc(a.deposit||'')}" inputmode="decimal" placeholder="0.00">
+    `:''}
     <label>${st==='out'?'Begin Mileage':'End Mileage'}</label>
     <input id="f_mileage" value="${esc(f('mileage'))}" inputmode="numeric" placeholder="e.g. 35000" oninput="updateDistance()">
     ${st==='in'?`<div class="row2" style="margin-top:8px">
@@ -823,6 +849,14 @@ function readForm(){
     a.plan=g('f_plan')||a.plan;
     a.customer_name=g('f_customer_name'); a.customer_contact=g('f_customer_contact');
     a.car_model=g('f_car_model'); a.car_plate=g('f_car_plate');
+    a.fuel_type=g('f_fuel_type')||a.fuel_type;
+    a.lease_from=g('f_lease_from')||a.lease_from;
+    a.lease_to=g('f_lease_to')||a.lease_to;
+    a.duration_days=g('f_duration_days')||a.duration_days;
+    a.mileage_given=g('f_mileage_given')||a.mileage_given;
+    a.per_km=g('f_per_km')||a.per_km;
+    a.leasing_price=g('f_leasing_price')||a.leasing_price;
+    a.deposit=g('f_deposit')||a.deposit;
   }
   a[st+'_date']=g('f_date'); a[st+'_time']=g('f_time'); a[st+'_mileage']=g('f_mileage');
   // petrol + checks + defects + photos already in state
@@ -923,6 +957,9 @@ async function testGeneratePdf(){
       car_model:'TEST CAR', car_plate:'TEST123',
       date:new Date().toISOString().slice(0,10), time:'12:00',
       mileage:'10000', petrol:'4',
+      fuel_type:'RON97', lease_from:'2026-06-15', lease_to:'2026-06-20',
+      duration_days:'5 DAYS', mileage_given:'1000', per_km:'2.00',
+      leasing_price:'1500.00', deposit:'3000.00',
       car_diagram:diagramPng,
       sig_inspector:'', sig_customer:'', photos:[],
       chk_inspection:'YES', chk_features:'YES', chk_bluetooth:'YES', chk_smoking:'YES', chk_fuel:'YES',
@@ -958,6 +995,9 @@ function buildPayload(a, st, diagramPng){
     customer_name:a.customer_name, customer_contact:a.customer_contact,
     car_model:a.car_model, car_plate:a.car_plate,
     date:f('date'), time:f('time'), mileage:f('mileage'), petrol:String(f('petrol')||''),
+    fuel_type:a.fuel_type||'', lease_from:a.lease_from||'', lease_to:a.lease_to||'',
+    duration_days:a.duration_days||'', mileage_given:a.mileage_given||'',
+    per_km:a.per_km||'', leasing_price:a.leasing_price||'', deposit:a.deposit||'',
     car_diagram:diagramPng,
     sig_inspector:f('sig_inspector'), sig_customer:f('sig_customer'),
     photos:(f('photos')||[]).filter(p=>p&&p.data),
