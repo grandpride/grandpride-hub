@@ -126,6 +126,39 @@ var SUPA = (function(){
     }catch(e){}
   }
 
+  /* ===== EMAIL OTP (first-time setup / forgot password) =====
+     Flow: send a 6-digit code to the staff email -> verify code ->
+     a session exists -> set a password -> sign out -> normal login. */
+
+  // Look up whether an email exists in gp_staff (so we only OTP real staff)
+  async function emailExistsInStaff(email){
+    if(!isReady()){ var ok = await init(); if(!ok) return false; }
+    try{
+      var r = await client.from('gp_staff').select('username').eq('email', email).limit(1);
+      return !!(r.data && r.data.length);
+    }catch(e){ return false; }
+  }
+
+  // Send a 6-digit OTP code to the email (does NOT create a new user)
+  async function sendEmailOtp(email){
+    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
+    try{
+      var r = await client.auth.signInWithOtp({ email: email, options: { shouldCreateUser: false } });
+      if(r.error) return { ok:false, error:r.error.message };
+      return { ok:true };
+    }catch(e){ return { ok:false, error:String(e) }; }
+  }
+
+  // Verify the 6-digit code -> creates a session if correct
+  async function verifyEmailOtp(email, code){
+    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
+    try{
+      var r = await client.auth.verifyOtp({ email: email, token: code, type: 'email' });
+      if(r.error) return { ok:false, error:r.error.message };
+      return { ok:true, user: r.data ? r.data.user : null };
+    }catch(e){ return { ok:false, error:String(e) }; }
+  }
+
   // upsert one or many rows into a table
   async function up(table, rows, onConflict){
     if(!isReady()) return { ok:false, offline:true };
@@ -163,5 +196,6 @@ var SUPA = (function(){
 
   return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;},
            signInUsername:signInUsername, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile,
-           pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession, setMyPassword:setMyPassword, clearAuthHash:clearAuthHash };
+           pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession, setMyPassword:setMyPassword, clearAuthHash:clearAuthHash,
+           emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp };
 })();

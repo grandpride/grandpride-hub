@@ -317,6 +317,7 @@
     </div>
     <button class="btn" id="btnEnter">Welcome, have a good day.</button>
     <div class="err" id="liErr"></div>
+    <p style="text-align:center;margin:10px 0 0"><a href="#" id="firstTimeLink" style="color:var(--gold-soft,#d8bd78);font-size:13px;text-decoration:underline">First time? / Forgot password?</a></p>
     <div class="login-slogans">
       <p><b>Grandpride</b> — Exclusive Ride Make Possible</p>
       <p><b>Grandlab</b> — Your Personalize Detailer</p>
@@ -342,6 +343,40 @@
     </div>
     <button class="btn" id="btnSetPw">Set Password</button>
     <div class="err" id="spErr"></div>
+  </div>
+</div>
+
+<!-- ============ EMAIL OTP (first time / forgot) ============ -->
+<div id="otpScreen" class="screen">
+  <div class="login-card">
+    <div class="crest" id="otpCrest"></div>
+    <div class="brand-name display">Grandpride</div>
+    <div class="brand-sub">First time / Reset</div>
+    <div class="divider"></div>
+
+    <!-- Step 1: enter email -->
+    <div id="otpStep1">
+      <p style="font-size:13px;color:var(--grey,#9a8f7e);margin:0 0 10px;text-align:center">Enter your work email. We'll send you a 6-digit code.</p>
+      <div class="field">
+        <label>Email</label>
+        <input id="otpEmail" type="email" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@grandpride.com">
+      </div>
+      <button class="btn" id="btnSendOtp">Send Code</button>
+    </div>
+
+    <!-- Step 2: enter code -->
+    <div id="otpStep2" style="display:none">
+      <p style="font-size:13px;color:var(--grey,#9a8f7e);margin:0 0 10px;text-align:center">Enter the 6-digit code we emailed you.</p>
+      <div class="field">
+        <label>6-digit Code</label>
+        <input id="otpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
+      </div>
+      <button class="btn" id="btnVerifyOtp">Verify Code</button>
+      <p style="text-align:center;margin:8px 0 0"><a href="#" id="otpResend" style="color:var(--gold-soft,#d8bd78);font-size:12px">Resend code</a></p>
+    </div>
+
+    <div class="err" id="otpErr"></div>
+    <p style="text-align:center;margin:10px 0 0"><a href="#" id="otpBack" style="color:var(--grey,#9a8f7e);font-size:13px">‹ Back to login</a></p>
   </div>
 </div>
 
@@ -687,6 +722,65 @@ async function doSetPassword(){
   const liErr = document.getElementById('liErr');
   if(liErr){ liErr.style.color = 'var(--green,#3fae6b)'; liErr.textContent = 'Password set! Please sign in with your username and new password.'; }
   show('loginScreen');
+}
+
+/* ===== EMAIL OTP (first time / forgot password) ===== */
+function showOtp(){
+  document.getElementById('otpStep1').style.display='';
+  document.getElementById('otpStep2').style.display='none';
+  document.getElementById('otpErr').textContent='';
+  document.getElementById('otpCode').value='';
+  const crest = document.getElementById('otpCrest');
+  if(crest && !crest.innerHTML){ try{ crest.innerHTML = document.getElementById('loginCrest').innerHTML; }catch(e){} }
+  show('otpScreen');
+}
+let _otpEmail='';
+async function sendOtp(){
+  const email = document.getElementById('otpEmail').value.trim().toLowerCase();
+  const err = document.getElementById('otpErr');
+  err.style.color=''; err.textContent='';
+  if(!email || email.indexOf('@')<0){ err.textContent='Enter a valid email.'; return; }
+  const btn=document.getElementById('btnSendOtp');
+  if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+  // only send to emails that belong to a staff record
+  const exists = await SUPA.emailExistsInStaff(email);
+  if(!exists){
+    err.textContent='That email is not registered. Ask admin to add you first.';
+    if(btn){ btn.disabled=false; btn.textContent='Send Code'; }
+    return;
+  }
+  const res = await SUPA.sendEmailOtp(email);
+  if(!res.ok){
+    err.textContent = res.error || 'Could not send code. Try again.';
+    if(btn){ btn.disabled=false; btn.textContent='Send Code'; }
+    return;
+  }
+  _otpEmail = email;
+  document.getElementById('otpStep1').style.display='none';
+  document.getElementById('otpStep2').style.display='';
+  err.style.color='var(--green,#3fae6b)'; err.textContent='Code sent! Check your email (and spam).';
+  if(btn){ btn.disabled=false; btn.textContent='Send Code'; }
+}
+async function verifyOtp(){
+  const code = document.getElementById('otpCode').value.trim();
+  const err = document.getElementById('otpErr');
+  err.style.color=''; err.textContent='';
+  if(code.length<6){ err.textContent='Enter the 6-digit code.'; return; }
+  const btn=document.getElementById('btnVerifyOtp');
+  if(btn){ btn.disabled=true; btn.textContent='Verifying…'; }
+  const res = await SUPA.verifyEmailOtp(_otpEmail, code);
+  if(!res.ok){
+    err.textContent = res.error || 'Wrong or expired code.';
+    if(btn){ btn.disabled=false; btn.textContent='Verify Code'; }
+    return;
+  }
+  if(btn){ btn.disabled=false; btn.textContent='Verify Code'; }
+  // Code OK -> session exists -> send them to set a password
+  const sub=document.getElementById('setPwSub'); if(sub) sub.textContent='Set your password';
+  const hello=document.getElementById('setPwHello'); if(hello) hello.textContent='Almost done! Create a password so you can log in next time.';
+  const crest=document.getElementById('setPwCrest');
+  if(crest && !crest.innerHTML){ try{ crest.innerHTML=document.getElementById('loginCrest').innerHTML; }catch(e){} }
+  show('setPwScreen');
 }
 
 /* Auto-login: restore an existing Supabase Auth session (stays signed in on device). */
@@ -2898,6 +2992,14 @@ async function init(){
   bind('btnSetPw', doSetPassword);
   const sp2=document.getElementById('spPass2');
   if(sp2) sp2.addEventListener('keydown',e=>{ if(e.key==='Enter') doSetPassword(); });
+
+  bind('firstTimeLink', (e)=>{ if(e&&e.preventDefault)e.preventDefault(); showOtp(); });
+  bind('btnSendOtp', sendOtp);
+  bind('btnVerifyOtp', verifyOtp);
+  bind('otpResend', (e)=>{ if(e&&e.preventDefault)e.preventDefault(); document.getElementById('otpStep2').style.display='none'; document.getElementById('otpStep1').style.display=''; });
+  bind('otpBack', (e)=>{ if(e&&e.preventDefault)e.preventDefault(); show('loginScreen'); });
+  const oc=document.getElementById('otpCode');
+  if(oc) oc.addEventListener('keydown',e=>{ if(e.key==='Enter') verifyOtp(); });
 
   // Invite / password-recovery links must set a password FIRST (before auto-login)
   const landed = await handleInviteLanding();
