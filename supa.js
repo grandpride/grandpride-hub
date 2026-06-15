@@ -67,6 +67,23 @@ var SUPA = (function(){
     }catch(e){ return { ok:false, error:String(e) }; }
   }
 
+  // sign in directly with email + password
+  async function signInEmail(email, password){
+    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
+    try{
+      var ar = await client.auth.signInWithPassword({ email: email, password: password });
+      if(ar.error) return { ok:false, error:'Wrong email or password.' };
+      return { ok:true, user: ar.data.user };
+    }catch(e){ return { ok:false, error:String(e) }; }
+  }
+
+  // smart sign-in: if the identifier has "@" treat as email, else as username
+  async function signIn(identifier, password){
+    var id = (identifier||'').trim().toLowerCase();
+    if(id.indexOf('@') >= 0) return signInEmail(id, password);
+    return signInUsername(id, password);
+  }
+
   async function signOut(){
     try{ if(client) await client.auth.signOut(); }catch(e){}
   }
@@ -195,7 +212,7 @@ var SUPA = (function(){
   }
 
   return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;},
-           signInUsername:signInUsername, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile,
+           signInUsername:signInUsername, signInEmail:signInEmail, signIn:signIn, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile,
            pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession, setMyPassword:setMyPassword, clearAuthHash:clearAuthHash,
            emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp };
 })();

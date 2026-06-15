@@ -310,8 +310,8 @@
     <div class="brand-sub">Internal Hub</div>
     <div class="divider"></div>
     <div class="field">
-      <label>Username</label>
-      <input id="liUser" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="username">
+      <label>Username or Email</label>
+      <input id="liUser" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="username or email">
     </div>
     <div class="field">
       <label>Password</label>
@@ -637,12 +637,12 @@ async function doLogin(){
   const err = document.getElementById('liErr');
   const btn = document.getElementById('btnEnter');
 
-  if(!u || !p){ err.textContent = 'Enter username and password.'; return; }
+  if(!u || !p){ err.textContent = 'Enter username/email and password.'; return; }
   err.textContent = 'Signing in…';
   if(btn){ btn.disabled = true; }
 
-  // real Supabase Auth sign-in (username -> email -> password)
-  const res = await SUPA.signInUsername(u, p);
+  // real Supabase Auth sign-in (accepts username OR email; "@" => email)
+  const res = await SUPA.signIn(u, p);
   if(btn){ btn.disabled = false; }
   if(!res.ok){
     err.textContent = res.error || 'Wrong username or password.';
