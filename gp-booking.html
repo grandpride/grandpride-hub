@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>GP Booking</title>
+<style>
+:root{
+  --gold:#c9a24b; --gold-soft:#d8bd78; --grey:#9a8f7e; --text:#f5f0e6;
+  --red:#e05a54; --green:#3fae6b; --blue:#4a78c0;
+  --bg:#0d0b08; --bg2:#15120c; --line:#2a2419;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45}
+.topbar{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,#15120c,#0d0b08);border-bottom:1px solid var(--line);padding:14px 16px;display:flex;align-items:center;gap:12px}
+.topbar .logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#8a5f1e);display:flex;align-items:center;justify-content:center;font-weight:800;color:#1a1408;font-size:15px}
+.topbar h1{font-size:17px;margin:0;font-weight:800}
+.topbar .sub{font-size:11px;color:var(--gold-soft);margin-top:1px}
+.wrap{max-width:640px;margin:0 auto;padding:16px}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.panel h3{font-size:13px;color:var(--gold-soft);margin:0 0 12px;letter-spacing:.5px;text-transform:uppercase}
+label{display:block;font-size:12px;color:var(--grey);margin:10px 0 4px;font-weight:600}
+input,textarea,select{width:100%;background:#0d0b08;border:1.5px solid var(--line);border-radius:9px;padding:11px;color:var(--text);font-size:15px;font-family:inherit}
+input:focus,textarea:focus,select:focus{border-color:var(--gold);outline:none}
+textarea{min-height:64px;resize:vertical}
+.row{display:flex;gap:10px}
+.row>div{flex:1}
+.btn{background:linear-gradient(135deg,var(--gold),#8a5f1e);border:none;color:#1a1408;border-radius:10px;padding:13px 16px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit}
+.btn.full{width:100%}
+.btn.sec{background:#1d1810;color:var(--gold-soft);border:1px solid var(--line)}
+.btn.wa{background:linear-gradient(135deg,#25d366,#128c4b);color:#fff}
+.btn.mini{padding:7px 11px;font-size:13px}
+.btn.danger{background:#2a1512;color:var(--red);border:1px solid #5a2420}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:4px}
+.seg button{background:#15120c;border:1.5px solid var(--line);color:var(--grey);border-radius:10px;padding:13px 8px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+.seg button.on{background:linear-gradient(135deg,var(--gold),#8a5f1e);color:#1a1408;border-color:var(--gold)}
+.hint{font-size:12px;color:var(--grey);margin:4px 0}
+.total-line{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--line);margin-top:8px;font-size:15px}
+.total-line.grand{font-size:18px;font-weight:800;color:var(--gold);border-top:2px solid var(--gold)}
+.addon-row{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+.addon-row input{flex:1}
+.addon-row .amt{flex:0 0 110px}
+.addon-row button{flex:0 0 auto;background:#2a1512;color:var(--red);border:1px solid #5a2420;border-radius:8px;padding:0 12px;font-size:18px;cursor:pointer}
+.section-note{background:#1a1408;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:12px;color:var(--grey);margin-top:8px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#000;border:1px solid var(--gold);color:var(--text);padding:11px 18px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:.25s;z-index:200;max-width:90%;text-align:center}
+#toast.show{opacity:1}
+.hide{display:none !important}
+.svc-only{display:none}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">GP</div>
+  <div>
+    <h1>GP Booking</h1>
+    <div class="sub">Grandpride Luxury Travel</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- SERVICE TYPE -->
+  <div class="panel">
+    <h3>Service Type</h3>
+    <div class="seg" id="svcSeg">
+      <button type="button" data-svc="leasing" onclick="setSvc('leasing')">Rental / Leasing</button>
+      <button type="button" data-svc="chauffeur" onclick="setSvc('chauffeur')">Driver / Bodyguard</button>
+      <button type="button" data-svc="subscription" onclick="setSvc('subscription')">Subscription</button>
+      <button type="button" data-svc="lto" onclick="setSvc('lto')">Lease to Own (LTO)</button>
+    </div>
+  </div>
+
+  <!-- ===================== LEASING ===================== -->
+  <div class="svc-only" data-svc="leasing">
+    <div class="panel">
+      <h3>Rental / Leasing</h3>
+      <label>Invoice to (Company Name) — optional</label>
+      <input id="le_company" placeholder="Company name (leave blank if none)">
+      <label>PIC (Customer Name)</label>
+      <input id="le_name" placeholder="Customer name">
+      <label>Contact</label>
+      <input id="le_contact" type="tel" placeholder="01x-xxxxxxx">
+      <label>Car Model</label>
+      <input id="le_model" placeholder="e.g. Lamborghini Urus">
+      <div class="row">
+        <div><label>Plate Number</label><input id="le_plate" placeholder="ABC1234"></div>
+        <div><label>Petrol Fuel Type</label>
+          <select id="le_fuel"><option>RON95</option><option>RON97</option><option>RON100</option><option>Diesel</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Start Date & Time</label><input id="le_start" type="datetime-local"></div>
+        <div><label>End Date & Time</label><input id="le_end" type="datetime-local"></div>
+      </div>
+      <p class="hint" id="le_duration">Duration: —</p>
+    </div>
+
+    <div class="panel">
+      <h3>Pricing</h3>
+      <label>Rate (RM)</label><input id="le_rate" type="number" inputmode="decimal" oninput="calcLeasing()" placeholder="0.00">
+      <label>Insurance Coverage (RM)</label><input id="le_ins" type="number" inputmode="decimal" oninput="calcLeasing()" placeholder="0.00">
+      <label>Deposit (RM)</label><input id="le_dep" type="number" inputmode="decimal" oninput="calcLeasing()" placeholder="0.00">
+      <div class="total-line grand"><span>Grand Total</span><span id="le_grand">RM 0.00</span></div>
+      <div class="row" style="margin-top:10px">
+        <div><label>Mileage Given (km)</label><input id="le_mileage" type="number" inputmode="numeric" placeholder="e.g. 200"></div>
+        <div><label>Per KM Exceed (RM)</label><input id="le_perkm" type="number" inputmode="decimal" placeholder="e.g. 2.00"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Insurance Coverage Terms</h3>
+      <label>Insured Amount (%)</label><input id="le_inspct" type="number" inputmode="decimal" placeholder="e.g. 10">
+      <div class="section-note">When an accident is caused by the customer, he has to bear only the stated % &amp; loss of NCD.</div>
+    </div>
+
+    <div class="panel">
+      <h3>Remark</h3>
+      <textarea id="le_remark" placeholder="e.g. Offer comes with 1x Google &amp; 1x FB review"></textarea>
+    </div>
+  </div>
+
+  <!-- ===================== CHAUFFEUR ===================== -->
+  <div class="svc-only" data-svc="chauffeur">
+    <div class="panel">
+      <h3>Hire Driver / Bodyguard</h3>
+      <label>Customer Name</label><input id="ch_name" placeholder="Customer name">
+      <label>Contact</label><input id="ch_contact" type="tel" placeholder="01x-xxxxxxx">
+      <div class="row">
+        <div><label>Start Date & Time</label><input id="ch_start" type="datetime-local"></div>
+        <div><label>End Date & Time</label><input id="ch_end" type="datetime-local"></div>
+      </div>
+      <label>Pickup Address</label><textarea id="ch_pickup" placeholder="Pickup location"></textarea>
+      <label>Standby Time (or KIV)</label><input id="ch_standby" placeholder="e.g. 11pm or KIV">
+      <label>Location URL (Google Map)</label><input id="ch_maps" placeholder="https://maps.google.com/...">
+    </div>
+    <div class="panel">
+      <h3>Pricing</h3>
+      <label>Rate (RM)</label><input id="ch_rate" type="number" inputmode="decimal" placeholder="0.00">
+      <label>Rate covers how many hours / day?</label><input id="ch_hours" placeholder="e.g. 10 hours / 1 day">
+      <label>OT (RM / hour)</label><input id="ch_ot" type="number" inputmode="decimal" placeholder="0.00">
+    </div>
+    <div class="panel">
+      <h3>Remark</h3>
+      <textarea id="ch_remark" placeholder="e.g. 11pm pickup Saga at owner house then go somewhere"></textarea>
+    </div>
+  </div>
+
+  <!-- ===================== SUBSCRIPTION ===================== -->
+  <div class="svc-only" data-svc="subscription">
+    <div class="panel">
+      <h3>Subscription</h3>
+      <label>Customer Name</label><input id="su_name" placeholder="Customer name">
+      <label>Contact Number</label><input id="su_contact" type="tel" placeholder="01x-xxxxxxx">
+      <label>Subscription Plan</label>
+      <select id="su_plan"><option>12 months</option><option>24 months</option><option>36 months</option></select>
+      <label>Car Model</label><input id="su_model" placeholder="e.g. Lamborghini Urus">
+    </div>
+    <div class="panel">
+      <h3>Pricing</h3>
+      <label>Rate (RM / monthly)</label><input id="su_rate" type="number" inputmode="decimal" oninput="calcSub()" placeholder="0.00">
+      <label>Deposit (RM)</label><input id="su_dep" type="number" inputmode="decimal" oninput="calcSub()" placeholder="0.00">
+      <label>Deposit Note (optional)</label><input id="su_depnote" placeholder="e.g. waived / 1 month">
+      <label>Processing Fee (RM)</label><input id="su_proc" type="number" inputmode="decimal" oninput="calcSub()" placeholder="0.00">
+      <label>Other Fees</label>
+      <div id="su_others"></div>
+      <button type="button" class="btn sec mini" onclick="addOther('su_others')">+ Add other fee</button>
+      <div class="total-line grand"><span>Payable Amount</span><span id="su_payable">RM 0.00</span></div>
+      <label style="margin-top:10px">Current Mileage (km)</label><input id="su_mileage" type="number" inputmode="numeric" placeholder="e.g. 15000">
+    </div>
+    <div class="panel">
+      <h3>Remark</h3>
+      <textarea id="su_remark" placeholder="e.g. F458 ends on 13/5/26, change to Lambo Urus"></textarea>
+    </div>
+  </div>
+
+  <!-- ===================== LTO ===================== -->
+  <div class="svc-only" data-svc="lto">
+    <div class="panel">
+      <h3>Lease to Own (LTO)</h3>
+      <label>Customer Name</label><input id="lt_name" placeholder="Customer name">
+      <label>Contact</label><input id="lt_contact" type="tel" placeholder="01x-xxxxxxx">
+      <label>LTO Plan</label>
+      <select id="lt_plan">
+        <option>12 months</option><option>18 months</option><option>24 months</option>
+        <option>30 months</option><option>36 months</option><option>42 months</option>
+        <option>48 months</option><option>54 months</option><option>60 months</option>
+      </select>
+      <label>Car Model</label><input id="lt_model" placeholder="e.g. Honda Civic">
+      <label>Number Plate</label><input id="lt_plate" placeholder="ABC1234">
+    </div>
+    <div class="panel">
+      <h3>First Payment Breakdown</h3>
+      <label>Downpayment (RM)</label><input id="lt_down" type="number" inputmode="decimal" oninput="calcLto()" placeholder="0.00">
+      <label>Insurance (RM)</label><input id="lt_ins" type="number" inputmode="decimal" oninput="calcLto()" placeholder="0.00">
+      <label>Roadtax (RM)</label><input id="lt_roadtax" type="number" inputmode="decimal" oninput="calcLto()" placeholder="0.00">
+      <label>Safety Fee (RM)</label><input id="lt_safety" type="number" inputmode="decimal" oninput="calcLto()" placeholder="0.00">
+      <label>Runner Fee (RM)</label><input id="lt_runner" type="number" inputmode="decimal" oninput="calcLto()" placeholder="0.00">
+      <div class="section-note">First Payment = Downpayment + Insurance + Roadtax + Safety Fee + Runner Fee</div>
+      <div class="total-line grand"><span>First Payment</span><span id="lt_first">RM 0.00</span></div>
+    </div>
+    <div class="panel">
+      <h3>Monthly & Terms</h3>
+      <label>Monthly Rate (RM)</label><input id="lt_monthly" type="number" inputmode="decimal" placeholder="0.00">
+      <label>Safety Fee Yearly Renewal (RM)</label><input id="lt_safetyyr" type="number" inputmode="decimal" placeholder="0.00">
+      <div class="row">
+        <div><label>Start Date</label><input id="lt_start" type="date"></div>
+        <div><label>End Date</label><input id="lt_end" type="date"></div>
+      </div>
+      <label>Payment Date (day of every month)</label><input id="lt_payday" placeholder="e.g. 5th of every month">
+      <label>Late Charge Penalty</label><input id="lt_late" placeholder="e.g. 10% of monthly rate × days late">
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="panel">
+    <h3>Booking By</h3>
+    <label>Sales Advisor Name</label><input id="advisor" placeholder="Your name">
+  </div>
+
+  <button class="btn full" onclick="saveBooking()">💾 Save Booking</button>
+  <button class="btn wa full" style="margin-top:10px" onclick="sendWhatsApp()">📲 Send Summary to Customer (WhatsApp)</button>
+  <p class="hint" style="text-align:center;margin-top:14px">Grandpride Luxury Travel Sdn Bhd</p>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- Supabase config (same project as checklist) -->
+<script>
+var SUPABASE_URL = "https://iefevjkeckysdluzazeq.supabase.co";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+function sbBase(){ return SUPABASE_URL.replace(/\/rest\/v1\/?$/,''); }
+function sbHeaders(extra){ return Object.assign({'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}, extra||{}); }
+var CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
+// Google Sheet logging via Apps Script web app (paste your /exec URL after deploying gp-booking-sheet.gs)
+var GS_BOOKING_URL = "";
+
+</script>
+
+<script>
+/* ============ GP BOOKING ============ */
+var SVC='leasing';
+function $(id){return document.getElementById(id);}
+function g(id){var e=$(id);return e?e.value.trim():'';}
+function num(id){var v=parseFloat(g(id));return isNaN(v)?0:v;}
+function rm(n){return 'RM '+(Number(n)||0).toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),2600);}
+
+function setSvc(s){
+  SVC=s;
+  document.querySelectorAll('#svcSeg button').forEach(b=>b.classList.toggle('on', b.dataset.svc===s));
+  document.querySelectorAll('.svc-only').forEach(d=>d.style.display = (d.dataset.svc===s)?'block':'none');
+}
+
+/* ---- auto-sum calcs ---- */
+function calcLeasing(){
+  var t=num('le_rate')+num('le_ins')+num('le_dep');
+  $('le_grand').textContent=rm(t);
+}
+function calcSub(){
+  var others=0;
+  document.querySelectorAll('#su_others .amt').forEach(i=>{var v=parseFloat(i.value);if(!isNaN(v))others+=v;});
+  var t=num('su_rate')+num('su_dep')+num('su_proc')+others;
+  $('su_payable').textContent=rm(t);
+}
+function calcLto(){
+  var first=num('lt_down')+num('lt_ins')+num('lt_roadtax')+num('lt_safety')+num('lt_runner');
+  $('lt_first').textContent=rm(first);
+}
+
+/* ---- duration display for leasing ---- */
+function updateDuration(){
+  var s=g('le_start'), e=g('le_end');
+  if(!s||!e){ $('le_duration').textContent='Duration: —'; return; }
+  var d1=new Date(s), d2=new Date(e);
+  var ms=d2-d1;
+  if(ms<=0){ $('le_duration').textContent='Duration: —'; return; }
+  var days=Math.ceil(ms/86400000);
+  $('le_duration').textContent='Duration: '+days+' day'+(days>1?'s':'');
+}
+
+/* ---- addable "other fees" rows ---- */
+function addOther(containerId){
+  var wrap=$(containerId);
+  var row=document.createElement('div');
+  row.className='addon-row';
+  row.innerHTML=`<input placeholder="Description"><input class="amt" type="number" inputmode="decimal" placeholder="RM" oninput="calcSub()"><button type="button" onclick="this.parentNode.remove();calcSub()">×</button>`;
+  wrap.appendChild(row);
+}
+
+/* ---- collect all fields for the active service ---- */
+function collect(){
+  var common={ advisor:g('advisor') };
+  if(SVC==='leasing'){
+    return Object.assign(common,{
+      company:g('le_company'), customer_name:g('le_name'), contact:g('le_contact'),
+      car_model:g('le_model'), car_plate:g('le_plate'), fuel_type:g('le_fuel'),
+      start:g('le_start'), end:g('le_end'),
+      rate:num('le_rate'), insurance:num('le_ins'), deposit:num('le_dep'),
+      grand_total:num('le_rate')+num('le_ins')+num('le_dep'),
+      mileage_given:g('le_mileage'), per_km:g('le_perkm'),
+      insured_pct:g('le_inspct'), remark:g('le_remark')
+    });
+  }
+  if(SVC==='chauffeur'){
+    return Object.assign(common,{
+      customer_name:g('ch_name'), contact:g('ch_contact'),
+      start:g('ch_start'), end:g('ch_end'),
+      pickup:g('ch_pickup'), standby:g('ch_standby'), maps:g('ch_maps'),
+      rate:num('ch_rate'), rate_covers:g('ch_hours'), ot_rate:num('ch_ot'),
+      remark:g('ch_remark')
+    });
+  }
+  if(SVC==='subscription'){
+    var others=[];
+    document.querySelectorAll('#su_others .addon-row').forEach(r=>{
+      var ins=r.querySelectorAll('input');
+      if(ins[0].value||ins[1].value) others.push({desc:ins[0].value, amt:parseFloat(ins[1].value)||0});
+    });
+    var payable=num('su_rate')+num('su_dep')+num('su_proc')+others.reduce((a,b)=>a+b.amt,0);
+    return Object.assign(common,{
+      customer_name:g('su_name'), contact:g('su_contact'),
+      plan:g('su_plan'), car_model:g('su_model'),
+      rate:num('su_rate'), deposit:num('su_dep'), deposit_note:g('su_depnote'),
+      processing_fee:num('su_proc'), other_fees:others, payable:payable,
+      current_mileage:g('su_mileage'), remark:g('su_remark')
+    });
+  }
+  if(SVC==='lto'){
+    return Object.assign(common,{
+      customer_name:g('lt_name'), contact:g('lt_contact'),
+      plan:g('lt_plan'), car_model:g('lt_model'), car_plate:g('lt_plate'),
+      downpayment:num('lt_down'), insurance:num('lt_ins'), roadtax:num('lt_roadtax'),
+      safety_fee:num('lt_safety'), runner_fee:num('lt_runner'),
+      first_payment:num('lt_down')+num('lt_ins')+num('lt_roadtax')+num('lt_safety')+num('lt_runner'),
+      monthly_rate:num('lt_monthly'), safety_yearly:num('lt_safetyyr'),
+      start:g('lt_start'), end:g('lt_end'),
+      payment_day:g('lt_payday'), late_charge:g('lt_late')
+    });
+  }
+  return common;
+}
+
+function validate(d){
+  if(!d.customer_name){ toast('Customer name required'); return false; }
+  if(!d.contact){ toast('Contact required'); return false; }
+  return true;
+}
+
+/* ---- save to Supabase ---- */
+async function saveBooking(){
+  var d=collect();
+  if(!validate(d)) return;
+  var id='bk_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  var row={
+    id:id, service:SVC, status:'booked',
+    customer_name:d.customer_name, contact:d.contact,
+    company:d.company||'', car_model:d.car_model||'', car_plate:d.car_plate||'',
+    data:d, created_by:d.advisor||''
+  };
+  if(!CLOUD){ toast('Cloud not configured'); return; }
+  try{
+    var r=await fetch(sbBase()+'/rest/v1/gp_bookings', {
+      method:'POST', headers:sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify(row)
+    });
+    if(r.ok){ toast('Booking saved ✓'); window._lastId=id; logToSheet(row); }
+    else { var t=await r.text(); toast('Save failed — '+r.status+' '+t); }
+  }catch(e){ toast('Error: '+e.message); }
+}
+
+/* mirror the booking into Google Sheet via Apps Script (fire-and-forget) */
+function logToSheet(row){
+  if(!GS_BOOKING_URL) return;
+  try{
+    fetch(GS_BOOKING_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify(row)});
+  }catch(e){}
+}
+
+/* ---- WhatsApp summary text ---- */
+function waText(){
+  var d=collect();
+  var L=[];
+  L.push('*GRANDPRIDE BOOKING*');
+  L.push('');
+  if(SVC==='leasing'){
+    L.push('*Service:* Rental / Leasing');
+    if(d.company) L.push('*Invoice to:* '+d.company);
+    L.push('*Name:* '+d.customer_name);
+    L.push('*Contact:* '+d.contact);
+    L.push('*Car:* '+d.car_model+(d.car_plate?(' ('+d.car_plate+')'):''));
+    if(d.start||d.end) L.push('*Period:* '+fmtDT(d.start)+' → '+fmtDT(d.end));
+    L.push('*Rate:* '+rm(d.rate));
+    if(d.insurance) L.push('*Insurance:* '+rm(d.insurance));
+    L.push('*Deposit:* '+rm(d.deposit));
+    L.push('*Grand Total:* '+rm(d.grand_total));
+    if(d.mileage_given) L.push('*Mileage given:* '+d.mileage_given+' km');
+    if(d.per_km) L.push('*Per km exceed:* '+rm(d.per_km));
+    if(d.insured_pct) L.push('*Insurance coverage:* customer bears '+d.insured_pct+'% + loss of NCD on accident');
+    if(d.remark) L.push('*Remark:* '+d.remark);
+  }
+  if(SVC==='chauffeur'){
+    L.push('*Service:* Driver / Bodyguard');
+    L.push('*Name:* '+d.customer_name);
+    L.push('*Contact:* '+d.contact);
+    if(d.start||d.end) L.push('*Period:* '+fmtDT(d.start)+' → '+fmtDT(d.end));
+    if(d.pickup) L.push('*Pickup:* '+d.pickup);
+    if(d.standby) L.push('*Standby:* '+d.standby);
+    L.push('*Rate:* '+rm(d.rate)+(d.rate_covers?(' ('+d.rate_covers+')'):''));
+    if(d.ot_rate) L.push('*OT:* '+rm(d.ot_rate)+'/hour');
+    if(d.maps) L.push('*Location:* '+d.maps);
+    if(d.remark) L.push('*Remark:* '+d.remark);
+  }
+  if(SVC==='subscription'){
+    L.push('*Service:* Subscription');
+    L.push('*Name:* '+d.customer_name);
+    L.push('*Contact:* '+d.contact);
+    L.push('*Plan:* '+d.plan);
+    L.push('*Car:* '+d.car_model);
+    L.push('*Rate:* '+rm(d.rate)+'/month');
+    L.push('*Deposit:* '+rm(d.deposit)+(d.deposit_note?(' ('+d.deposit_note+')'):''));
+    if(d.processing_fee) L.push('*Processing fee:* '+rm(d.processing_fee));
+    (d.other_fees||[]).forEach(f=>{ if(f.desc||f.amt) L.push('*'+(f.desc||'Other')+':* '+rm(f.amt)); });
+    L.push('*Payable:* '+rm(d.payable));
+    if(d.current_mileage) L.push('*Current mileage:* '+d.current_mileage+' km');
+    if(d.remark) L.push('*Remark:* '+d.remark);
+  }
+  if(SVC==='lto'){
+    L.push('*Service:* Lease to Own (LTO)');
+    L.push('*Name:* '+d.customer_name);
+    L.push('*Contact:* '+d.contact);
+    L.push('*Plan:* '+d.plan);
+    L.push('*Car:* '+d.car_model+(d.car_plate?(' ('+d.car_plate+')'):''));
+    L.push('');
+    L.push('*First Payment:*');
+    L.push('Downpayment: '+rm(d.downpayment));
+    L.push('Insurance: '+rm(d.insurance));
+    L.push('Roadtax: '+rm(d.roadtax));
+    L.push('Safety fee: '+rm(d.safety_fee));
+    L.push('Runner fee: '+rm(d.runner_fee));
+    L.push('*Total First Payment:* '+rm(d.first_payment));
+    L.push('');
+    L.push('*Monthly Rate:* '+rm(d.monthly_rate));
+    if(d.safety_yearly) L.push('*Safety fee yearly:* '+rm(d.safety_yearly));
+    if(d.start||d.end) L.push('*Term:* '+(d.start||'?')+' → '+(d.end||'?'));
+    if(d.payment_day) L.push('*Payment date:* '+d.payment_day);
+    if(d.late_charge) L.push('*Late charge:* '+d.late_charge);
+  }
+  L.push('');
+  L.push('_Grandpride Luxury Travel Sdn Bhd_');
+  return L.join('\n');
+}
+function fmtDT(s){ if(!s) return '?'; var d=new Date(s); if(isNaN(d)) return s; return d.toLocaleString('en-MY',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+
+function sendWhatsApp(){
+  var d=collect();
+  if(!validate(d)) return;
+  var phone=(d.contact||'').replace(/[^0-9]/g,'');
+  // normalize Malaysian number to international (60...)
+  if(phone.startsWith('0')) phone='6'+phone;
+  var url='https://wa.me/'+(phone||'')+'?text='+encodeURIComponent(waText());
+  window.open(url,'_blank');
+}
+
+/* init */
+setSvc('leasing');
+$('le_start') && $('le_start').addEventListener('change',updateDuration);
+$('le_end') && $('le_end').addEventListener('change',updateDuration);
+</script>
+</body>
+</html>
