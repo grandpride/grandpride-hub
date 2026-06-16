@@ -199,6 +199,34 @@ var SUPA = (function(){
     }catch(e){ return { ok:false, error:String(e), data:[] }; }
   }
 
+  // Send an admin-only Auth invite by calling the invite-staff Edge Function.
+  // payload: { email, name, username, role, existing?, profile? }
+  // The Edge Function verifies (server-side) that the CALLER is an admin,
+  // creates the Auth user, emails the invite, and inserts/links the gp_staff row.
+  async function inviteStaff(payload){
+    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
+    try{
+      // must be signed in — the function reads the caller's session to check admin
+      var sess = await client.auth.getSession();
+      var token = sess && sess.data && sess.data.session ? sess.data.session.access_token : null;
+      if(!token) return { ok:false, error:'You must be logged in as admin to invite.' };
+
+      var res = await fetch(SUPABASE_URL + '/functions/v1/invite-staff', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token,
+          'apikey': SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify(payload || {})
+      });
+      var out = {};
+      try{ out = await res.json(); }catch(e){}
+      if(!res.ok || out.error) return { ok:false, error: out.error || ('HTTP '+res.status) };
+      return { ok:true, auth_id: out.auth_id };
+    }catch(e){ return { ok:false, error:String(e) }; }
+  }
+
   // delete by match
   async function del(table, match){
     if(!isReady()) return { ok:false, offline:true };
@@ -214,5 +242,6 @@ var SUPA = (function(){
   return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;},
            signInUsername:signInUsername, signInEmail:signInEmail, signIn:signIn, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile,
            pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession, setMyPassword:setMyPassword, clearAuthHash:clearAuthHash,
-           emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp };
+           emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp,
+           inviteStaff:inviteStaff };
 })();
