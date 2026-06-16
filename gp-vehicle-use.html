@@ -304,7 +304,7 @@ async function renderReport(){
 /* ===== push to GP Operation (reuses Hub push function) ===== */
 var PUSH_FN_URL='https://iefevjkeckysdluzazeq.supabase.co/functions/v1/push-send';
 // Google Apps Script Web App URL for the Vehicle Use Log sheet (set after you deploy it)
-var USE_SHEET_URL=''; // <-- paste your /exec URL here
+var USE_SHEET_URL='https://script.google.com/macros/s/AKfycbxqLh1rKK9i00UozzRvUnFIQYZbv-IARiEcqyUrKsWeyQkXhHLQ7zOisxPfpPibGCw/exec';
 function sheetPush(rec){
   try{
     if(!USE_SHEET_URL || USE_SHEET_URL.indexOf('http')!==0) return; // not configured yet
