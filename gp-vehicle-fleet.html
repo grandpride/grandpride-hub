@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP Vehicle Fleet</title>
+<style>
+  :root{
+    --ink:#0a0908; --paper:#f5f3ee; --gold:#c9a24b; --gold-soft:#e3c887;
+    --grey:#9a958c; --line:rgba(201,162,75,.18); --card:#15120d;
+    --green:#5a9e6f; --red:#d2533f; --blue:#5b8bb0; --amber:#d4a23a; --purple:#9a7bc8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:Arial,Helvetica,sans-serif;background:var(--ink);color:var(--paper);
+    margin:0;min-height:100vh;padding-bottom:40px}
+  .top{position:sticky;top:0;z-index:30;background:rgba(10,9,8,.96);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .top .lg{width:38px;height:38px;background:#000;border-radius:50%;display:flex;align-items:center;
+    justify-content:center;font-family:Georgia,serif;color:var(--gold);font-size:15px;border:1px solid var(--line);flex:0 0 auto}
+  .top .ti h2{font-family:Georgia,serif;font-size:15px;letter-spacing:1px;margin:0}
+  .top .ti p{font-size:11px;color:var(--grey);margin:2px 0 0}
+  .wrap{max-width:680px;margin:0 auto;padding:14px 16px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tabs button{flex:1;background:transparent;border:1px solid var(--line);color:var(--gold-soft);
+    padding:10px;border-radius:10px;font-size:13px;font-family:inherit;cursor:pointer}
+  .tabs button.on{background:linear-gradient(135deg,var(--gold),var(--gold-soft));color:#000;border-color:transparent;font-weight:bold}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{font-size:12px;padding:6px 10px;border-radius:20px;border:1px solid var(--line);
+    color:var(--grey);background:#100e0b;cursor:pointer;white-space:nowrap}
+  .chip.on{color:#000;font-weight:bold}
+  .chip.on[data-s="ready"]{background:var(--green)} .chip.on[data-s="out"]{background:var(--red)}
+  .chip.on[data-s="job"]{background:var(--blue)} .chip.on[data-s="workshop"]{background:var(--amber)}
+  .chip.on[data-s="exotic"]{background:var(--purple)} .chip.on[data-s="other"]{background:var(--grey)}
+  .chip.on[data-s="leasing"]{background:#c98a4b} .chip.on[data-s="internal"]{background:#7b9ac8}
+  .chip.on[data-s="all"]{background:var(--gold)}
+  .sigpad{width:100%;height:120px;background:#fff;border-radius:10px;border:1px solid var(--line);touch-action:none}
+  .mrow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:#100e0b}
+  .mrow .mn{font-size:13px;font-weight:600}
+  .mrow .ms{font-size:11px;color:var(--grey);margin-top:2px}
+  .due-ok{color:var(--green)} .due-soon{color:var(--amber)} .due-over{color:var(--red);font-weight:bold}
+  .car{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px}
+  .car .row1{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .car .plate{font-family:Georgia,serif;font-size:18px;letter-spacing:1px}
+  .car .model{font-size:12px;color:var(--grey);margin-top:2px}
+  .pill{font-size:11px;padding:5px 10px;border-radius:20px;font-weight:bold;color:#000;white-space:nowrap}
+  .pill[data-s="ready"]{background:var(--green)} .pill[data-s="out"]{background:var(--red)}
+  .pill[data-s="job"]{background:var(--blue)} .pill[data-s="workshop"]{background:var(--amber)}
+  .pill[data-s="exotic"]{background:var(--purple)} .pill[data-s="other"]{background:var(--grey);color:#fff}
+  .pill[data-s="leasing"]{background:#c98a4b} .pill[data-s="internal"]{background:#7b9ac8}
+  .meta{font-size:11px;color:var(--grey);margin-top:8px;line-height:1.5}
+  .meta b{color:var(--gold-soft);font-weight:600}
+  .car .act{margin-top:10px;display:flex;gap:8px}
+  .btn{font-family:inherit;font-size:13px;padding:9px 12px;border-radius:9px;cursor:pointer;border:none}
+  .btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold-soft));color:#000;font-weight:bold}
+  .btn.ghost{background:transparent;border:1px solid var(--gold);color:var(--gold-soft)}
+  .btn.sm{font-size:12px;padding:7px 10px}
+  .btn.bad{background:transparent;border:1px solid var(--red);color:var(--red)}
+  .btn.full{width:100%}
+  label{display:block;font-size:11px;letter-spacing:.5px;color:var(--grey);text-transform:uppercase;margin:12px 0 5px}
+  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;
+    border:1px solid var(--line);border-radius:10px;padding:12px}
+  input:focus,select,textarea:focus{border-color:var(--gold);outline:none}
+  textarea{min-height:64px;resize:vertical}
+  .add-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .muted{color:var(--grey);font-size:13px;line-height:1.5}
+  .empty{text-align:center;color:var(--grey);padding:40px 20px;font-size:14px}
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .modal.show{display:flex}
+  .sheet{background:#14110c;border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:680px;
+    padding:18px 16px 28px;max-height:86vh;overflow:auto}
+  .sheet h3{font-family:Georgia,serif;margin:0 0 4px;font-size:18px}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .stat-opt{padding:12px;border-radius:10px;border:1.5px solid var(--line);text-align:center;font-size:13px;
+    cursor:pointer;background:#100e0b;color:var(--paper)}
+  .stat-opt.sel{border-color:var(--gold);background:#1c1810;font-weight:bold}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c1810;border:1px solid var(--gold);
+    color:var(--gold-soft);padding:10px 18px;border-radius:10px;font-size:13px;z-index:80;opacity:0;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1}
+  /* report */
+  .rep-sum{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .rep-box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+  .rep-box .n{font-family:Georgia,serif;font-size:26px}
+  .rep-box .l{font-size:11px;color:var(--grey);margin-top:2px}
+  .log-row{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+  .log-row .t{font-size:11px;color:var(--grey)}
+  @media print{.top,.tabs,.bar,.act,.btn,.modal{display:none!important}body{background:#fff;color:#000}}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="lg">GP</div>
+    <div class="ti"><h2>VEHICLE FLEET</h2><p id="syncNote">Live status board</p></div>
+  </div>
+
+  <div class="wrap">
+    <div class="tabs">
+      <button id="tabBoard" class="on" onclick="setTab('board')">🚗 Fleet Board</button>
+      <button id="tabReport" onclick="setTab('report')">📋 Daily Report</button>
+    </div>
+
+    <!-- BOARD -->
+    <div id="board">
+      <div class="add-card" id="addCard" style="display:none">
+        <label>Plate number</label>
+        <input id="newPlate" placeholder="e.g. VGP 1234" autocapitalize="characters">
+        <label>Model</label>
+        <input id="newModel" placeholder="e.g. Toyota Vellfire">
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn gold" onclick="addCar()">Add car</button>
+          <button class="btn ghost" onclick="toggleAdd()">Cancel</button>
+        </div>
+      </div>
+      <button class="btn ghost full" id="addToggle" onclick="toggleAdd()" style="margin-bottom:12px">➕ Add a car</button>
+
+      <div class="bar" id="filterBar"></div>
+      <div id="carList"><div class="empty">Loading fleet…</div></div>
+    </div>
+
+    <!-- REPORT -->
+    <div id="report" style="display:none">
+      <label>Report date</label>
+      <input type="date" id="repDate" onchange="renderReport()">
+      <div class="rep-sum" id="repSum" style="margin-top:12px"></div>
+      <button class="btn ghost full" onclick="window.print()" style="margin-bottom:14px">🖨 Print / Save PDF</button>
+      <h3 style="font-family:Georgia,serif;font-size:16px;margin:6px 0 10px">Movement log</h3>
+      <div id="repLog"></div>
+    </div>
+  </div>
+
+  <!-- STATUS MODAL -->
+  <div class="modal" id="statModal">
+    <div class="sheet">
+      <h3 id="mTitle">Update status</h3>
+      <p class="muted" id="mSub"></p>
+      <div class="stat-grid" id="statOpts"></div>
+      <div id="custWrap" style="display:none">
+        <label>Customer name</label>
+        <input id="mCust" placeholder="Who is leasing the car?">
+      </div>
+      <div id="locWrap" style="display:none">
+        <label>Location / details</label>
+        <input id="mLoc" placeholder="Where is the car?">
+      </div>
+      <div id="remWrap" style="display:none">
+        <label id="remLbl">Reason / remark</label>
+        <textarea id="mRem" placeholder="Why is it out? Who took it, where to…"></textarea>
+      </div>
+      <div id="mileWrap">
+        <label>Current mileage (km) — optional</label>
+        <input id="mMile" type="number" inputmode="numeric" placeholder="e.g. 52300">
+      </div>
+      <div id="signWrap" style="display:none">
+        <label>Driver signature (company / internal use)</label>
+        <canvas class="sigpad" id="mSig"></canvas>
+        <button class="btn ghost sm" style="margin-top:6px" onclick="clearSig()">Clear signature</button>
+      </div>
+      <label>Updated by</label>
+      <select id="mBy"><option value="">Select staff…</option></select>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn gold full" onclick="saveStatus()">Save status</button>
+      </div>
+      <button class="btn bad full" style="margin-top:8px" onclick="closeModal()">Cancel</button>
+      <button class="btn bad full" style="margin-top:8px;border-color:#5a2a22" onclick="deleteCar()">🗑 Remove this car</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- MAINTENANCE MODAL -->
+  <div class="modal" id="maintModal">
+    <div class="sheet">
+      <h3 id="mtTitle">Maintenance</h3>
+      <p class="muted" id="mtSub"></p>
+      <label>Current mileage (km)</label>
+      <input id="mtMile" type="number" inputmode="numeric" placeholder="latest odometer">
+      <div id="maintList" style="margin-top:12px"></div>
+      <button class="btn gold full" style="margin-top:6px" onclick="saveMaint()">Save maintenance</button>
+      <button class="btn bad full" style="margin-top:8px" onclick="closeMaint()">Close</button>
+    </div>
+  </div>
+
+  <!-- MARK SERVICED MODAL -->
+  <div class="modal" id="svcModal">
+    <div class="sheet">
+      <h3 id="svcTitle">Mark serviced</h3>
+      <label>Done at mileage (km)</label>
+      <input id="svcKm" type="number" inputmode="numeric">
+      <label>Done on date</label>
+      <input id="svcDate" type="date">
+      <label>Done by</label>
+      <select id="svcBy"><option value="">Select staff…</option></select>
+      <label>Remark (optional)</label>
+      <input id="svcRem" placeholder="e.g. changed at Exotic Workshop">
+      <button class="btn gold full" style="margin-top:12px" onclick="confirmServiced()">Confirm serviced</button>
+      <button class="btn bad full" style="margin-top:8px" onclick="closeSvc()">Cancel</button>
+    </div>
+  </div>
+
+<script>
+/* ===== Supabase (self-contained) ===== */
+var SB_URL = "https://iefevjkeckysdluzazeq.supabase.co";
+var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+function sbH(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
+
+var STATUSES = [
+  {k:'ready',    name:'Ready at GP'},
+  {k:'leasing',  name:'On Leasing',        needCust:true},
+  {k:'internal', name:'Company / Driver',  needRemark:true, needSign:true},
+  {k:'out',      name:'Out of GP',         needRemark:true},
+  {k:'job',      name:'On Job / Rented'},
+  {k:'workshop', name:'At Workshop'},
+  {k:'exotic',   name:'At Exotic Workshop'},
+  {k:'other',    name:'Other location',    needLoc:true}
+];
+
+var MAINT_ITEMS = [
+  {k:'engine_oil', name:'Engine Oil',  dkm:10000, dmo:6},
+  {k:'atf_oil',    name:'ATF Oil',     dkm:40000, dmo:24},
+  {k:'tyre',       name:'Tyre',        dkm:40000, dmo:36},
+  {k:'balancing',  name:'Balancing',   dkm:10000, dmo:6},
+  {k:'alignment',  name:'Alignment',   dkm:10000, dmo:6}
+];
+function maintName(k){ var m=MAINT_ITEMS.find(x=>x.k===k); return m?m.name:k; }
+function statName(k){ var s=STATUSES.find(x=>x.k===k); return s?s.name:k; }
+
+var FLEET=[], STAFF=[], FILTER='all', MODAL_CAR=null, MODAL_PICK=null;
+var $=function(id){return document.getElementById(id);};
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(t){var el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800);}
+function fmtTime(iso){ if(!iso) return ''; var d=new Date(iso); return d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true}); }
+function todayISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+/* ===== Maintenance due math ===== */
+function addMonths(dateStr,n){ var d=new Date(dateStr); d.setMonth(d.getMonth()+n); return d; }
+function daysBetween(a,b){ return Math.round((b-a)/(1000*60*60*24)); }
+// Returns due info for one item: {level:'ok|soon|over', kmLeft, daysLeft, nextKm, nextDate, label}
+function dueInfo(item, cfg, currentKm){
+  if(!cfg || (!cfg.last_km && !cfg.last_date)) return {level:'unset', label:'Not set'};
+  var kmInt = cfg.km_interval || item.dkm;
+  var moInt = cfg.month_interval || item.dmo;
+  var nextKm = cfg.last_km ? (cfg.last_km + kmInt) : null;
+  var nextDate = cfg.last_date ? addMonths(cfg.last_date, moInt) : null;
+  var kmLeft = (nextKm!=null && currentKm) ? (nextKm - currentKm) : null;
+  var daysLeft = nextDate ? daysBetween(new Date(), nextDate) : null;
+  // whichever comes first decides the level
+  var overdue = (kmLeft!=null && kmLeft<=0) || (daysLeft!=null && daysLeft<=0);
+  var soon    = (kmLeft!=null && kmLeft<=1000) || (daysLeft!=null && daysLeft<=14);
+  var level = overdue?'over':(soon?'soon':'ok');
+  // build a short label
+  var parts=[];
+  if(kmLeft!=null) parts.push(kmLeft<=0?('km over by '+Math.abs(kmLeft)):('in '+kmLeft+' km'));
+  if(daysLeft!=null) parts.push(daysLeft<=0?('date over by '+Math.abs(daysLeft)+'d'):('in '+daysLeft+'d'));
+  return {level:level, kmLeft:kmLeft, daysLeft:daysLeft, nextKm:nextKm, nextDate:nextDate,
+          label:parts.join(' · ')||'—'};
+}
+// Worst level across all items for a car (for board badge)
+function carMaintLevel(car){
+  var km=car.current_mileage||0, maint=car.maint||{}, worst='ok', any=false;
+  MAINT_ITEMS.forEach(it=>{
+    var info=dueInfo(it, maint[it.k], km);
+    if(info.level==='unset') return;
+    any=true;
+    if(info.level==='over') worst='over';
+    else if(info.level==='soon' && worst!=='over') worst='soon';
+  });
+  return any?worst:'none';
+}
+
+/* ===== Load ===== */
+async function loadStaff(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_staff?select=name&order=name.asc',{headers:sbH()});
+    if(r.ok){ STAFF=(await r.json()).map(x=>x.name).filter(Boolean); }
+  }catch(e){}
+  var sel=$('mBy'); sel.innerHTML='<option value="">Select staff…</option>'+STAFF.map(n=>`<option>${esc(n)}</option>`).join('');
+}
+async function loadFleet(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_fleet?select=*&order=plate.asc',{headers:sbH()});
+    if(r.ok){ FLEET=await r.json(); $('syncNote').textContent='Live • '+FLEET.length+' cars'; }
+    else { $('syncNote').textContent='Offline'; }
+  }catch(e){ $('syncNote').textContent='Offline'; }
+  renderBoard();
+}
+
+/* ===== Board ===== */
+function setTab(t){
+  $('board').style.display = t==='board'?'block':'none';
+  $('report').style.display = t==='report'?'block':'none';
+  $('tabBoard').classList.toggle('on',t==='board');
+  $('tabReport').classList.toggle('on',t==='report');
+  if(t==='report'){ if(!$('repDate').value) $('repDate').value=todayISO(); renderReport(); }
+}
+function renderFilters(){
+  var counts={all:FLEET.length};
+  STATUSES.forEach(s=>counts[s.k]=FLEET.filter(c=>c.status===s.k).length);
+  var chips=[{k:'all',name:'All'}].concat(STATUSES);
+  $('filterBar').innerHTML=chips.map(c=>
+    `<span class="chip ${FILTER===c.k?'on':''}" data-s="${c.k}" onclick="setFilter('${c.k}')">${esc(c.name)} ${counts[c.k]||0}</span>`
+  ).join('');
+}
+function setFilter(k){ FILTER=k; renderBoard(); }
+function renderBoard(){
+  renderFilters();
+  var list = FILTER==='all'?FLEET:FLEET.filter(c=>c.status===FILTER);
+  if(!list.length){ $('carList').innerHTML='<div class="empty">'+(FLEET.length?'No cars in this status.':'No cars yet — tap “Add a car”.')+'</div>'; return; }
+  $('carList').innerHTML=list.map(c=>{
+    var sub='';
+    if(c.status==='leasing' && c.customer_name) sub+='<div class="meta">👤 <b>'+esc(c.customer_name)+'</b></div>';
+    if(c.remark) sub+='<div class="meta">📝 '+esc(c.remark)+'</div>';
+    if(c.current_mileage) sub+='<div class="meta">🛣 '+Number(c.current_mileage).toLocaleString()+' km</div>';
+    // maintenance badge
+    var lvl=carMaintLevel(c);
+    if(lvl==='over') sub+='<div class="meta due-over">🔴 Maintenance overdue — tap for details</div>';
+    else if(lvl==='soon') sub+='<div class="meta due-soon">🟡 Maintenance due soon</div>';
+    var by=(c.changed_by?esc(c.changed_by):'—');
+    sub+='<div class="meta">'+by+' · '+esc(fmtTime(c.changed_at))+'</div>';
+    return `<div class="car">
+      <div class="row1">
+        <div><div class="plate">${esc(c.plate)}</div><div class="model">${esc(c.model||'')}</div></div>
+        <span class="pill" data-s="${c.status}">${esc(statName(c.status))}</span>
+      </div>
+      ${sub}
+      <div class="act">
+        <button class="btn gold sm" style="flex:1" onclick='openModal("${c.id}")'>Change status</button>
+        <button class="btn ghost sm" style="flex:1" onclick='openMaint("${c.id}")'>🔧 Maintenance</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ===== Add ===== */
+function toggleAdd(){ var a=$('addCard'),t=$('addToggle'); var show=a.style.display==='none'; a.style.display=show?'block':'none'; t.style.display=show?'none':'block'; }
+async function addCar(){
+  var plate=($('newPlate').value||'').trim().toUpperCase();
+  var model=($('newModel').value||'').trim();
+  if(!plate){ toast('Enter a plate'); return; }
+  if(FLEET.some(c=>(c.plate||'').toUpperCase()===plate)){ toast('That plate already exists'); return; }
+  var row={plate:plate,model:model,status:'ready',changed_by:'',changed_at:new Date().toISOString()};
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_fleet',{method:'POST',headers:sbH({'Prefer':'return=representation'}),body:JSON.stringify(row)});
+    if(!r.ok){ toast('Save failed'); return; }
+    var saved=(await r.json())[0];
+    FLEET.push(saved);
+    $('newPlate').value=''; $('newModel').value=''; toggleAdd();
+    renderBoard(); toast('Car added');
+  }catch(e){ toast('Offline — not saved'); }
+}
+
+/* ===== Status modal ===== */
+function openModal(id){
+  MODAL_CAR=FLEET.find(c=>c.id===id); if(!MODAL_CAR) return;
+  MODAL_PICK=MODAL_CAR.status;
+  $('mTitle').textContent='Update — '+MODAL_CAR.plate;
+  $('mSub').textContent=MODAL_CAR.model||'';
+  $('mLoc').value=MODAL_CAR.location||'';
+  $('mRem').value=MODAL_CAR.remark||'';
+  $('mCust').value=MODAL_CAR.customer_name||'';
+  $('mMile').value=MODAL_CAR.current_mileage||'';
+  $('mBy').value='';
+  renderStatOpts();
+  $('statModal').classList.add('show');
+}
+function renderStatOpts(){
+  $('statOpts').innerHTML=STATUSES.map(s=>
+    `<div class="stat-opt ${MODAL_PICK===s.k?'sel':''}" onclick="pickStat('${s.k}')">${esc(s.name)}</div>`
+  ).join('');
+  var s=STATUSES.find(x=>x.k===MODAL_PICK)||{};
+  $('custWrap').style.display=s.needCust?'block':'none';
+  $('locWrap').style.display=s.needLoc?'block':'none';
+  $('remWrap').style.display=s.needRemark?'block':'none';
+  $('signWrap').style.display=s.needSign?'block':'none';
+  $('remLbl').textContent=s.needRemark?'Reason / remark (required)':'Remark';
+  if(s.needSign) setTimeout(initSigPad,30);
+}
+function pickStat(k){ MODAL_PICK=k; renderStatOpts(); }
+
+/* ===== Signature pad ===== */
+var SIG_CTX=null, SIG_DRAW=false, SIG_HAS=false;
+function initSigPad(){
+  var cv=$('mSig'); if(!cv) return;
+  var r=cv.getBoundingClientRect();
+  cv.width=r.width*2; cv.height=r.height*2;
+  SIG_CTX=cv.getContext('2d'); SIG_CTX.scale(2,2);
+  SIG_CTX.lineWidth=2; SIG_CTX.lineCap='round'; SIG_CTX.strokeStyle='#111';
+  SIG_HAS=false;
+  function pos(e){ var rect=cv.getBoundingClientRect(); var t=e.touches?e.touches[0]:e; return {x:t.clientX-rect.left,y:t.clientY-rect.top}; }
+  function down(e){ SIG_DRAW=true; var p=pos(e); SIG_CTX.beginPath(); SIG_CTX.moveTo(p.x,p.y); e.preventDefault(); }
+  function move(e){ if(!SIG_DRAW)return; var p=pos(e); SIG_CTX.lineTo(p.x,p.y); SIG_CTX.stroke(); SIG_HAS=true; e.preventDefault(); }
+  function up(){ SIG_DRAW=false; }
+  cv.onmousedown=down; cv.onmousemove=move; window.onmouseup=up;
+  cv.ontouchstart=down; cv.ontouchmove=move; cv.ontouchend=up;
+}
+function clearSig(){ var cv=$('mSig'); if(cv&&SIG_CTX){ SIG_CTX.clearRect(0,0,cv.width,cv.height); SIG_HAS=false; } }
+function sigData(){ if(!SIG_HAS) return ''; var cv=$('mSig'); return cv?cv.toDataURL('image/png'):''; }
+function closeModal(){ $('statModal').classList.remove('show'); MODAL_CAR=null; }
+async function saveStatus(){
+  if(!MODAL_CAR) return;
+  var s=STATUSES.find(x=>x.k===MODAL_PICK)||{};
+  var loc=($('mLoc').value||'').trim();
+  var rem=($('mRem').value||'').trim();
+  var cust=($('mCust').value||'').trim();
+  var mile=parseInt($('mMile').value||'0',10)||0;
+  var by=$('mBy').value;
+  if(s.needRemark && !rem){ toast('Reason / remark is required'); return; }
+  if(s.needCust && !cust){ toast('Customer name is required for leasing'); return; }
+  if(s.needSign && !sigData()){ toast('Driver signature is required'); return; }
+  if(!by){ toast('Pick who is updating'); return; }
+  var now=new Date().toISOString();
+  var patch={status:MODAL_PICK, location:s.needLoc?loc:'', remark:rem,
+             customer_name:s.needCust?cust:'', driver_sign:s.needSign?sigData():'',
+             changed_by:by, changed_at:now};
+  // only bump mileage if a higher/valid number was entered
+  if(mile && mile>=(MODAL_CAR.current_mileage||0)){ patch.current_mileage=mile; patch.mileage_updated=now; }
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_fleet?id=eq.'+MODAL_CAR.id,
+      {method:'PATCH',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
+    if(!r.ok){ toast('Save failed'); return; }
+    await fetch(SB_URL+'/rest/v1/gp_fleet_log',{method:'POST',headers:sbH({'Prefer':'return=minimal'}),
+      body:JSON.stringify({fleet_id:MODAL_CAR.id,plate:MODAL_CAR.plate,model:MODAL_CAR.model,
+        status:MODAL_PICK,location:patch.location,remark:(cust?('Customer: '+cust+'. '):'')+rem,changed_by:by,changed_at:now})});
+    Object.assign(MODAL_CAR,patch);
+    closeModal(); renderBoard(); toast('Status updated');
+  }catch(e){ toast('Offline — not saved'); }
+}
+async function deleteCar(){
+  if(!MODAL_CAR) return;
+  if(!confirm('Remove '+MODAL_CAR.plate+' from the fleet? (Movement history stays in the log.)')) return;
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_fleet?id=eq.'+MODAL_CAR.id,{method:'DELETE',headers:sbH({'Prefer':'return=minimal'})});
+    if(!r.ok){ toast('Delete failed'); return; }
+    FLEET=FLEET.filter(c=>c.id!==MODAL_CAR.id);
+    closeModal(); renderBoard(); toast('Car removed');
+  }catch(e){ toast('Offline'); }
+}
+
+/* ===== Maintenance ===== */
+var MAINT_CAR=null, SVC_ITEM=null;
+function openMaint(id){
+  MAINT_CAR=FLEET.find(c=>c.id===id); if(!MAINT_CAR) return;
+  $('mtTitle').textContent='Maintenance — '+MAINT_CAR.plate;
+  $('mtSub').textContent=MAINT_CAR.model||'';
+  $('mtMile').value=MAINT_CAR.current_mileage||'';
+  renderMaintList();
+  $('maintModal').classList.add('show');
+}
+function renderMaintList(){
+  var maint=MAINT_CAR.maint||{}, km=MAINT_CAR.current_mileage||0;
+  $('maintList').innerHTML=MAINT_ITEMS.map(it=>{
+    var cfg=maint[it.k]||{};
+    var info=dueInfo(it,cfg,km);
+    var cls=info.level==='over'?'due-over':(info.level==='soon'?'due-soon':(info.level==='unset'?'':'due-ok'));
+    var nextTxt=(info.level==='unset')?'Not set — tap “Serviced” to start':
+      ('Next: '+(info.nextKm?info.nextKm.toLocaleString()+' km':'—')+(info.nextDate?' / '+new Date(info.nextDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'')+' · '+info.label);
+    return `<div class="mrow">
+      <div style="flex:1">
+        <div class="mn">${esc(it.name)}</div>
+        <div class="ms ${cls}">${esc(nextTxt)}</div>
+        <div class="ms">Every ${it.dkm.toLocaleString()} km / ${it.dmo} mo</div>
+      </div>
+      <button class="btn ghost sm" onclick="openSvc('${it.k}')">Serviced</button>
+    </div>`;
+  }).join('');
+}
+async function saveMaint(){
+  if(!MAINT_CAR) return;
+  var mile=parseInt($('mtMile').value||'0',10)||0;
+  if(!mile){ toast('Enter current mileage'); return; }
+  var now=new Date().toISOString();
+  var patch={current_mileage:mile, mileage_updated:now};
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_fleet?id=eq.'+MAINT_CAR.id,
+      {method:'PATCH',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
+    if(!r.ok){ toast('Save failed'); return; }
+    Object.assign(MAINT_CAR,patch);
+    renderMaintList(); renderBoard(); toast('Mileage saved');
+  }catch(e){ toast('Offline'); }
+}
+function closeMaint(){ $('maintModal').classList.remove('show'); MAINT_CAR=null; }
+
+/* mark an item serviced -> resets last_km/last_date, logs it */
+function openSvc(itemKey){
+  SVC_ITEM=itemKey;
+  $('svcTitle').textContent='Mark serviced — '+maintName(itemKey);
+  $('svcKm').value=MAINT_CAR.current_mileage||'';
+  $('svcDate').value=todayISO();
+  $('svcRem').value='';
+  $('svcBy').innerHTML='<option value="">Select staff…</option>'+STAFF.map(n=>`<option>${esc(n)}</option>`).join('');
+  $('svcModal').classList.add('show');
+}
+function closeSvc(){ $('svcModal').classList.remove('show'); SVC_ITEM=null; }
+async function confirmServiced(){
+  if(!MAINT_CAR||!SVC_ITEM) return;
+  var km=parseInt($('svcKm').value||'0',10)||0;
+  var date=$('svcDate').value||todayISO();
+  var by=$('svcBy').value;
+  var rem=($('svcRem').value||'').trim();
+  if(!km){ toast('Enter mileage done at'); return; }
+  if(!by){ toast('Pick who did it'); return; }
+  var it=MAINT_ITEMS.find(x=>x.k===SVC_ITEM);
+  var maint=Object.assign({},MAINT_CAR.maint||{});
+  var cfg=maint[SVC_ITEM]||{};
+  cfg.km_interval=cfg.km_interval||it.dkm;
+  cfg.month_interval=cfg.month_interval||it.dmo;
+  cfg.last_km=km; cfg.last_date=date;
+  maint[SVC_ITEM]=cfg;
+  var nextKm=km+cfg.km_interval;
+  var nextDate=addMonths(date,cfg.month_interval);
+  var now=new Date().toISOString();
+  var patch={maint:maint};
+  // bump current mileage if this is higher
+  if(km>=(MAINT_CAR.current_mileage||0)){ patch.current_mileage=km; patch.mileage_updated=now; }
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_fleet?id=eq.'+MAINT_CAR.id,
+      {method:'PATCH',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
+    if(!r.ok){ toast('Save failed'); return; }
+    await fetch(SB_URL+'/rest/v1/gp_fleet_maint_log',{method:'POST',headers:sbH({'Prefer':'return=minimal'}),
+      body:JSON.stringify({fleet_id:MAINT_CAR.id,plate:MAINT_CAR.plate,item:SVC_ITEM,done_km:km,done_date:date,
+        next_km:nextKm,next_date:nextDate.toISOString().slice(0,10),done_by:by,remark:rem})});
+    Object.assign(MAINT_CAR,patch);
+    closeSvc(); renderMaintList(); renderBoard(); toast(maintName(SVC_ITEM)+' marked serviced');
+  }catch(e){ toast('Offline'); }
+}
+
+/* ===== Daily report ===== */
+async function renderReport(){
+  var date=$('repDate').value||todayISO();
+  // summary = current snapshot
+  var counts={}; STATUSES.forEach(s=>counts[s.k]=FLEET.filter(c=>c.status===s.k).length);
+  $('repSum').innerHTML=STATUSES.map(s=>
+    `<div class="rep-box"><div class="n" style="color:var(--gold-soft)">${counts[s.k]||0}</div><div class="l">${esc(s.name)}</div></div>`
+  ).join('');
+  // movement log for that day
+  $('repLog').innerHTML='<div class="empty">Loading log…</div>';
+  var start=date+'T00:00:00'; var end=date+'T23:59:59';
+  try{
+    var url=SB_URL+'/rest/v1/gp_fleet_log?select=*&changed_at=gte.'+start+'&changed_at=lte.'+end+'&order=changed_at.desc';
+    var r=await fetch(url,{headers:sbH()});
+    var rows=r.ok?await r.json():[];
+    if(!rows.length){ $('repLog').innerHTML='<div class="empty">No status changes on this day.</div>'; return; }
+    $('repLog').innerHTML=rows.map(l=>
+      `<div class="log-row">
+        <b>${esc(l.plate)}</b> → <b style="color:var(--gold-soft)">${esc(statName(l.status))}</b>${l.location?' · '+esc(l.location):''}
+        ${l.remark?'<div class="t">📝 '+esc(l.remark)+'</div>':''}
+        <div class="t">${esc(l.changed_by||'—')} · ${esc(fmtTime(l.changed_at))}</div>
+      </div>`
+    ).join('');
+  }catch(e){ $('repLog').innerHTML='<div class="empty">Could not load log.</div>'; }
+}
+
+/* ===== init ===== */
+(async function(){ await loadStaff(); await loadFleet(); })();
+</script>
+</body>
+</html>

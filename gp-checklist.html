@@ -1111,6 +1111,49 @@ function validate(){
 }
 
 var GENERATING=false;
+/* ===== Fleet auto-status link =====
+   After a delivery checklist, offer to flip the matching car to "On Leasing".
+   After a return, offer to set it back to "Ready at GP". Writes to gp_fleet. */
+async function fleetCarByPlate(plate){
+  if(!plate) return null;
+  try{
+    const r=await fetch(sbBase()+'/rest/v1/gp_fleet?plate=eq.'+encodeURIComponent(plate.toUpperCase())+'&select=*',{headers:sbHeaders()});
+    if(!r.ok) return null;
+    const rows=await r.json();
+    return rows && rows.length ? rows[0] : null;
+  }catch(e){ return null; }
+}
+async function setFleetStatus(car, status, customer, mileage){
+  const now=new Date().toISOString();
+  const patch={status:status, customer_name:customer||'', changed_by:curUser()||'checklist', changed_at:now, remark:''};
+  if(mileage){ const m=parseInt(String(mileage).replace(/\D/g,''),10); if(m && m>=(car.current_mileage||0)){ patch.current_mileage=m; patch.mileage_updated=now; } }
+  try{
+    await fetch(sbBase()+'/rest/v1/gp_fleet?id=eq.'+car.id,{method:'PATCH',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
+    await fetch(sbBase()+'/rest/v1/gp_fleet_log',{method:'POST',headers:sbHeaders({'Prefer':'return=minimal'}),
+      body:JSON.stringify({fleet_id:car.id,plate:car.plate,model:car.model,status:status,
+        remark:(customer?('Customer: '+customer):'')+' (via checklist)',changed_by:patch.changed_by,changed_at:now})});
+    return true;
+  }catch(e){ return false; }
+}
+async function maybeSetFleetLeasing(a){
+  const car=await fleetCarByPlate(a.car_plate);
+  if(!car){ return; } // plate not in fleet — skip silently
+  if(car.status==='leasing'){ return; }
+  if(confirm('Set '+car.plate+' to “On Leasing”'+(a.customer_name?(' to '+a.customer_name):'')+'?')){
+    const ok=await setFleetStatus(car,'leasing',a.customer_name,a.out_mileage);
+    toast(ok?'Fleet updated → On Leasing':'Could not update fleet');
+  }
+}
+async function maybeSetFleetReady(a){
+  const car=await fleetCarByPlate(a.car_plate);
+  if(!car){ return; }
+  if(car.status==='ready'){ return; }
+  if(confirm('Set '+car.plate+' back to “Ready at GP”?')){
+    const ok=await setFleetStatus(car,'ready','',a.in_mileage);
+    toast(ok?'Fleet updated → Ready at GP':'Could not update fleet');
+  }
+}
+
 async function generateChecklist(){
   if(GENERATING){ toast('Already generating… please wait'); return; }
   readForm();
@@ -1140,6 +1183,9 @@ async function generateChecklist(){
       a[st+'_pdf_url']=out.url; await saveChecklist(true);
       toast((st==='out'?'Delivery':'Return')+' PDF saved ✓');
       showResult(out.url, a, st);
+      // Auto-status: offer to set the car On Leasing (delivery) / Ready (return)
+      if(st==='out') maybeSetFleetLeasing(a);
+      else if(st==='in') maybeSetFleetReady(a);
     } else { toast('Failed: '+(out.error||'unknown')); }
   }catch(e){ toast('Error: '+e.message); }
   finally{ restore(); }

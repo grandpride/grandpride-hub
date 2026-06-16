@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP Daily Update</title>
+<style>
+  :root{
+    --ink:#0a0908; --paper:#f5f3ee; --gold:#c9a24b; --gold-soft:#e3c887;
+    --grey:#9a958c; --line:rgba(201,162,75,.18); --card:#15120d;
+    --green:#5a9e6f; --red:#d2533f; --blue:#5b8bb0; --amber:#d4a23a; --purple:#9a7bc8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:Arial,Helvetica,sans-serif;background:var(--ink);color:var(--paper);margin:0;min-height:100vh;padding-bottom:40px}
+  .top{position:sticky;top:0;z-index:30;background:rgba(10,9,8,.96);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .top .lg{width:38px;height:38px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:Georgia,serif;color:var(--gold);font-size:15px;border:1px solid var(--line);flex:0 0 auto}
+  .top .ti h2{font-family:Georgia,serif;font-size:15px;letter-spacing:1px;margin:0}
+  .top .ti p{font-size:11px;color:var(--grey);margin:2px 0 0}
+  .wrap{max-width:680px;margin:0 auto;padding:14px 16px}
+  .alert{border-radius:14px;padding:14px 16px;margin-bottom:14px;border:1px solid}
+  .alert.over{background:rgba(210,83,63,.10);border-color:rgba(210,83,63,.4)}
+  .alert.soon{background:rgba(212,162,58,.10);border-color:rgba(212,162,58,.4)}
+  .alert h3{margin:0 0 8px;font-size:14px;font-family:Georgia,serif}
+  .alert .ln{font-size:13px;margin:5px 0;line-height:1.5}
+  .alert .ln b{color:var(--gold-soft)}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+  .dot.over{background:var(--red)} .dot.soon{background:var(--amber)}
+  .sum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+  .sbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center}
+  .sbox .n{font-family:Georgia,serif;font-size:24px}
+  .sbox .l{font-size:10px;color:var(--grey);margin-top:2px;text-transform:uppercase;letter-spacing:.3px}
+  .grp{margin-bottom:18px}
+  .grp h3{font-size:12px;color:var(--grey);text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;
+    display:flex;align-items:center;gap:6px}
+  .car{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px;
+    display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .car .plate{font-family:Georgia,serif;font-size:16px;letter-spacing:.5px}
+  .car .model{font-size:11px;color:var(--grey);margin-top:1px}
+  .car .extra{font-size:11px;color:var(--gold-soft);margin-top:3px}
+  .pill{font-size:10px;padding:4px 9px;border-radius:20px;font-weight:bold;color:#000;white-space:nowrap}
+  .pill[data-s="ready"]{background:var(--green)} .pill[data-s="out"]{background:var(--red)}
+  .pill[data-s="job"]{background:var(--blue)} .pill[data-s="workshop"]{background:var(--amber)}
+  .pill[data-s="exotic"]{background:var(--purple)} .pill[data-s="other"]{background:var(--grey);color:#fff}
+  .pill[data-s="leasing"]{background:#c98a4b} .pill[data-s="internal"]{background:#7b9ac8}
+  .mini{font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px}
+  .mini.over{background:var(--red);color:#000} .mini.soon{background:var(--amber);color:#000}
+  .empty{text-align:center;color:var(--grey);padding:30px 20px;font-size:14px}
+  .refresh{font-size:11px;color:var(--grey);text-align:center;margin-top:10px}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="lg">GP</div>
+    <div class="ti"><h2>DAILY UPDATE</h2><p id="syncNote">Live fleet status</p></div>
+  </div>
+  <div class="wrap" id="wrap"><div class="empty">Loading…</div></div>
+
+<script>
+var SB_URL="https://iefevjkeckysdluzazeq.supabase.co";
+var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+function sbH(){ return {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}; }
+var $=function(id){return document.getElementById(id);};
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+var STATUSES=[
+  {k:'ready',name:'Ready at GP'},{k:'leasing',name:'On Leasing'},{k:'internal',name:'Company / Driver'},
+  {k:'out',name:'Out of GP'},{k:'job',name:'On Job / Rented'},{k:'workshop',name:'At Workshop'},
+  {k:'exotic',name:'At Exotic Workshop'},{k:'other',name:'Other location'}
+];
+function statName(k){var s=STATUSES.find(x=>x.k===k);return s?s.name:k;}
+var MAINT_ITEMS=[
+  {k:'engine_oil',name:'Engine Oil',dkm:10000,dmo:6},{k:'atf_oil',name:'ATF Oil',dkm:40000,dmo:24},
+  {k:'tyre',name:'Tyre',dkm:40000,dmo:36},{k:'balancing',name:'Balancing',dkm:10000,dmo:6},
+  {k:'alignment',name:'Alignment',dkm:10000,dmo:6}
+];
+function maintName(k){var m=MAINT_ITEMS.find(x=>x.k===k);return m?m.name:k;}
+function addMonths(d,n){var x=new Date(d);x.setMonth(x.getMonth()+n);return x;}
+function daysBetween(a,b){return Math.round((b-a)/(1000*60*60*24));}
+function dueInfo(item,cfg,km){
+  if(!cfg||(!cfg.last_km&&!cfg.last_date))return{level:'unset'};
+  var kmInt=cfg.km_interval||item.dkm, moInt=cfg.month_interval||item.dmo;
+  var nextKm=cfg.last_km?(cfg.last_km+kmInt):null;
+  var nextDate=cfg.last_date?addMonths(cfg.last_date,moInt):null;
+  var kmLeft=(nextKm!=null&&km)?(nextKm-km):null;
+  var daysLeft=nextDate?daysBetween(new Date(),nextDate):null;
+  var overdue=(kmLeft!=null&&kmLeft<=0)||(daysLeft!=null&&daysLeft<=0);
+  var soon=(kmLeft!=null&&kmLeft<=1000)||(daysLeft!=null&&daysLeft<=14);
+  var parts=[];
+  if(kmLeft!=null)parts.push(kmLeft<=0?('over by '+Math.abs(kmLeft).toLocaleString()+' km'):('in '+kmLeft.toLocaleString()+' km'));
+  if(daysLeft!=null)parts.push(daysLeft<=0?('over by '+Math.abs(daysLeft)+' days'):('in '+daysLeft+' days'));
+  return{level:overdue?'over':(soon?'soon':'ok'),label:parts.join(' · ')};
+}
+
+async function load(){
+  var FLEET=[];
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_fleet?select=*&order=plate.asc',{headers:sbH()});
+    if(r.ok){ FLEET=await r.json(); $('syncNote').textContent='Live • '+FLEET.length+' cars • '+new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+    else { $('syncNote').textContent='Offline'; }
+  }catch(e){ $('syncNote').textContent='Offline'; $('wrap').innerHTML='<div class="empty">Could not load fleet.</div>'; return; }
+  render(FLEET);
+}
+
+function render(FLEET){
+  if(!FLEET.length){ $('wrap').innerHTML='<div class="empty">No cars in the fleet yet.</div>'; return; }
+  var html='';
+
+  // ---- Maintenance alerts ----
+  var over=[], soon=[];
+  FLEET.forEach(c=>{
+    var km=c.current_mileage||0, maint=c.maint||{};
+    MAINT_ITEMS.forEach(it=>{
+      var info=dueInfo(it,maint[it.k],km);
+      if(info.level==='over') over.push({c:c,it:it,info:info});
+      else if(info.level==='soon') soon.push({c:c,it:it,info:info});
+    });
+  });
+  if(over.length){
+    html+='<div class="alert over"><h3>🔴 Overdue maintenance ('+over.length+')</h3>'+
+      over.map(x=>`<div class="ln"><span class="dot over"></span><b>${esc(x.c.plate)}</b> — ${esc(maintName(x.it.k))} ${esc(x.info.label)}</div>`).join('')+'</div>';
+  }
+  if(soon.length){
+    html+='<div class="alert soon"><h3>🟡 Due soon ('+soon.length+')</h3>'+
+      soon.map(x=>`<div class="ln"><span class="dot soon"></span><b>${esc(x.c.plate)}</b> — ${esc(maintName(x.it.k))} ${esc(x.info.label)}</div>`).join('')+'</div>';
+  }
+  if(!over.length && !soon.length){
+    html+='<div class="alert soon" style="background:rgba(90,158,111,.08);border-color:rgba(90,158,111,.35)"><h3 style="color:var(--green)">✓ All maintenance up to date</h3></div>';
+  }
+
+  // ---- Summary counts ----
+  var counts={}; STATUSES.forEach(s=>counts[s.k]=FLEET.filter(c=>c.status===s.k).length);
+  var show=STATUSES.filter(s=>counts[s.k]>0);
+  html+='<div class="sum">'+show.map(s=>`<div class="sbox"><div class="n" style="color:var(--gold-soft)">${counts[s.k]}</div><div class="l">${esc(s.name)}</div></div>`).join('')+'</div>';
+
+  // ---- Cars grouped by status ----
+  STATUSES.forEach(s=>{
+    var cars=FLEET.filter(c=>c.status===s.k);
+    if(!cars.length) return;
+    html+='<div class="grp"><h3><span class="pill" data-s="'+s.k+'">'+esc(s.name)+'</span> '+cars.length+'</h3>';
+    html+=cars.map(c=>{
+      var km=c.current_mileage||0, maint=c.maint||{}, badge='';
+      var worst='ok';
+      MAINT_ITEMS.forEach(it=>{ var i=dueInfo(it,maint[it.k],km); if(i.level==='over')worst='over'; else if(i.level==='soon'&&worst!=='over')worst='soon'; });
+      if(worst==='over') badge='<span class="mini over">🔧 overdue</span>';
+      else if(worst==='soon') badge='<span class="mini soon">🔧 soon</span>';
+      var extra='';
+      if(c.status==='leasing'&&c.customer_name) extra='👤 '+esc(c.customer_name);
+      else if(c.remark) extra=esc(c.remark);
+      else if(c.location) extra=esc(c.location);
+      return `<div class="car">
+        <div style="flex:1">
+          <div class="plate">${esc(c.plate)}${badge}</div>
+          <div class="model">${esc(c.model||'')}${km?(' · '+km.toLocaleString()+' km'):''}</div>
+          ${extra?'<div class="extra">'+extra+'</div>':''}
+        </div>
+      </div>`;
+    }).join('');
+    html+='</div>';
+  });
+
+  html+='<div class="refresh">Read-only board · updates pulled from the fleet · refresh to update</div>';
+  $('wrap').innerHTML=html;
+}
+
+load();
+setInterval(load, 60000); // auto-refresh every minute
+</script>
+</body>
+</html>
