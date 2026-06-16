@@ -192,6 +192,8 @@ var $=function(id){return document.getElementById(id);};
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function toast(t){var el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800);}
 function todayISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function upcase(el){var s=el.selectionStart,e=el.selectionEnd;el.value=el.value.toUpperCase();try{el.setSelectionRange(s,e);}catch(_){}}
+function bindUpper(){document.querySelectorAll('input[type="text"],input:not([type]),textarea').forEach(function(el){if(el.dataset._up)return;el.dataset._up='1';el.addEventListener('input',function(){upcase(el);});});}
 function nowTime(){var d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function fmt(iso){if(!iso)return '';var d=new Date(iso);return d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});}
 
@@ -525,6 +527,7 @@ async function signIn(){
 (async function(){
   $('oDate').value=todayISO(); $('oTime').value=nowTime();
   await loadStaff(); await loadFleet(); await loadOps();
+  bindUpper();
   setTimeout(()=>{ initPad('sigODrv'); },60);
 })();
 </script>

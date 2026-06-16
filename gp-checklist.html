@@ -1330,8 +1330,29 @@ function sendWhatsapp(enc){
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
 }
 
+/* ====== UPPERCASE AS YOU TYPE ====== */
+function upcase(el){var s=el.selectionStart,e=el.selectionEnd;el.value=el.value.toUpperCase();try{el.setSelectionRange(s,e);}catch(_){}}
+function bindUpper(){
+  document.querySelectorAll('input[type="text"],input:not([type]),textarea').forEach(function(el){
+    if(el.dataset._up) return; el.dataset._up='1';
+    el.addEventListener('input',function(){ upcase(el); });
+  });
+}
+// keep binding as the app re-renders the form
+document.addEventListener('input', function(e){
+  var el=e.target;
+  if(!el || el.dataset._up) return;
+  var t=(el.tagName||'').toLowerCase();
+  if(t==='textarea' || (t==='input' && (!el.type || el.type==='text'))){
+    el.dataset._up='1';
+    upcase(el);
+    el.addEventListener('input',function(){ upcase(el); });
+  }
+}, true);
+
 /* ====== INIT ====== */
 showChooser();
+setTimeout(bindUpper, 200);
 
 </script>
 </body>

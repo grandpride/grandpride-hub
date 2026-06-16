@@ -228,6 +228,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 <!-- Supabase config (same project as checklist) -->
 <script>
+/* uppercase as you type (skips email/tel/number/date inputs) */
+document.addEventListener('input', function(e){
+  var el=e.target; if(!el) return;
+  var t=(el.tagName||'').toLowerCase();
+  if(t==='textarea' || (t==='input' && (!el.type || el.type==='text'))){
+    var s=el.selectionStart,en=el.selectionEnd;
+    el.value=el.value.toUpperCase();
+    try{ el.setSelectionRange(s,en); }catch(_){}
+  }
+}, true);
 var SUPABASE_URL = "https://iefevjkeckysdluzazeq.supabase.co";
 var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
 function sbBase(){ return SUPABASE_URL.replace(/\/rest\/v1\/?$/,''); }

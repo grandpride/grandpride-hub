@@ -139,8 +139,16 @@
         <input id="mCust" placeholder="Who is leasing the car?">
       </div>
       <div id="locWrap" style="display:none">
-        <label>Location / details</label>
-        <input id="mLoc" placeholder="Where is the car?">
+        <label>Location / place</label>
+        <select id="mLocSel" onchange="onLocSel()"><option value="">Select place…</option></select>
+        <div id="mLocNewWrap" style="display:none;margin-top:8px">
+          <input id="mLocNew" placeholder="Type new place name" oninput="upcase(this)">
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn gold sm" onclick="addPlace()">Save place</button>
+            <button class="btn ghost sm" onclick="cancelNewPlace()">Cancel</button>
+          </div>
+        </div>
+        <input type="hidden" id="mLoc">
       </div>
       <div id="remWrap" style="display:none">
         <label id="remLbl">Reason / remark</label>
@@ -284,6 +292,60 @@ async function loadFleet(){
   renderBoard();
 }
 
+/* ===== Saved places ===== */
+var PLACES=[];
+async function loadPlaces(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_places?select=*&order=name.asc',{headers:sbH()});
+    if(r.ok){ PLACES=await r.json(); }
+  }catch(e){}
+}
+function fillPlaceSelect(current){
+  var sel=$('mLocSel'); if(!sel) return;
+  sel.innerHTML='<option value="">Select place…</option>'+
+    PLACES.map(p=>`<option value="${esc(p.name)}" ${current===p.name?'selected':''}>${esc(p.name)}</option>`).join('')+
+    '<option value="__new__">➕ Add new place…</option>';
+  // if current isn't in list, add it as a temp option
+  if(current && !PLACES.some(p=>p.name===current)){
+    var o=document.createElement('option'); o.value=current; o.textContent=current; o.selected=true;
+    sel.insertBefore(o, sel.lastChild);
+  }
+}
+function onLocSel(){
+  var v=$('mLocSel').value;
+  if(v==='__new__'){ $('mLocNewWrap').style.display='block'; $('mLoc').value=''; }
+  else { $('mLocNewWrap').style.display='none'; $('mLoc').value=v; }
+}
+function cancelNewPlace(){ $('mLocNewWrap').style.display='none'; $('mLocSel').value=''; $('mLoc').value=''; }
+async function addPlace(){
+  var name=($('mLocNew').value||'').trim().toUpperCase();
+  if(!name){ toast('Type a place name'); return; }
+  if(PLACES.some(p=>p.name.toUpperCase()===name)){ toast('Place already exists'); $('mLocSel').value=name; onLocSel(); return; }
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_places',{method:'POST',headers:sbH({'Prefer':'return=representation'}),body:JSON.stringify({name:name})});
+    if(!r.ok){ toast('Save failed'); return; }
+    var saved=(await r.json())[0];
+    PLACES.push(saved); PLACES.sort((a,b)=>a.name.localeCompare(b.name));
+    fillPlaceSelect(name); $('mLoc').value=name;
+    $('mLocNewWrap').style.display='none'; $('mLocNew').value='';
+    toast('Place added');
+  }catch(e){ toast('Offline'); }
+}
+
+/* ===== Uppercase as you type ===== */
+function upcase(el){
+  var s=el.selectionStart, e=el.selectionEnd;
+  el.value=el.value.toUpperCase();
+  try{ el.setSelectionRange(s,e); }catch(_){}
+}
+// auto-apply to every text/textarea input on the page
+function bindUpper(){
+  document.querySelectorAll('input[type="text"],input:not([type]),textarea').forEach(function(el){
+    if(el.dataset._up) return; el.dataset._up='1';
+    el.addEventListener('input',function(){ upcase(el); });
+  });
+}
+
 /* ===== Board ===== */
 function setTab(t){
   $('board').style.display = t==='board'?'block':'none';
@@ -361,6 +423,7 @@ function openModal(id){
   $('mBy').value='';
   renderStatOpts();
   $('statModal').classList.add('show');
+  bindUpper();
 }
 function renderStatOpts(){
   $('statOpts').innerHTML=STATUSES.map(s=>
@@ -369,6 +432,7 @@ function renderStatOpts(){
   var s=STATUSES.find(x=>x.k===MODAL_PICK)||{};
   $('custWrap').style.display=s.needCust?'block':'none';
   $('locWrap').style.display=s.needLoc?'block':'none';
+  if(s.needLoc){ fillPlaceSelect(MODAL_CAR?MODAL_CAR.location:''); $('mLoc').value=(MODAL_CAR&&MODAL_CAR.location)||''; $('mLocNewWrap').style.display='none'; }
   $('remWrap').style.display=s.needRemark?'block':'none';
   $('signWrap').style.display=s.needSign?'block':'none';
   $('remLbl').textContent=s.needRemark?'Reason / remark (required)':'Remark';
@@ -550,7 +614,7 @@ async function renderReport(){
 }
 
 /* ===== init ===== */
-(async function(){ await loadStaff(); await loadFleet(); })();
+(async function(){ await loadStaff(); await loadPlaces(); await loadFleet(); bindUpper(); })();
 </script>
 </body>
 </html>
