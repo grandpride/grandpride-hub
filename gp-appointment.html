@@ -154,7 +154,7 @@ document.addEventListener('input',function(e){var el=e.target;if(!el)return;var 
 
 var FLEET=[], APPTS=[], EDIT_ID=null;
 // Google Apps Script Web App URL (shared Booking+Appointment sheet)
-var APPT_SHEET_URL='https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec';
+var APPT_SHEET_URL='https://script.google.com/macros/s/AKfycbypjDXMY5bmBY3kiIJL3h6QVv7iaoRuDQVraD4tc54iSnjtjuEZH_443F2AeLfCfCGE/exec';
 function apptSheetPush(rec){
   try{ if(!APPT_SHEET_URL||APPT_SHEET_URL.indexOf('http')!==0) return;
     rec.kind='appointment';

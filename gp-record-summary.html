@@ -93,7 +93,7 @@ function sbH(extra){ return Object.assign({'Content-Type':'application/json','ap
 // Google Apps Script Web App URL for the Record Summary sheet (set after deploy)
 // Standalone Record Summary sheet — deploy RecordSummary_AppsScript.gs to its OWN
 // Google Sheet and paste that /exec URL here.
-var REC_SHEET_URL='';
+var REC_SHEET_URL='https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec';
 var $=function(id){return document.getElementById(id);};
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function toast(t){var el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800);}

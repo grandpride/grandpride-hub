@@ -1186,13 +1186,25 @@ async function updateRecordFromChecklist(a, st){
       var exceedKm=used-given;
       if(exceedKm>0 && perkm>0) patch.exceed_mileage_rm=Math.round(exceedKm*perkm*100)/100;
     }
-    // PATCH the matching record by key
+    // PATCH the matching record by key, return the full updated row
     var q='car_plate=eq.'+encodeURIComponent(plate)+'&customer_name=eq.'+encodeURIComponent(cust);
     if(start) q+='&start_date=eq.'+start;
-    await fetch(sbBase()+'/rest/v1/gp_records?'+q,{
-      method:'PATCH', headers:sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify(patch)
+    var r=await fetch(sbBase()+'/rest/v1/gp_records?'+q,{
+      method:'PATCH', headers:sbHeaders({'Prefer':'return=representation'}), body:JSON.stringify(patch)
     });
+    if(r.ok){
+      var rows=await r.json();
+      if(rows && rows.length) recSheetPush(rows[0]);
+    }
   }catch(e){ /* non-blocking */ }
+}
+
+// Record Summary Google Sheet (same /exec URL as gp-record-summary.html)
+var REC_SHEET_URL='https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec';
+function recSheetPush(rec){
+  try{ if(!REC_SHEET_URL||REC_SHEET_URL.indexOf('http')!==0) return;
+    fetch(REC_SHEET_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rec)}).catch(function(){});
+  }catch(e){}
 }
 
 async function maybeSetFleetLeasing(a){

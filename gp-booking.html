@@ -249,7 +249,7 @@ function sbBase(){ return SUPABASE_URL.replace(/\/rest\/v1\/?$/,''); }
 function sbHeaders(extra){ return Object.assign({'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}, extra||{}); }
 var CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 // Google Sheet logging via Apps Script web app (paste your /exec URL after deploying gp-booking-sheet.gs)
-var GS_BOOKING_URL = "https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec";
+var GS_BOOKING_URL = "https://script.google.com/macros/s/AKfycbypjDXMY5bmBY3kiIJL3h6QVv7iaoRuDQVraD4tc54iSnjtjuEZH_443F2AeLfCfCGE/exec";
 
 </script>
 
@@ -413,7 +413,16 @@ async function upsertRecord(d){
       headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
       body:JSON.stringify(rec)
     });
+    recSheetPush(rec);
   }catch(e){ /* non-blocking */ }
+}
+
+// Record Summary Google Sheet (same /exec URL as gp-record-summary.html)
+var REC_SHEET_URL='https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec';
+function recSheetPush(rec){
+  try{ if(!REC_SHEET_URL||REC_SHEET_URL.indexOf('http')!==0) return;
+    fetch(REC_SHEET_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rec)}).catch(function(){});
+  }catch(e){}
 }
 
 /* mirror the booking into Google Sheet via Apps Script (fire-and-forget) */
