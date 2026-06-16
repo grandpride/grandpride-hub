@@ -590,6 +590,25 @@ async function pullStaffFromCloud(){
   window.STAFF_SEED = fromCloud;
 }
 
+/* Re-pull gp_staff and merge into DB.users on demand (used by attendance).
+   Returns true if the staff list changed, so the caller can re-render. */
+async function refreshStaffList(){
+  const before = DB.users.map(u=>u.username).sort().join('|');
+  await pullStaffFromCloud();
+  if(typeof STAFF_SEED!=='undefined' && STAFF_SEED.length){
+    STAFF_SEED.forEach(cs=>{
+      const ex = DB.users.find(u=>u.username===cs.username);
+      if(ex){ Object.assign(ex, cs); }
+      else { DB.users.push(Object.assign({}, cs)); }
+    });
+    const cloudNames = STAFF_SEED.map(s=>s.username);
+    DB.users = DB.users.filter(u=>u.username==='admin' || cloudNames.includes(u.username));
+    safeLocalSet(DB);
+  }
+  const after = DB.users.map(u=>u.username).sort().join('|');
+  return before !== after;
+}
+
 /* pull shared attendance/leave/assignments/announcements so all phones (esp admin) see the same */
 async function pullHubDataFromCloud(){
   // cloud is the source of truth for shared data — rebuild these fresh each load
@@ -1647,6 +1666,15 @@ function fmtLate(mins){
 
 function renderAttendance(){
   attData();
+  // Refresh the staff list from the cloud each time attendance opens, so newly
+  // added staff always appear (don't rely on a possibly-stale init-time merge).
+  if(useCloud && SUPA.isReady() && !renderAttendance._refreshing){
+    renderAttendance._refreshing = true;
+    refreshStaffList().then(changed=>{
+      renderAttendance._refreshing = false;
+      if(changed) renderAttendance();
+    }).catch(()=>{ renderAttendance._refreshing = false; });
+  }
   const body = document.getElementById('avBody');
   body.innerHTML = `
     <div class="att-wrap">
