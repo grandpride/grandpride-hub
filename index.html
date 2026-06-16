@@ -465,14 +465,16 @@ const ICONS = {
   gpfleet:'<svg viewBox="0 0 24 24"><path d="M5 17h14M5 17a2 2 0 1 1-4 0M19 17a2 2 0 1 0 4 0M3 17v-4l2-5h11l3 5v4"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/></svg>',
   gpuse:'<svg viewBox="0 0 24 24"><path d="M14 2v4M10 2v4M4 9h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="m9 15 2 2 4-4"/></svg>',
   roro:'<svg viewBox="0 0 24 24"><path d="M3 18h18M4 18V9l8-5 8 5v9"/><path d="M9 18v-5h6v5"/><circle cx="12" cy="10" r="1"/></svg>',
+  minigames:'<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18.5" cy="14" r="1"/></svg>',
   gpappt:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="m17 2 3 3M2 5l3-3"/></svg>',
   gprecord:'<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-5"/></svg>',
 };
 const APPS = [
-  { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules' },
-  { id:'reminders',  label:'Reminders',  svg:ICONS.reminders,  logo:'', cat:'modules' },
-  { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', link:'daily-task-log.html' },
-  { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', link:'staff-manager.html', adminOnly:true },
+  { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules', section:'Tools' },
+  { id:'reminders',  label:'Reminders',  svg:ICONS.reminders,  logo:'', cat:'modules', section:'Tools' },
+  { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'daily-task-log.html' },
+  { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'staff-manager.html', adminOnly:true },
+  { id:'minigames',  label:'Minigames', svg:ICONS.minigames, logo:'', cat:'modules', section:'Minigames', link:'gp-minigames.html' },
   { id:'joborder',   label:'Job Order',  svg:ICONS.joborder,   logo:'', cat:'grandlab', link:'grandlab_jobcard.html' },
   { id:'academy',    label:'Academy',    svg:ICONS.academy,    logo:'', cat:'grandlab' },
   { id:'dutyboard',  label:'DutyBoard',  svg:ICONS.dutyboard,  logo:'', cat:'grandlab' },
@@ -855,7 +857,7 @@ function renderTiles(cat){
       grid.appendChild(head);
       lastSection = app.section;
     }
-    const allowed = current.apps.includes(app.id) || current.role==='Admin' || app.id==='reminders';
+    const allowed = current.apps.includes(app.id) || current.role==='Admin' || app.id==='reminders' || app.id==='minigames';
     if(!allowed) lockedCount++;
     const tile = document.createElement('div');
     tile.className = 'tile ' + (allowed?'allowed':'locked');

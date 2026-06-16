@@ -380,9 +380,40 @@ async function saveBooking(){
     var r=await fetch(sbBase()+'/rest/v1/gp_bookings', {
       method:'POST', headers:sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify(row)
     });
-    if(r.ok){ toast('Booking saved ✓'); window._lastId=id; logToSheet(row); }
+    if(r.ok){ toast('Booking saved ✓'); window._lastId=id; logToSheet(row); upsertRecord(d); }
     else { var t=await r.text(); toast('Save failed — '+r.status+' '+t); }
   }catch(e){ toast('Error: '+e.message); }
+}
+
+/* ---- write/refresh the shared rental record (gp_records) ---- */
+function monthKey(d){ var x=d?new Date(d):new Date(); return ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][x.getMonth()]+String(x.getFullYear()).slice(2); }
+function dateOnly(s){ if(!s) return null; return String(s).slice(0,10); }
+async function upsertRecord(d){
+  if(!CLOUD) return;
+  // service mapping: leasing->rental, chauffeur->chauffeur, others same
+  var svc = SVC==='leasing' ? 'rental' : SVC;
+  var plate = (d.car_plate||'').toUpperCase();
+  var cust  = (d.customer_name||'').toUpperCase();
+  var start = dateOnly(d.start);
+  // need a key — chauffeur may have no plate; fall back to start+customer
+  var rec = {
+    car_plate: plate, customer_name: cust, start_date: start,
+    service: svc, month_key: monthKey(new Date()),
+    car_model: d.car_model||'', customer_contact: d.contact||'',
+    rental_rate: d.rate||0, deposit: d.deposit||0, end_date: dateOnly(d.end),
+    plan: d.plan||'', insurance: d.insurance||0, per_km_exceed: parseFloat(d.per_km||0)||0,
+    mileage_given: parseInt(d.mileage_given||0,10)||0,
+    ot_rate: d.ot_rate||0, duration: d.rate_covers||'',
+    source:'booking', updated_at:new Date().toISOString()
+  };
+  try{
+    // upsert on the unique key (plate+customer+start_date)
+    await fetch(sbBase()+'/rest/v1/gp_records?on_conflict=car_plate,customer_name,start_date',{
+      method:'POST',
+      headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body:JSON.stringify(rec)
+    });
+  }catch(e){ /* non-blocking */ }
 }
 
 /* mirror the booking into Google Sheet via Apps Script (fire-and-forget) */

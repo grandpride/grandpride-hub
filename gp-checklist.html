@@ -1161,6 +1161,40 @@ async function setFleetStatus(car, status, customer, mileage){
     return true;
   }catch(e){ return false; }
 }
+/* ===== Update the shared rental record (gp_records) from checklist ===== */
+function recDateOnly(s){ if(!s) return null; var d=String(s).slice(0,10); return /^\d{4}-\d{2}-\d{2}$/.test(d)?d:null; }
+async function updateRecordFromChecklist(a, st){
+  try{
+    var plate=(a.car_plate||'').toUpperCase();
+    var cust=(a.customer_name||'').toUpperCase();
+    if(!plate || !cust) return; // need the key to match a booking record
+    // start_date: prefer the record's lease start; fall back to delivery date
+    var start=recDateOnly(a.lease_from||a.out_date);
+    var patch={ source:'checklist', updated_at:new Date().toISOString() };
+    if(st==='out'){
+      patch.car_status='ongoing';
+      patch.beg_mileage=parseInt(a.out_mileage||0,10)||0;
+      patch.mileage_given=parseInt(a.mileage_given||0,10)||0;
+      if(a.per_km) patch.per_km_exceed=parseFloat(a.per_km)||0;
+    } else if(st==='in'){
+      patch.car_status='done';
+      var beg=parseInt(a.out_mileage||0,10)||0, end=parseInt(a.in_mileage||0,10)||0;
+      patch.end_mileage=end;
+      var used=end-beg; if(used>0) patch.mileage_used=used;
+      // exceed mileage RM = (used - given) * per_km, if positive
+      var given=parseInt(a.mileage_given||0,10)||0, perkm=parseFloat(a.per_km||0)||0;
+      var exceedKm=used-given;
+      if(exceedKm>0 && perkm>0) patch.exceed_mileage_rm=Math.round(exceedKm*perkm*100)/100;
+    }
+    // PATCH the matching record by key
+    var q='car_plate=eq.'+encodeURIComponent(plate)+'&customer_name=eq.'+encodeURIComponent(cust);
+    if(start) q+='&start_date=eq.'+start;
+    await fetch(sbBase()+'/rest/v1/gp_records?'+q,{
+      method:'PATCH', headers:sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify(patch)
+    });
+  }catch(e){ /* non-blocking */ }
+}
+
 async function maybeSetFleetLeasing(a){
   const car=await fleetCarByPlate(a.car_plate);
   if(!car){ return; } // plate not in fleet — skip silently
@@ -1212,6 +1246,8 @@ async function generateChecklist(){
       // Auto-status: offer to set the car On Leasing (delivery) / Ready (return)
       if(st==='out') maybeSetFleetLeasing(a);
       else if(st==='in') maybeSetFleetReady(a);
+      // Update the shared rental record (gp_records)
+      updateRecordFromChecklist(a, st);
     } else { toast('Failed: '+(out.error||'unknown')); }
   }catch(e){ toast('Error: '+e.message); }
   finally{ restore(); }
