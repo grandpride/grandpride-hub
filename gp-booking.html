@@ -81,10 +81,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <input id="le_name" placeholder="Customer name">
       <label>Contact</label>
       <input id="le_contact" type="tel" placeholder="01x-xxxxxxx">
-      <label>Car Model</label>
-      <input id="le_model" placeholder="e.g. Lamborghini Urus">
+      <label>Car (from fleet)</label>
+      <select id="le_car" onchange="onCarPick('le')"><option value="">Loading fleet…</option></select>
+      <input id="le_model" type="hidden">
       <div class="row">
-        <div><label>Plate Number</label><input id="le_plate" placeholder="ABC1234"></div>
+        <div><label>Plate Number</label><input id="le_plate" readonly placeholder="auto-filled" style="opacity:.7"></div>
         <div><label>Petrol Fuel Type</label>
           <select id="le_fuel"><option>RON95</option><option>RON97</option><option>RON100</option><option>Diesel</option></select>
         </div>
@@ -154,7 +155,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <label>Contact Number</label><input id="su_contact" type="tel" placeholder="01x-xxxxxxx">
       <label>Subscription Plan</label>
       <select id="su_plan"><option>12 months</option><option>24 months</option><option>36 months</option></select>
-      <label>Car Model</label><input id="su_model" placeholder="e.g. Lamborghini Urus">
+      <label>Car (from fleet)</label>
+      <select id="su_car" onchange="onCarPick('su')"><option value="">Loading fleet…</option></select>
+      <input id="su_model" type="hidden">
     </div>
     <div class="panel">
       <h3>Pricing</h3>
@@ -186,8 +189,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <option>30 months</option><option>36 months</option><option>42 months</option>
         <option>48 months</option><option>54 months</option><option>60 months</option>
       </select>
-      <label>Car Model</label><input id="lt_model" placeholder="e.g. Honda Civic">
-      <label>Number Plate</label><input id="lt_plate" placeholder="ABC1234">
+      <label>Car (from fleet)</label>
+      <select id="lt_car" onchange="onCarPick('lt')"><option value="">Loading fleet…</option></select>
+      <input id="lt_model" type="hidden">
+      <label>Number Plate</label><input id="lt_plate" readonly placeholder="auto-filled" style="opacity:.7">
     </div>
     <div class="panel">
       <h3>First Payment Breakdown</h3>
@@ -479,7 +484,31 @@ function sendWhatsApp(){
 }
 
 /* init */
+/* ===== Fleet cars (single source of truth) ===== */
+var FLEET=[];
+function sbHeaders2(){ return {'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}; }
+async function loadFleetCars(){
+  try{
+    var r=await fetch(sbBase()+'/rest/v1/gp_fleet?select=id,plate,model&order=plate.asc',{headers:sbHeaders2()});
+    if(r.ok) FLEET=await r.json();
+  }catch(e){}
+  var opts='<option value="">Select car…</option>'+FLEET.map(function(c){
+    return '<option value="'+c.id+'" data-plate="'+(c.plate||'')+'" data-model="'+((c.model||'').replace(/"/g,'&quot;'))+'">'+(c.plate||'')+' — '+(c.model||'')+'</option>';
+  }).join('');
+  ['le_car','su_car','lt_car'].forEach(function(id){ var el=$(id); if(el) el.innerHTML=opts; });
+  if(!FLEET.length){ ['le_car','su_car','lt_car'].forEach(function(id){ var el=$(id); if(el) el.innerHTML='<option value="">No cars in fleet — add in GP Vehicle Fleet first</option>'; }); }
+}
+function onCarPick(prefix){
+  var sel=$(prefix+'_car'); if(!sel) return;
+  var opt=sel.options[sel.selectedIndex];
+  var plate=opt?opt.getAttribute('data-plate'):'';
+  var model=opt?opt.getAttribute('data-model'):'';
+  var mEl=$(prefix+'_model'); if(mEl) mEl.value=model||'';
+  var pEl=$(prefix+'_plate'); if(pEl) pEl.value=plate||'';
+}
+
 setSvc('leasing');
+loadFleetCars();
 $('le_start') && $('le_start').addEventListener('change',updateDuration);
 $('le_end') && $('le_end').addEventListener('change',updateDuration);
 </script>

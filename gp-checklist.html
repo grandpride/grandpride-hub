@@ -552,8 +552,11 @@ function showForm(){
       <div><label>Customer contact</label><input id="f_customer_contact" value="${esc(a.customer_contact)}" ${lockShared?'disabled':''} inputmode="tel" oninput="phoneFmt(this)" placeholder="012-345 6789"></div>
     </div>
     <div class="row2">
-      <div><label>Car model</label><input id="f_car_model" value="${esc(a.car_model)}" ${lockShared?'disabled':''} oninput="upper(this)"></div>
-      <div><label>Car plate number</label><input id="f_car_plate" value="${esc(a.car_plate)}" ${lockShared?'disabled':''} oninput="upper(this)"></div>
+      <div><label>Car (from fleet)</label>
+        <select id="f_car_sel" ${lockShared?'disabled':''} onchange="onChkCarPick()"><option value="">Select car…</option></select>
+        <input id="f_car_model" type="hidden" value="${esc(a.car_model)}">
+      </div>
+      <div><label>Car plate number</label><input id="f_car_plate" value="${esc(a.car_plate)}" readonly placeholder="auto-filled" style="opacity:.7"></div>
     </div>
     <div class="row2" style="margin-top:8px">
       <div><label>Petrol fuel type</label>
@@ -702,6 +705,7 @@ function showForm(){
     renderMarkers();
     refreshPhotoSlots();
     renderDefectPhotos();
+    loadChkFleet();
     const _vn=$('videoNote'), _vc=f('video_sent')||0;
     if(_vn && _vc) _vn.textContent='✓ '+_vc+' video'+(_vc>1?'s':'')+' sent via WhatsApp for this stage.';
   },50);
@@ -733,6 +737,28 @@ function setChk(key,val){
 function toggleRon100(){
   const row=document.getElementById('ron100Row');
   if(row) row.style.display = (STATE.current.fuel_type==='RON100') ? 'block' : 'none';
+}
+var CHK_FLEET=[];
+async function loadChkFleet(){
+  var sel=$('f_car_sel'); if(!sel) return;
+  try{
+    const r=await fetch(sbBase()+'/rest/v1/gp_fleet?select=id,plate,model&order=plate.asc',{headers:sbHeaders()});
+    if(r.ok) CHK_FLEET=await r.json();
+  }catch(e){}
+  const cur=(STATE.current&&STATE.current.car_plate)||'';
+  if(!CHK_FLEET.length){ sel.innerHTML='<option value="">No cars in fleet — add in GP Vehicle Fleet first</option>'; return; }
+  sel.innerHTML='<option value="">Select car…</option>'+CHK_FLEET.map(c=>
+    `<option value="${c.id}" data-plate="${esc(c.plate||'')}" data-model="${esc(c.model||'')}" ${cur&&c.plate===cur?'selected':''}>${esc(c.plate||'')} — ${esc(c.model||'')}</option>`
+  ).join('');
+}
+function onChkCarPick(){
+  var sel=$('f_car_sel'); if(!sel) return;
+  var opt=sel.options[sel.selectedIndex];
+  var plate=opt?opt.getAttribute('data-plate'):'';
+  var model=opt?opt.getAttribute('data-model'):'';
+  if($('f_car_model')) $('f_car_model').value=model||'';
+  if($('f_car_plate')) $('f_car_plate').value=plate||'';
+  STATE.current.car_model=model||''; STATE.current.car_plate=plate||'';
 }
 function setCarType(k){
   STATE.current.car_type=k;  [...document.querySelectorAll('#carTypeSeg button')].forEach((b,i)=>b.classList.toggle('on',CAR_TYPES[i].k===k));

@@ -267,6 +267,26 @@ function nricFmt(el){
   el.value=out;
 }
 function upper(el){ el.value = el.value.toUpperCase(); }
+var AGR_FLEET=[];
+async function loadAgrFleet(){
+  var sel=document.getElementById('f_v_car'); if(!sel) return;
+  try{ const r=await fetch(sbBase()+'/rest/v1/gp_fleet?select=id,plate,model&order=plate.asc',{headers:sbHeaders()});
+    if(r.ok) AGR_FLEET=await r.json(); }catch(e){}
+  var cur=(STATE.current&&STATE.current.v_reg)||'';
+  if(!AGR_FLEET.length){ sel.innerHTML='<option value="">No cars in fleet — add in GP Vehicle Fleet first</option>'; return; }
+  sel.innerHTML='<option value="">Select car…</option>'+AGR_FLEET.map(c=>
+    `<option value="${c.id}" data-plate="${(c.plate||'')}" data-model="${(c.model||'').replace(/"/g,'&quot;')}" ${cur&&c.plate===cur?'selected':''}>${(c.plate||'')} — ${(c.model||'')}</option>`
+  ).join('');
+}
+function onAgrCarPick(){
+  var sel=document.getElementById('f_v_car'); if(!sel) return;
+  var opt=sel.options[sel.selectedIndex];
+  var plate=opt?opt.getAttribute('data-plate'):'';
+  var model=opt?opt.getAttribute('data-model'):'';
+  if(document.getElementById('f_v_make_model')) document.getElementById('f_v_make_model').value=(model||'').toUpperCase();
+  if(document.getElementById('f_v_reg')) document.getElementById('f_v_reg').value=(plate||'').toUpperCase();
+  if(STATE.current){ STATE.current.v_make_model=(model||'').toUpperCase(); STATE.current.v_reg=(plate||'').toUpperCase(); }
+}
 function money(el){
   let v = el.value.replace(/[^0-9.]/g,'');
   const firstDot = v.indexOf('.');
@@ -402,12 +422,14 @@ function showLeaseForm(){
     <textarea id="f_lessee_address" rows="2" placeholder="Full address">${esc(a.lessee_address)}</textarea>
   </div>
   <div class="panel"><h3>2 · Description of Vehicle</h3>
+    <label>Car (from fleet)</label>
+    <select id="f_v_car" onchange="onAgrCarPick()"><option value="">Select car…</option></select>
     <div class="row2">
-      <div><label>Make and Model</label><input id="f_v_make_model" value="${esc(a.v_make_model)}" oninput="upper(this)" placeholder="LAMBORGHINI URUS"></div>
+      <div><label>Make and Model</label><input id="f_v_make_model" value="${esc(a.v_make_model)}" readonly placeholder="auto-filled from fleet" style="opacity:.75"></div>
       <div><label>Year of Manufacture</label><input id="f_v_year" value="${esc(a.v_year)}" oninput="upper(this)" placeholder="2020"></div>
     </div>
     <div class="row2">
-      <div><label>Registration No.</label><input id="f_v_reg" value="${esc(a.v_reg)}" oninput="upper(this)" placeholder="VNS31"></div>
+      <div><label>Registration No.</label><input id="f_v_reg" value="${esc(a.v_reg)}" readonly placeholder="auto-filled" style="opacity:.75"></div>
       <div><label>Engine No.</label><input id="f_v_engine" value="${esc(a.v_engine)}" oninput="upper(this)" placeholder="DHUO15343"></div>
     </div>
     <div class="row2">
@@ -449,6 +471,7 @@ function showLeaseForm(){
     <button class="btn ok" onclick="previewDoc()">Preview &amp; Sign ›</button>
     <button class="btn sec" onclick="showChooser()">Cancel</button>
   </div>`;
+  setTimeout(loadAgrFleet,30);
 }
 
 function readLeaseForm(){
@@ -494,12 +517,14 @@ function showForm(){
   </div>
   <div class="panel">
     <h3>2 \u00b7 Description of Vehicle</h3>
+    <label>Car (from fleet)</label>
+    <select id="f_v_car" onchange="onAgrCarPick()"><option value="">Select car…</option></select>
     <div class="row2">
-      <div><label>Make and Model</label><input id="f_v_make_model" value="${esc(a.v_make_model)}" oninput="upper(this)" placeholder="TOYOTA / ALPHARD DBA-AGH30W"></div>
+      <div><label>Make and Model</label><input id="f_v_make_model" value="${esc(a.v_make_model)}" readonly placeholder="auto-filled from fleet" style="opacity:.75"></div>
       <div><label>Year of Manufacture</label><input id="f_v_year" value="${esc(a.v_year)}" oninput="upper(this)" placeholder="MOTOKAR / 2019"></div>
     </div>
     <div class="row2">
-      <div><label>Registration No.</label><input id="f_v_reg" value="${esc(a.v_reg)}" oninput="upper(this)" placeholder="PPM131"></div>
+      <div><label>Registration No.</label><input id="f_v_reg" value="${esc(a.v_reg)}" readonly placeholder="auto-filled" style="opacity:.75"></div>
       <div><label>Engine No.</label><input id="f_v_engine" value="${esc(a.v_engine)}" oninput="upper(this)" placeholder="2AR2231837"></div>
     </div>
     <div class="row2">
@@ -544,6 +569,7 @@ function showForm(){
     <button class="btn ok" onclick="previewDoc()">Preview &amp; Sign \u203a</button>
     <button class="btn sec" onclick="showChooser()">Cancel</button>
   </div>`;
+  setTimeout(loadAgrFleet,30);
 }
 
 function phaseRow(p,i){
