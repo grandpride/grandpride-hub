@@ -20,11 +20,12 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,B
 .panel{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
 .panel h3{font-size:13px;color:var(--gold-soft);margin:0 0 12px;letter-spacing:.5px;text-transform:uppercase}
 label{display:block;font-size:12px;color:var(--grey);margin:10px 0 4px;font-weight:600}
-input,textarea,select{width:100%;background:#0d0b08;border:1.5px solid var(--line);border-radius:9px;padding:11px;color:var(--text);font-size:15px;font-family:inherit}
+input,textarea,select{width:100%;min-width:0;background:#0d0b08;border:1.5px solid var(--line);border-radius:9px;padding:11px;color:var(--text);font-size:15px;font-family:inherit;-webkit-appearance:none;appearance:none}
 input:focus,textarea:focus,select:focus{border-color:var(--gold);outline:none}
 textarea{min-height:64px;resize:vertical}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23b8a36a' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 .row{display:flex;gap:10px}
-.row>div{flex:1}
+.row>div{flex:1 1 0;min-width:0}
 .btn{background:linear-gradient(135deg,var(--gold),#8a5f1e);border:none;color:#1a1408;border-radius:10px;padding:13px 16px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit}
 .btn.full{width:100%}
 .btn.sec{background:#1d1810;color:var(--gold-soft);border:1px solid var(--line)}
