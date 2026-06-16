@@ -206,6 +206,7 @@ function fillFromAgreement(rowJson){
   a.car_model       = d.v_make_model || '';
   a.car_plate       = d.v_reg || r.reg_no || '';
   a.fuel_type       = d.petrol_type || a.fuel_type;
+  a.tank_size       = d.tank_size || a.tank_size || '';
   // lease dates + duration + pricing carried from agreement (and its booking)
   a.out_date        = a.out_date || (d.lease_from||'');
   a.lease_from      = d.lease_from || '';
@@ -295,6 +296,31 @@ function showChooser(){
         <div class="ico">📚</div><h3>History</h3>
         <p>All jobs ever done. Search by plate or customer, open to see both PDFs and the return summary.</p>
       </div>
+      <div class="type-card" id="fuelCard" style="cursor:default;border:1px solid var(--gold)">
+        <div class="ico">⛽</div><h3>Live Petrol Price</h3>
+        <div id="fuelCardBody"><p style="color:var(--grey)">Loading market price…</p></div>
+      </div>
+    </div>`;
+  // load price into the chooser card
+  if(FUEL_PRICES) renderFuelCard(); else { const c=loadFuelCache(); if(c){c.live=false;FUEL_PRICES=c;renderFuelCard();} }
+  refreshFuel().then(renderFuelCard);
+}
+
+function renderFuelCard(){
+  const el=document.getElementById('fuelCardBody'); if(!el) return;
+  if(!FUEL_PRICES){
+    el.innerHTML=`<p style="color:var(--grey);font-size:13px">Unavailable — tap to retry</p>`;
+    const c=document.getElementById('fuelCard'); if(c){ c.style.cursor='pointer'; c.onclick=()=>refreshFuel().then(renderFuelCard); }
+    return;
+  }
+  const p=FUEL_PRICES;
+  const status=p.live?`<span style="color:#3a7">● live</span>`:`<span style="color:#c93">● cached</span>`;
+  el.innerHTML=`
+    <p style="font-size:13px;margin:0 0 6px">${status} ${p.date?('· '+p.date):''}</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:14px">
+      <span>RON95 <b>RM${p.ron95.toFixed(2)}</b></span>
+      <span>RON97 <b>RM${p.ron97.toFixed(2)}</b></span>
+      <span>Diesel <b>RM${p.diesel.toFixed(2)}</b></span>
     </div>`;
 }
 
@@ -303,7 +329,7 @@ function blankChecklist(){
   return {
     id:uid(), plan:'lease', car_type:'sedan', status:'awaiting_return', created_by:curUser(), created_at:todayISO(),
     customer_name:'', customer_contact:'', car_model:'', car_plate:'',
-    fuel_type:'RON97', lease_from:'', lease_to:'', duration_days:'',
+    fuel_type:'RON97', tank_size:'', lease_from:'', lease_to:'', duration_days:'',
     mileage_given:'', per_km:'', leasing_price:'', deposit:'',
     out_date:todayISO(), out_time:nowTime(), out_mileage:'', out_petrol:0,
     out_defects:[], out_checks:{}, out_photos:[], out_sig_inspector:'', out_sig_customer:'', out_pdf_url:'',
@@ -429,7 +455,17 @@ async function showHistoryDetail(id){
   if(r.status==='completed'){
     const diff=ip-op;
     if(diff===0) petrolRow=`Returned same level (${op}/5) ✓`;
-    else if(diff<0) petrolRow=`<span style="color:#e06">Short by ${Math.abs(diff)} bar — RM80 fuel charge applies</span> <small style="color:var(--grey)">(${op}/5 → ${ip}/5)</small>`;
+    else if(diff<0){
+      const barsShort=Math.abs(diff);
+      const tank=Number(r.tank_size)||defaultTank(r.car_type||'sedan');
+      const price=priceForFuelType(r.fuel_type||'RON97');
+      const litres=barsShort*(tank/5);
+      const charge=litres*price;
+      const chargeTxt = price>0
+        ? `RM${charge.toFixed(2)} <small style="color:var(--grey)">(${barsShort} bar × ${(tank/5).toFixed(0)}L × RM${price.toFixed(2)})</small>`
+        : `${barsShort} bar short <small style="color:var(--grey)">(set petrol price to compute RM)</small>`;
+      petrolRow=`<span style="color:#e06">Short by ${barsShort} bar — fuel charge ${chargeTxt}</span> <small style="color:var(--grey)">(${op}/5 → ${ip}/5)</small>`;
+    }
     else petrolRow=`Returned higher (${op}/5 → ${ip}/5)`;
   }
 
@@ -481,6 +517,7 @@ function showForm(){
   const lockShared = st==='in'; // shared car/customer fields locked on return
   activeDefect = st==='in' ? 'ND' : 'D';
   $('view').innerHTML = `
+  <div class="panel" id="fuelBanner" style="border:1px solid var(--gold)"></div>
   ${st==='out' ? `<div class="panel" style="border:1px solid var(--gold)">
     <h3>Quick Fill</h3>
     <button class="btn sec full" onclick="openAgreementPicker()">📥 Load from agreement</button>
@@ -520,11 +557,16 @@ function showForm(){
     </div>
     <div class="row2" style="margin-top:8px">
       <div><label>Petrol fuel type</label>
-        <select id="f_fuel_type" ${lockShared?'disabled':''}>
+        <select id="f_fuel_type" ${lockShared?'disabled':''} onchange="STATE.current.fuel_type=this.value">
           ${['RON95','RON97','RON100','Diesel'].map(ft=>`<option ${(a.fuel_type||'RON97')===ft?'selected':''}>${ft}</option>`).join('')}
         </select>
       </div>
-      <div></div>
+      <div><label>Tank size (litres)</label>
+        <input id="f_tank_size" type="number" inputmode="numeric" ${lockShared?'disabled':''}
+          value="${esc(a.tank_size || defaultTank(a.car_type||'sedan'))}"
+          oninput="STATE.current.tank_size=this.value"
+          placeholder="${defaultTank(a.car_type||'sedan')}">
+      </div>
     </div>
   </div>
 
@@ -589,7 +631,7 @@ function showForm(){
     ${chkBlock('features','Have you explained all the car features to the customer?')}
     ${chkBlock('bluetooth','Have you assisted the customer in connecting the Bluetooth?')}
     ${chkBlock('smoking','No smoking inside the vehicle. RM5,000 penalty applies if smoking is detected.')}
-    ${chkBlock('fuel','Fuel policy: vehicle must be returned with the same fuel level. If lower, charged for the difference + RM80 service charge.')}`
+    ${chkBlock('fuel','Fuel policy: vehicle must be returned with the same fuel level. If lower, charged for the shortfall at current market petrol price (bars short × tank ÷ 5 × price/L).')}`
       : `${chkBlockYN('smoke_smell','Does the car have any smoke smell?')}
     ${chkBlockYN('fuel_same','Does the petrol fuel follow the same level?')}
     ${chkBlockYN('new_damage','Does this car have any new damage?')}`}
@@ -639,6 +681,9 @@ function showForm(){
     renderMarkers();
     refreshPhotoSlots();
   },50);
+  // live petrol price: show cached instantly, then refresh from gov API
+  if(FUEL_PRICES) renderFuelBanner(); else { const c=loadFuelCache(); if(c){c.live=false;FUEL_PRICES=c;renderFuelBanner();} }
+  refreshFuel();
 }
 
 function chkBlock(key,q){
@@ -667,6 +712,9 @@ function setCarType(k){
   // swap the diagram image, keep markers
   const wrap=$('diagramWrap');
   if(wrap){ wrap.innerHTML=carSvg(k); renderMarkers(); }
+  // refresh the tank-size default to match the new car type, unless staff set a custom value
+  const tk=$('f_tank_size');
+  if(tk && !STATE.current.tank_size){ tk.value=defaultTank(k); tk.placeholder=defaultTank(k); }
 }
 function distanceText(a){
   const b=parseInt(a.out_mileage,10), e=parseInt(a.in_mileage,10);
@@ -692,6 +740,87 @@ const CAR_IMG_MPV = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYE
    until Jimmy uploads proper 5-view images — just paste a new base64 below. */
 const CAR_IMAGES = { sedan: CAR_IMG_SEDAN, suv: CAR_IMG_SUV, mpv: CAR_IMG_MPV };
 const CAR_TYPES  = [ {k:'sedan',name:'Sedan'}, {k:'suv',name:'SUV'}, {k:'mpv',name:'MPV'} ];
+
+/* ===== Tank-size defaults by car type (litres), editable per car ===== */
+const TANK_DEFAULTS = { sedan:60, suv:75, mpv:65, supercar:85 };
+function defaultTank(carType){ return TANK_DEFAULTS[carType] || 60; }
+
+/* ===== LIVE PETROL PRICE (data.gov.my, market/unsubsidised) ===== */
+const FUEL_API = 'https://api.data.gov.my/data-catalogue?id=fuelprice&limit=1&sort=date@desc';
+const FUEL_CACHE_KEY = 'gp_fuelprice_cache';
+// Map checklist fuel-type -> API field. RON100 has no gov price -> fall back to RON97.
+const FUEL_FIELD = { 'RON95':'ron95', 'RON97':'ron97', 'RON100':'ron97', 'Diesel':'diesel' };
+let FUEL_PRICES = null; // { date, ron95, ron97, diesel }
+
+function loadFuelCache(){
+  try{ const c = JSON.parse(localStorage.getItem(FUEL_CACHE_KEY)||'null'); if(c && c.ron95) return c; }catch(e){}
+  return null;
+}
+function saveFuelCache(p){ try{ localStorage.setItem(FUEL_CACHE_KEY, JSON.stringify(p)); }catch(e){} }
+
+async function fetchFuelPrices(){
+  // 1) preferred: Apps Script proxy (no CORS issues, caches in Sheet)
+  try{
+    const r = await fetch(APPS_SCRIPT_URL+'?action=fuelprice', { method:'GET' });
+    if(r.ok){
+      const j = await r.json();
+      const row = j && (j.data||j);
+      if(row && (row.ron95!==undefined)){
+        const p = { date:row.date||'', ron95:Number(row.ron95)||0, ron97:Number(row.ron97)||0,
+                    diesel:Number(row.diesel)||0, fetched_at:Date.now(), live:true };
+        if(p.ron95){ FUEL_PRICES=p; saveFuelCache(p); return p; }
+      }
+    }
+  }catch(e){ /* fall through to direct */ }
+  // 2) fallback: direct gov API (works if data.gov.my allows browser CORS)
+  try{
+    const r = await fetch(FUEL_API, { cache:'no-store' });
+    if(!r.ok) throw new Error('http '+r.status);
+    const arr = await r.json();
+    const row = Array.isArray(arr) ? arr[0] : (arr.data ? arr.data[0] : null);
+    if(!row) throw new Error('no data');
+    const p = { date:row.date||'', ron95:Number(row.ron95)||0, ron97:Number(row.ron97)||0,
+                diesel:Number(row.diesel)||0, fetched_at:Date.now(), live:true };
+    FUEL_PRICES=p; saveFuelCache(p); return p;
+  }catch(e){
+    const c = loadFuelCache();
+    if(c){ c.live=false; FUEL_PRICES=c; return c; }
+    FUEL_PRICES=null; return null;
+  }
+}
+function priceForFuelType(ft){
+  if(!FUEL_PRICES) return 0;
+  const field = FUEL_FIELD[ft] || 'ron97';
+  return Number(FUEL_PRICES[field])||0;
+}
+function fmtPriceWeek(dateStr){
+  if(!dateStr) return '';
+  // API date = the Thursday the week starts; show as "from <date>"
+  return dateStr;
+}
+function renderFuelBanner(){
+  const el = document.getElementById('fuelBanner'); if(!el) return;
+  if(!FUEL_PRICES){
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+      <span style="color:var(--grey)">⛽ Live petrol price unavailable — enter manually</span>
+      <button class="btn sec mini" type="button" onclick="refreshFuel()">↻ Retry</button></div>`;
+    return;
+  }
+  const p = FUEL_PRICES;
+  const status = p.live ? `<span style="color:#3a7">● live</span>` : `<span style="color:#c93">● cached</span>`;
+  el.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+      <b style="color:var(--gold)">⛽ Live Petrol Price (market)</b>
+      <span style="font-size:12px">${status} ${p.date?('· '+fmtPriceWeek(p.date)):''}</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:14px">
+      <span>RON95 <b>RM${p.ron95.toFixed(2)}</b></span>
+      <span>RON97 <b>RM${p.ron97.toFixed(2)}</b></span>
+      <span>Diesel <b>RM${p.diesel.toFixed(2)}</b></span>
+    </div>
+    <p class="hint" style="margin-top:6px">Used to charge petrol shortfall: bars short × (tank ÷ 5) × market price.</p>`;
+}
+async function refreshFuel(){ await fetchFuelPrices(); renderFuelBanner(); }
 
 function carSvg(carType){
   const t = (CAR_IMAGES[carType]?carType:'sedan');
@@ -850,6 +979,7 @@ function readForm(){
     a.customer_name=g('f_customer_name'); a.customer_contact=g('f_customer_contact');
     a.car_model=g('f_car_model'); a.car_plate=g('f_car_plate');
     a.fuel_type=g('f_fuel_type')||a.fuel_type;
+    a.tank_size=g('f_tank_size')||a.tank_size;
     a.lease_from=g('f_lease_from')||a.lease_from;
     a.lease_to=g('f_lease_to')||a.lease_to;
     a.duration_days=g('f_duration_days')||a.duration_days;
@@ -995,7 +1125,9 @@ function buildPayload(a, st, diagramPng){
     customer_name:a.customer_name, customer_contact:a.customer_contact,
     car_model:a.car_model, car_plate:a.car_plate,
     date:f('date'), time:f('time'), mileage:f('mileage'), petrol:String(f('petrol')||''),
-    fuel_type:a.fuel_type||'', lease_from:a.lease_from||'', lease_to:a.lease_to||'',
+    fuel_type:a.fuel_type||'', tank_size:String(a.tank_size||defaultTank(a.car_type||'sedan')),
+    petrol_price:(priceForFuelType(a.fuel_type||'RON97')||0).toFixed(2),
+    lease_from:a.lease_from||'', lease_to:a.lease_to||'',
     duration_days:a.duration_days||'', mileage_given:a.mileage_given||'',
     per_km:a.per_km||'', leasing_price:a.leasing_price||'', deposit:a.deposit||'',
     car_diagram:diagramPng,
@@ -1011,6 +1143,12 @@ function buildPayload(a, st, diagramPng){
     base.begin_mileage=a.out_mileage||''; base.end_mileage=a.in_mileage||'';
     base.distance_used=distanceText(a);
     base.begin_petrol=String(a.out_petrol||''); base.end_petrol=String(a.in_petrol||'');
+    // petrol shortfall charge = bars short × (tank ÷ 5) × market price
+    const _bs=Math.max(0,(Number(a.out_petrol)||0)-(Number(a.in_petrol)||0));
+    const _tank=Number(a.tank_size)||defaultTank(a.car_type||'sedan');
+    const _price=priceForFuelType(a.fuel_type||'RON97');
+    base.petrol_bars_short=String(_bs);
+    base.petrol_charge=(_bs*(_tank/5)*_price).toFixed(2);
     base.chk_smoke_smell=yn(checks.smoke_smell);
     base.chk_fuel_same=yn(checks.fuel_same);
     base.chk_new_damage=yn(checks.new_damage);
