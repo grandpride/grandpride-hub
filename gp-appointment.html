@@ -26,8 +26,9 @@
   .panel h3{font-family:Georgia,serif;font-size:16px;margin:0 0 4px}
   .muted{color:var(--grey);font-size:12px;line-height:1.5}
   label{display:block;font-size:11px;letter-spacing:.5px;color:var(--grey);text-transform:uppercase;margin:12px 0 5px}
-  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;
+  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;text-align:left;-webkit-appearance:none;appearance:none;
     border:1px solid var(--line);border-radius:10px;padding:12px}
+  select,input[type="date"],input[type="time"],input[type="datetime-local"]{text-align:left;text-align-last:left;}
   input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
   textarea{min-height:56px;resize:vertical}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -38,7 +39,7 @@
   .btn.sm{font-size:13px;padding:9px 11px}
   .btn.full{width:100%}
   .seg{display:flex;gap:8px}
-  .seg .opt{flex:1;text-align:center;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:#100e0b;cursor:pointer;font-size:14px}
+  .seg .opt{flex:1;min-width:90px;text-align:center;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:#100e0b;cursor:pointer;font-size:14px}
   .seg .opt.sel{border-color:var(--gold);background:#1c1810;font-weight:bold}
   .days{display:flex;gap:8px;flex-wrap:wrap}
   .day{padding:9px 14px;border:1.5px solid var(--line);border-radius:20px;background:#100e0b;cursor:pointer;font-size:13px}
@@ -89,9 +90,11 @@
         <label>Car</label>
         <select id="aCar"><option value="">Select car…</option></select>
         <label>Service type</label>
-        <div class="seg" id="aType">
+        <div class="seg" id="aType" style="flex-wrap:wrap">
           <div class="opt sel" data-v="rental" onclick="pickType('rental')">Rental</div>
           <div class="opt" data-v="leasing" onclick="pickType('leasing')">Leasing</div>
+          <div class="opt" data-v="lto" onclick="pickType('lto')">LTO</div>
+          <div class="opt" data-v="subscription" onclick="pickType('subscription')">Subscription</div>
         </div>
         <label>Service description</label>
         <textarea id="aDesc" placeholder="e.g. 3-day self-drive, airport pickup included"></textarea>
@@ -154,9 +157,9 @@ var F_TYPE='rental', F_PAID='yes', F_DAYS=[7,5,3];
 
 /* ===== Load ===== */
 async function loadFleet(){
-  try{ var r=await fetch(SB_URL+'/rest/v1/gp_fleet?select=id,plate,car_model,model&order=plate.asc',{headers:sbH()});
+  try{ var r=await fetch(SB_URL+'/rest/v1/gp_fleet?select=id,plate,model&order=plate.asc',{headers:sbH()});
     if(r.ok) FLEET=await r.json(); }catch(e){}
-  $('aCar').innerHTML='<option value="">Select car…</option>'+FLEET.map(c=>`<option value="${c.id}">${esc(c.plate)} — ${esc(c.model||c.car_model||'')}</option>`).join('');
+  $('aCar').innerHTML='<option value="">Select car…</option>'+FLEET.map(c=>`<option value="${c.id}">${esc(c.plate)} — ${esc(c.model||'')}</option>`).join('');
 }
 async function loadAppts(){
   $('apptList').innerHTML='<div class="empty">Loading…</div>';
@@ -248,7 +251,7 @@ async function saveAppt(){
   var now=new Date().toISOString();
   var row={
     rental_date:date, rental_time:$('aTime').value||'',
-    fleet_id:car?car.id:null, plate:car?car.plate:'', car_model:car?(car.model||car.car_model||''):'',
+    fleet_id:car?car.id:null, plate:car?car.plate:'', car_model:car?(car.model||''):'',
     service_type:F_TYPE, service_desc:($('aDesc').value||'').trim(),
     customer_name:cust, customer_contact:($('aContact').value||'').trim(),
     full_payment:F_PAID==='yes', full_amount:full, deposit_amount:dep, balance_amount:bal,

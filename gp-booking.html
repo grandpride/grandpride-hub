@@ -64,7 +64,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <div class="panel">
     <h3>Service Type</h3>
     <div class="seg" id="svcSeg">
-      <button type="button" data-svc="leasing" onclick="setSvc('leasing')">Rental / Leasing</button>
+      <button type="button" data-svc="leasing" onclick="setSvc('leasing')">Rental</button>
       <button type="button" data-svc="chauffeur" onclick="setSvc('chauffeur')">Driver / Bodyguard</button>
       <button type="button" data-svc="subscription" onclick="setSvc('subscription')">Subscription</button>
       <button type="button" data-svc="lto" onclick="setSvc('lto')">Lease to Own (LTO)</button>
@@ -74,7 +74,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   <!-- ===================== LEASING ===================== -->
   <div class="svc-only" data-svc="leasing">
     <div class="panel">
-      <h3>Rental / Leasing</h3>
+      <h3>Rental</h3>
       <label>Invoice to (Company Name) — optional</label>
       <input id="le_company" placeholder="Company name (leave blank if none)">
       <label>PIC (Customer Name)</label>
@@ -111,7 +111,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="panel">
       <h3>Insurance Coverage Terms</h3>
       <label>Insured Amount (%)</label><input id="le_inspct" type="number" inputmode="decimal" placeholder="e.g. 10">
-      <div class="section-note">When an accident is caused by the customer, he has to bear only the stated % &amp; loss of NCD.</div>
+      <div class="section-note">Enter the INSURED amount %. The customer bears the remaining % (100 − insured) &amp; loss of NCD on accident.</div>
     </div>
 
     <div class="panel">
@@ -396,7 +396,7 @@ function waText(){
   L.push('*GRANDPRIDE BOOKING*');
   L.push('');
   if(SVC==='leasing'){
-    L.push('*Service:* Rental / Leasing');
+    L.push('*Service:* Rental');
     if(d.company) L.push('*Invoice to:* '+d.company);
     L.push('*Name:* '+d.customer_name);
     L.push('*Contact:* '+d.contact);
@@ -408,7 +408,11 @@ function waText(){
     L.push('*Grand Total:* '+rm(d.grand_total));
     if(d.mileage_given) L.push('*Mileage given:* '+d.mileage_given+' km');
     if(d.per_km) L.push('*Per km exceed:* '+rm(d.per_km));
-    if(d.insured_pct) L.push('*Insurance coverage:* customer bears '+d.insured_pct+'% + loss of NCD on accident');
+    if(d.insured_pct){
+      var custBear = Math.max(0, 100 - (parseFloat(d.insured_pct)||0));
+      L.push('');
+      L.push('When accident cause by customer, he has to bare only '+custBear+'% & loss of NCD');
+    }
     if(d.remark) L.push('*Remark:* '+d.remark);
   }
   if(SVC==='chauffeur'){

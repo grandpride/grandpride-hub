@@ -23,8 +23,9 @@
   .panel h3{font-family:Georgia,serif;font-size:16px;margin:0 0 4px}
   .muted{color:var(--grey);font-size:12px;line-height:1.5}
   label{display:block;font-size:11px;letter-spacing:.5px;color:var(--grey);text-transform:uppercase;margin:12px 0 5px}
-  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;
+  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;text-align:left;-webkit-appearance:none;appearance:none;
     border:1px solid var(--line);border-radius:10px;padding:12px}
+  select,input[type="date"],input[type="time"],input[type="datetime-local"]{text-align:left;text-align-last:left;}
   input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
   textarea{min-height:60px;resize:vertical}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}

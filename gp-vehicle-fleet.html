@@ -57,8 +57,9 @@
   .btn.bad{background:transparent;border:1px solid var(--red);color:var(--red)}
   .btn.full{width:100%}
   label{display:block;font-size:11px;letter-spacing:.5px;color:var(--grey);text-transform:uppercase;margin:12px 0 5px}
-  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;
+  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;text-align:left;-webkit-appearance:none;appearance:none;
     border:1px solid var(--line);border-radius:10px;padding:12px}
+  select,input[type="date"],input[type="time"],input[type="datetime-local"]{text-align:left;text-align-last:left;}
   input:focus,select,textarea:focus{border-color:var(--gold);outline:none}
   textarea{min-height:64px;resize:vertical}
   .add-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
