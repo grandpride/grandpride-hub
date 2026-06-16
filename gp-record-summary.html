@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP Record Summary</title>
+<style>
+  :root{
+    --ink:#0a0908; --paper:#f5f3ee; --gold:#c9a24b; --gold-soft:#e3c887;
+    --grey:#9a958c; --line:rgba(201,162,75,.18); --card:#15120d;
+    --green:#5a9e6f; --red:#d2533f; --blue:#5b8bb0; --amber:#d4a23a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:Arial,Helvetica,sans-serif;background:var(--ink);color:var(--paper);margin:0;min-height:100vh;padding-bottom:40px}
+  .top{position:sticky;top:0;z-index:30;background:rgba(10,9,8,.96);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .top .lg{width:38px;height:38px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:Georgia,serif;color:var(--gold);font-size:15px;border:1px solid var(--line);flex:0 0 auto}
+  .top .ti h2{font-family:Georgia,serif;font-size:15px;letter-spacing:1px;margin:0}
+  .top .ti p{font-size:11px;color:var(--grey);margin:2px 0 0}
+  .wrap{max-width:1100px;margin:0 auto;padding:14px 16px}
+  .monthbar{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+  .monthbar button{flex:0 0 auto;background:transparent;border:1px solid var(--line);color:var(--gold-soft);
+    padding:8px 14px;border-radius:20px;font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap}
+  .monthbar button.on{background:linear-gradient(135deg,var(--gold),var(--gold-soft));color:#000;border-color:transparent;font-weight:bold}
+  .blk{margin-bottom:22px}
+  .blk h3{font-family:Georgia,serif;font-size:15px;margin:0 0 8px;color:var(--gold-soft);display:flex;align-items:center;gap:8px}
+  .blk .addb{margin-left:auto;background:transparent;border:1px solid var(--gold);color:var(--gold-soft);font-size:12px;padding:5px 10px;border-radius:8px;cursor:pointer}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px}
+  table{border-collapse:collapse;width:100%;font-size:12px;background:#100e0b}
+  th{background:#1c1810;color:var(--gold-soft);font-weight:600;padding:7px 8px;border:1px solid #c9a24b22;white-space:nowrap;text-align:left;font-size:11px;position:sticky;top:0}
+  td{padding:6px 8px;border:1px solid #2a2620;white-space:nowrap;cursor:pointer}
+  tr:hover td{background:#181510}
+  .tot td{background:#1c1810;font-weight:bold;color:var(--gold-soft);cursor:default}
+  .done{color:var(--green)} .ongoing{color:var(--amber)}
+  .chk{width:18px;height:18px;accent-color:var(--gold)}
+  .empty{padding:18px;text-align:center;color:var(--grey);font-size:13px}
+  /* summary */
+  .sum-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+  .sbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+  .sbox .n{font-family:Georgia,serif;font-size:22px;color:var(--gold-soft)}
+  .sbox .l{font-size:11px;color:var(--grey);margin-top:3px}
+  .sum-tbl th,.sum-tbl td{font-size:12px}
+  /* modal */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .modal.show{display:flex}
+  .sheet{background:#14110c;border:1px solid var(--line);border-radius:18px 18px 0 0;width:100%;max-width:680px;padding:18px 16px 28px;max-height:88vh;overflow:auto}
+  .sheet h3{font-family:Georgia,serif;margin:0 0 4px;font-size:18px}
+  label{display:block;font-size:11px;letter-spacing:.4px;color:var(--grey);text-transform:uppercase;margin:11px 0 4px}
+  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;border:1px solid var(--line);border-radius:9px;padding:11px;text-align:left;-webkit-appearance:none;appearance:none}
+  select,input[type="date"]{text-align:left;text-align-last:left}
+  input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{font-family:inherit;font-size:14px;padding:12px;border-radius:10px;cursor:pointer;border:none;width:100%}
+  .btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold-soft));color:#000;font-weight:bold}
+  .btn.bad{background:transparent;border:1px solid var(--red);color:var(--red)}
+  .btn.ghost{background:transparent;border:1px solid var(--gold);color:var(--gold-soft)}
+  .pmonths{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .pm{display:flex;align-items:center;gap:5px;border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;background:#100e0b}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c1810;border:1px solid var(--gold);color:var(--gold-soft);padding:10px 18px;border-radius:10px;font-size:13px;z-index:80;opacity:0;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media print{.top,.monthbar,.addb,.btn{display:none!important}body{background:#fff;color:#000}table{font-size:9px}th,td{border:1px solid #999!important;color:#000!important}}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="lg">GP</div>
+    <div class="ti"><h2>RECORD SUMMARY</h2><p id="syncNote">Rental records</p></div>
+  </div>
+
+  <div class="wrap">
+    <div class="monthbar" id="monthBar"></div>
+    <div id="view"><div class="empty">Loading…</div></div>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div class="modal" id="editModal">
+    <div class="sheet">
+      <h3 id="emTitle">Edit record</h3>
+      <div id="emFields"></div>
+      <button class="btn gold" style="margin-top:14px" onclick="saveRecord()">Save</button>
+      <button class="btn ghost" style="margin-top:8px" onclick="closeEdit()">Cancel</button>
+      <button class="btn bad" style="margin-top:8px" onclick="deleteRecord()">🗑 Delete record</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+var SB_URL="https://iefevjkeckysdluzazeq.supabase.co";
+var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+function sbH(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
+// Google Apps Script Web App URL for the Record Summary sheet (set after deploy)
+var REC_SHEET_URL='';
+var $=function(id){return document.getElementById(id);};
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(t){var el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800);}
+function rm(n){ n=Number(n)||0; return n.toLocaleString('en-MY',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function up(s){ return (s||'').toString().toUpperCase(); }
+function upcase(el){var s=el.selectionStart,e=el.selectionEnd;el.value=el.value.toUpperCase();try{el.setSelectionRange(s,e);}catch(_){}}
+document.addEventListener('input',function(e){var el=e.target;if(!el)return;var t=(el.tagName||'').toLowerCase();
+  if(t==='textarea'||(t==='input'&&(!el.type||el.type==='text'))){upcase(el);}},true);
+
+var MONTHS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function curMonthKey(){ var d=new Date(); return MONTHS[d.getMonth()]+String(d.getFullYear()).slice(2); }
+var ALL=[], VIEW_KEY='SUMMARY', EDIT=null;
+
+/* ===== Load ===== */
+async function loadAll(){
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_records?select=*&order=created_at.desc',{headers:sbH()});
+    ALL=r.ok?await r.json():[];
+    $('syncNote').textContent='Live • '+ALL.length+' records';
+  }catch(e){ ALL=[]; $('syncNote').textContent='Offline'; }
+  buildMonthBar();
+  render();
+}
+function monthKeysPresent(){
+  var set={};
+  ALL.forEach(r=>{ if(r.month_key) set[r.month_key]=1; });
+  // always include current month
+  set[curMonthKey()]=1;
+  // sort by year then month
+  return Object.keys(set).sort((a,b)=>{
+    var ay=+a.slice(3),by=+b.slice(3); if(ay!==by) return ay-by;
+    return MONTHS.indexOf(a.slice(0,3))-MONTHS.indexOf(b.slice(0,3));
+  });
+}
+function buildMonthBar(){
+  var keys=monthKeysPresent();
+  var btns='<button class="'+(VIEW_KEY==='SUMMARY'?'on':'')+'" onclick="setView(\'SUMMARY\')">📊 Summary</button>';
+  btns+=keys.map(k=>'<button class="'+(VIEW_KEY===k?'on':'')+'" onclick="setView(\''+k+'\')">'+k+'</button>').join('');
+  $('monthBar').innerHTML=btns;
+}
+function setView(k){ VIEW_KEY=k; buildMonthBar(); render(); }
+
+/* ===== Render ===== */
+function render(){
+  if(VIEW_KEY==='SUMMARY') return renderSummary();
+  return renderMonth(VIEW_KEY);
+}
+
+function recByService(key, svc){ return ALL.filter(r=>r.month_key===key && r.service===svc); }
+
+function renderMonth(key){
+  var rental=recByService(key,'rental');
+  var lto=recByService(key,'lto').concat(recByService(key,'subscription'));
+  var driver=recByService(key,'chauffeur');
+  var h='';
+
+  /* ----- RENTAL ----- */
+  h+='<div class="blk"><h3>'+key+' Rental Record <button class="addb" onclick="newRecord(\'rental\',\''+key+'\')">+ Add</button></h3>';
+  if(!rental.length) h+='<div class="empty">No rental records.</div>';
+  else{
+    var tRate=0,tDep=0,tRet=0;
+    h+='<div class="scroll"><table><thead><tr><th>No</th><th>Customer</th><th>Service</th><th>Car Model</th><th>Plate</th><th>Rental Rate</th><th>Deposit</th><th>Start</th><th>End</th><th>Extend</th><th>Insurance</th><th>Deliver Fee</th><th>Status</th><th>Mileage Given</th><th>Per KM</th><th>Beg</th><th>End</th><th>Used</th><th>Exceed (RM)</th><th>Petrol&Toll&TnG</th><th>Repair</th><th>Dep Return</th><th>Dep Ret Date</th></tr></thead><tbody>';
+    rental.forEach((r,i)=>{ tRate+=+r.rental_rate||0; tDep+=+r.deposit||0; tRet+=+r.deposit_return||0;
+      h+='<tr onclick="editRecord(\''+r.id+'\')"><td>'+(i+1)+'</td><td>'+esc(r.customer_name)+'</td><td>RENTAL</td><td>'+esc(r.car_model)+'</td><td>'+esc(r.car_plate)+'</td><td>'+rm(r.rental_rate)+'</td><td>'+rm(r.deposit)+'</td><td>'+esc(r.start_date||'')+'</td><td>'+esc(r.end_date||'')+'</td><td>'+esc(r.extend||'')+'</td><td>'+rm(r.insurance)+'</td><td>'+rm(r.delivery_fee)+'</td><td class="'+(r.car_status==='done'?'done':'ongoing')+'">'+up(r.car_status||'ongoing')+'</td><td>'+(r.mileage_given||'')+'</td><td>'+rm(r.per_km_exceed)+'</td><td>'+(r.beg_mileage||'')+'</td><td>'+(r.end_mileage||'')+'</td><td>'+(r.mileage_used||'')+'</td><td>'+rm(r.exceed_mileage_rm)+'</td><td>'+rm(r.petrol_toll_tng)+'</td><td>'+rm(r.repair)+'</td><td>'+rm(r.deposit_return)+'</td><td>'+esc(r.dep_return_date||'')+'</td></tr>';
+    });
+    h+='<tr class="tot"><td colspan="5">TOTAL</td><td>'+rm(tRate)+'</td><td>'+rm(tDep)+'</td><td colspan="14"></td><td>'+rm(tRet)+'</td><td></td></tr>';
+    h+='</tbody></table></div>';
+  }
+  h+='</div>';
+
+  /* ----- LTO & SUBSCRIPTION ----- */
+  h+='<div class="blk"><h3>'+key+' LTO & Subscription <button class="addb" onclick="newRecord(\'lto\',\''+key+'\')">+ Add</button></h3>';
+  if(!lto.length) h+='<div class="empty">No LTO/subscription records.</div>';
+  else{
+    var tPaid=0;
+    h+='<div class="scroll"><table><thead><tr><th>No</th><th>Customer</th><th>Type</th><th>Plan</th><th>Car Model</th><th>Plate</th><th>Rate</th><th>Start</th><th>End</th><th>Balance Mth</th><th>'+key+' Paid</th><th>Paid Amt</th><th>Total Paid</th></tr></thead><tbody>';
+    lto.forEach((r,i)=>{
+      var pm=(r.paid_months&&r.paid_months[key])||{};
+      var paidThis=pm.paid?'✓':'—';
+      tPaid+=+r.total_paid||0;
+      h+='<tr onclick="editRecord(\''+r.id+'\')"><td>'+(i+1)+'</td><td>'+esc(r.customer_name)+'</td><td>'+up(r.service)+'</td><td>'+esc(r.plan||'')+'</td><td>'+esc(r.car_model)+'</td><td>'+esc(r.car_plate)+'</td><td>'+rm(r.rental_rate)+'</td><td>'+esc(r.start_date||'')+'</td><td>'+esc(r.end_date||'')+'</td><td>'+esc(r.balance_month||'')+'</td><td style="text-align:center" class="'+(pm.paid?'done':'')+'">'+paidThis+'</td><td>'+rm(pm.amount)+'</td><td>'+rm(r.total_paid)+'</td></tr>';
+    });
+    h+='<tr class="tot"><td colspan="12">TOTAL PAID</td><td>'+rm(tPaid)+'</td></tr>';
+    h+='</tbody></table></div>';
+  }
+  h+='</div>';
+
+  /* ----- DRIVER & BODYGUARD ----- */
+  h+='<div class="blk"><h3>'+key+' Driver & Bodyguard <button class="addb" onclick="newRecord(\'chauffeur\',\''+key+'\')">+ Add</button></h3>';
+  if(!driver.length) h+='<div class="empty">No driver/bodyguard records.</div>';
+  else{
+    var tR=0,tD=0,tDR=0;
+    h+='<div class="scroll"><table><thead><tr><th>No</th><th>Customer</th><th>Date</th><th>Duration</th><th>Rate</th><th>Deposit</th><th>OT Rate</th><th>OT (hrs)</th><th>Dep Return</th><th>Dep Ret Date</th></tr></thead><tbody>';
+    driver.forEach((r,i)=>{ tR+=+r.rental_rate||0; tD+=+r.deposit||0; tDR+=+r.deposit_return||0;
+      h+='<tr onclick="editRecord(\''+r.id+'\')"><td>'+(i+1)+'</td><td>'+esc(r.customer_name)+'</td><td>'+esc(r.chauffeur_date||r.start_date||'')+'</td><td>'+esc(r.duration||'')+'</td><td>'+rm(r.rental_rate)+'</td><td>'+rm(r.deposit)+'</td><td>'+rm(r.ot_rate)+'</td><td>'+(r.ot_hours||'')+'</td><td>'+rm(r.deposit_return)+'</td><td>'+esc(r.dep_return_date||'')+'</td></tr>';
+    });
+    h+='<tr class="tot"><td colspan="4">TOTAL</td><td>'+rm(tR)+'</td><td>'+rm(tD)+'</td><td colspan="2"></td><td>'+rm(tDR)+'</td><td></td></tr>';
+    h+='</tbody></table></div>';
+  }
+  h+='</div>';
+
+  $('view').innerHTML=h;
+}
+
+/* ===== Summary (yearly, by month) ===== */
+function renderSummary(){
+  var keys=monthKeysPresent();
+  // overall totals
+  var gLease=0,gLto=0,gSub=0,gDep=0,gDepRet=0;
+  ALL.forEach(r=>{
+    if(r.service==='rental'){ gLease+=+r.rental_rate||0; gDep+=+r.deposit||0; gDepRet+=+r.deposit_return||0; }
+    else if(r.service==='lto'){ gLto+=+r.total_paid||0; }
+    else if(r.service==='subscription'){ gSub+=+r.total_paid||0; }
+    else if(r.service==='chauffeur'){ gDep+=+r.deposit||0; gDepRet+=+r.deposit_return||0; }
+  });
+  var grand=gLease+gLto+gSub;
+  var h='<div class="sum-grid">'+
+    '<div class="sbox"><div class="n">'+rm(gLease)+'</div><div class="l">Leasing/Rental income</div></div>'+
+    '<div class="sbox"><div class="n">'+rm(gLto)+'</div><div class="l">LTO income</div></div>'+
+    '<div class="sbox"><div class="n">'+rm(gSub)+'</div><div class="l">Subscription income</div></div>'+
+    '<div class="sbox"><div class="n">'+rm(grand)+'</div><div class="l">Grand total</div></div>'+
+    '<div class="sbox"><div class="n">'+rm(gDep)+'</div><div class="l">Total deposit</div></div>'+
+    '<div class="sbox"><div class="n">'+rm(gDepRet)+'</div><div class="l">Deposit returned</div></div>'+
+    '<div class="sbox"><div class="n">'+rm(gDep-gDepRet)+'</div><div class="l">Balance to return</div></div>'+
+    '</div>';
+
+  // monthly breakdown table
+  h+='<div class="scroll"><table class="sum-tbl"><thead><tr><th>Month</th><th>Rental income</th><th>Rental deposit</th><th>Deposit returned</th><th>LTO income</th><th>Sub income</th><th>Driver jobs</th><th>Driver income</th><th>Month total</th></tr></thead><tbody>';
+  keys.forEach(k=>{
+    var rental=recByService(k,'rental');
+    var lto=recByService(k,'lto'), sub=recByService(k,'subscription'), drv=recByService(k,'chauffeur');
+    var rInc=rental.reduce((a,b)=>a+(+b.rental_rate||0),0);
+    var rDep=rental.reduce((a,b)=>a+(+b.deposit||0),0);
+    var rRet=rental.reduce((a,b)=>a+(+b.deposit_return||0),0)+drv.reduce((a,b)=>a+(+b.deposit_return||0),0);
+    var lInc=lto.reduce((a,b)=>a+(+b.total_paid||0),0);
+    var sInc=sub.reduce((a,b)=>a+(+b.total_paid||0),0);
+    var dInc=drv.reduce((a,b)=>a+(+b.rental_rate||0)+((+b.ot_rate||0)*(+b.ot_hours||0)),0);
+    var mTot=rInc+lInc+sInc+dInc;
+    h+='<tr style="cursor:pointer" onclick="setView(\''+k+'\')"><td><b>'+k+'</b></td><td>'+rm(rInc)+'</td><td>'+rm(rDep)+'</td><td>'+rm(rRet)+'</td><td>'+rm(lInc)+'</td><td>'+rm(sInc)+'</td><td>'+drv.length+'</td><td>'+rm(dInc)+'</td><td><b>'+rm(mTot)+'</b></td></tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<button class="btn ghost" style="margin-top:14px;max-width:260px" onclick="window.print()">🖨 Print / Save PDF</button>';
+  $('view').innerHTML=h;
+}
+
+/* ===== Edit / Add ===== */
+function blankRecord(svc,key){
+  return { id:null, service:svc, month_key:key, customer_name:'', car_model:'', car_plate:'',
+    start_date:'', end_date:'', rental_rate:0, deposit:0, plan:'', extend:'', insurance:0, delivery_fee:0,
+    per_km_exceed:0, mileage_given:0, car_status:'ongoing', beg_mileage:0, end_mileage:0, mileage_used:0,
+    exceed_mileage_rm:0, petrol_toll_tng:0, repair:0, deposit_return:0, dep_return_date:'',
+    balance_month:'', total_paid:0, paid_months:{}, chauffeur_date:'', duration:'', ot_rate:0, ot_hours:0 };
+}
+function newRecord(svc,key){ EDIT=blankRecord(svc,key); showEdit(); }
+function editRecord(id){ var r=ALL.find(x=>x.id===id); if(!r) return; EDIT=JSON.parse(JSON.stringify(r)); showEdit(); }
+
+function fld(label,key,type){ type=type||'text';
+  var v=EDIT[key]; if(v==null)v='';
+  return '<label>'+label+'</label><input data-k="'+key+'" type="'+type+'" value="'+esc(v)+'"'+(type==='number'?' inputmode=decimal':'')+'>';
+}
+function showEdit(){
+  var s=EDIT.service;
+  $('emTitle').textContent=(EDIT.id?'Edit':'New')+' '+up(s)+' record';
+  var h='';
+  h+=fld('Customer name','customer_name');
+  if(s!=='chauffeur'){
+    h+='<div class="two">'+fld('Car model','car_model')+fld('Plate','car_plate')+'</div>';
+  }
+  if(s==='rental'){
+    h+='<div class="two">'+fld('Rental rate (RM)','rental_rate','number')+fld('Deposit (RM)','deposit','number')+'</div>';
+    h+='<div class="two">'+fld('Start date','start_date','date')+fld('End date','end_date','date')+'</div>';
+    h+='<div class="two">'+fld('Extend','extend')+fld('Insurance (RM)','insurance','number')+'</div>';
+    h+='<div class="two">'+fld('Delivery fee (RM)','delivery_fee','number')+fld('Per km exceed (RM)','per_km_exceed','number')+'</div>';
+    h+='<label>Car status</label><select data-k="car_status"><option value="ongoing"'+(EDIT.car_status==='ongoing'?' selected':'')+'>ONGOING</option><option value="done"'+(EDIT.car_status==='done'?' selected':'')+'>DONE</option></select>';
+    h+='<div class="two">'+fld('Mileage given','mileage_given','number')+fld('Begin mileage','beg_mileage','number')+'</div>';
+    h+='<div class="two">'+fld('End mileage','end_mileage','number')+fld('Mileage used','mileage_used','number')+'</div>';
+    h+='<div class="two">'+fld('Exceed mileage (RM)','exceed_mileage_rm','number')+fld('Petrol & Toll & TnG (RM)','petrol_toll_tng','number')+'</div>';
+    h+='<div class="two">'+fld('Repair (RM)','repair','number')+fld('Deposit return (RM)','deposit_return','number')+'</div>';
+    h+=fld('Deposit return date','dep_return_date','date');
+  } else if(s==='lto'||s==='subscription'){
+    h+='<label>Type</label><select data-k="service"><option value="lto"'+(s==='lto'?' selected':'')+'>LTO</option><option value="subscription"'+(s==='subscription'?' selected':'')+'>SUBSCRIPTION</option></select>';
+    h+=fld('Plan','plan');
+    h+='<div class="two">'+fld('Rate (RM)','rental_rate','number')+fld('Balance month (e.g. 6/48)','balance_month')+'</div>';
+    h+='<div class="two">'+fld('Start date','start_date','date')+fld('End date','end_date','date')+'</div>';
+    h+=fld('Total paid (RM)','total_paid','number');
+    // monthly paid checkbox for the record's month
+    var mk=EDIT.month_key||curMonthKey();
+    var pm=(EDIT.paid_months&&EDIT.paid_months[mk])||{};
+    h+='<label>'+mk+' payment</label><div class="pmonths"><label class="pm"><input type="checkbox" class="chk" id="pmPaid" '+(pm.paid?'checked':'')+'> Paid this month</label></div>';
+    h+='<label>Paid amount this month (RM)</label><input id="pmAmount" type="number" inputmode="decimal" value="'+(pm.amount||'')+'">';
+  } else if(s==='chauffeur'){
+    h+='<div class="two">'+fld('Date','chauffeur_date')+fld('Duration','duration')+'</div>';
+    h+='<div class="two">'+fld('Rate (RM)','rental_rate','number')+fld('Deposit (RM)','deposit','number')+'</div>';
+    h+='<div class="two">'+fld('OT rate (RM)','ot_rate','number')+fld('OT (hours)','ot_hours','number')+'</div>';
+    h+='<div class="two">'+fld('Deposit return (RM)','deposit_return','number')+fld('Dep return date','dep_return_date','date')+'</div>';
+  }
+  $('emFields').innerHTML=h;
+  $('editModal').classList.add('show');
+}
+function closeEdit(){ $('editModal').classList.remove('show'); EDIT=null; }
+
+function readEdit(){
+  document.querySelectorAll('#emFields [data-k]').forEach(function(el){
+    var k=el.getAttribute('data-k'); var v=el.value;
+    if(el.type==='number') v=parseFloat(v||'0')||0;
+    if((k==='car_plate'||k==='customer_name'||k==='car_model') && typeof v==='string') v=v.toUpperCase();
+    EDIT[k]=v;
+  });
+  // paid month
+  if(EDIT.service==='lto'||EDIT.service==='subscription'){
+    var mk=EDIT.month_key||curMonthKey();
+    if(!EDIT.paid_months) EDIT.paid_months={};
+    var paid=$('pmPaid')?$('pmPaid').checked:false;
+    var amt=$('pmAmount')?(parseFloat($('pmAmount').value||'0')||0):0;
+    EDIT.paid_months[mk]={paid:paid, amount:amt};
+  }
+}
+async function saveRecord(){
+  readEdit();
+  if(!EDIT.customer_name){ toast('Customer name required'); return; }
+  var now=new Date().toISOString();
+  EDIT.updated_at=now; EDIT.source='record-summary';
+  // normalise dates: empty string -> null
+  ['start_date','end_date','dep_return_date'].forEach(k=>{ if(EDIT[k]==='') EDIT[k]=null; });
+  var body=Object.assign({},EDIT); 
+  try{
+    var r;
+    if(EDIT.id){
+      var id=EDIT.id; delete body.id;
+      r=await fetch(SB_URL+'/rest/v1/gp_records?id=eq.'+id,{method:'PATCH',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(body)});
+    } else {
+      delete body.id; body.created_at=now;
+      r=await fetch(SB_URL+'/rest/v1/gp_records',{method:'POST',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(body)});
+    }
+    if(!r.ok){ var t=await r.text(); toast('Save failed: '+t.slice(0,60)); return; }
+    sheetPush(body);
+    toast('Saved ✓'); closeEdit(); loadAll();
+  }catch(e){ toast('Offline — not saved'); }
+}
+async function deleteRecord(){
+  if(!EDIT||!EDIT.id) { closeEdit(); return; }
+  if(!confirm('Delete this record permanently?')) return;
+  try{
+    await fetch(SB_URL+'/rest/v1/gp_records?id=eq.'+EDIT.id,{method:'DELETE',headers:sbH({'Prefer':'return=minimal'})});
+    toast('Deleted'); closeEdit(); loadAll();
+  }catch(e){ toast('Offline'); }
+}
+
+/* ===== Google Sheet push ===== */
+function sheetPush(rec){
+  try{ if(!REC_SHEET_URL||REC_SHEET_URL.indexOf('http')!==0) return;
+    fetch(REC_SHEET_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rec)}).catch(function(){});
+  }catch(e){}
+}
+
+/* ===== init ===== */
+loadAll();
+</script>
+</body>
+</html>
