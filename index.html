@@ -310,8 +310,8 @@
     <div class="brand-sub">Internal Hub</div>
     <div class="divider"></div>
     <div class="field">
-      <label>Username or Email</label>
-      <input id="liUser" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="username or email">
+      <label>Username</label>
+      <input id="liUser" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="username">
     </div>
     <div class="field">
       <label>Password</label>
@@ -358,7 +358,7 @@
 
     <!-- Step 1: enter email -->
     <div id="otpStep1">
-      <p style="font-size:13px;color:var(--grey,#9a8f7e);margin:0 0 10px;text-align:center">Enter your work email. We'll send you a verification code.</p>
+      <p style="font-size:13px;color:var(--grey,#9a8f7e);margin:0 0 10px;text-align:center">Enter your work email. We'll send you a 6-digit code.</p>
       <div class="field">
         <label>Email</label>
         <input id="otpEmail" type="email" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="you@grandpride.com">
@@ -368,10 +368,10 @@
 
     <!-- Step 2: enter code -->
     <div id="otpStep2" style="display:none">
-      <p style="font-size:13px;color:var(--grey,#9a8f7e);margin:0 0 10px;text-align:center">Enter the verification code we emailed you.</p>
+      <p style="font-size:13px;color:var(--grey,#9a8f7e);margin:0 0 10px;text-align:center">Enter the 6-digit code we emailed you.</p>
       <div class="field">
-        <label>Verification Code</label>
-        <input id="otpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="12345678">
+        <label>6-digit Code</label>
+        <input id="otpCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456">
       </div>
       <button class="btn" id="btnVerifyOtp">Verify Code</button>
       <p style="text-align:center;margin:8px 0 0"><a href="#" id="otpResend" style="color:var(--gold-soft,#d8bd78);font-size:12px">Resend code</a></p>
@@ -454,6 +454,8 @@ const ICONS = {
   gpagreement:'<svg viewBox="0 0 24 24"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><path d="m9 14 2 2 4-4"/></svg>',
   gpchecklist:'<svg viewBox="0 0 24 24"><path d="m3 7 2 2 3-3"/><path d="m3 15 2 2 3-3"/><path d="M13 7h8"/><path d="M13 16h8"/></svg>',
   gpdaily:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 15h3M8 18h6"/></svg>',
+  gpfleet:'<svg viewBox="0 0 24 24"><path d="M5 17h14M5 17a2 2 0 1 1-4 0M19 17a2 2 0 1 0 4 0M3 17v-4l2-5h11l3 5v4"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/></svg>',
+  gpuse:'<svg viewBox="0 0 24 24"><path d="M14 2v4M10 2v4M4 9h16M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/><path d="m9 15 2 2 4-4"/></svg>',
   gpappt:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/><path d="m17 2 3 3M2 5l3-3"/></svg>',
   gprecord:'<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 14 3-3 3 3 5-5"/></svg>',
 };
@@ -471,7 +473,9 @@ const APPS = [
   { id:'gpbooking',   label:'GP Booking',            svg:ICONS.gpbooking,   logo:'', cat:'grandpride', link:'gp-booking.html' },
   { id:'gpagreement', label:'GP Agreement',          svg:ICONS.gpagreement, logo:'', cat:'grandpride', link:'gp-agreement.html' },
   { id:'gpchecklist', label:'GP Checklist',          svg:ICONS.gpchecklist, logo:'', cat:'grandpride', link:'gp-checklist.html' },
-  { id:'gpdaily',     label:'GP Daily Update',       svg:ICONS.gpdaily,     logo:'', cat:'grandpride', link:'gp-daily.html' },
+  { id:'gpdaily',     label:'GP Daily Update',       svg:ICONS.gpdaily,     logo:'', cat:'grandpride', link:'gp-daily-update.html' },
+  { id:'gpfleet',     label:'GP Vehicle Fleet',      svg:ICONS.gpfleet,     logo:'', cat:'grandpride', link:'gp-vehicle-fleet.html' },
+  { id:'gpuse',       label:'GP Vehicle Use Log',    svg:ICONS.gpuse,       logo:'', cat:'grandpride', link:'gp-vehicle-use.html' },
   { id:'gpappt',      label:'GP Appointment Reminder', svg:ICONS.gpappt,    logo:'', cat:'grandpride', soon:true },
   { id:'gprecord',    label:'GP Record Summary',     svg:ICONS.gprecord,    logo:'', cat:'grandpride', soon:true },
 ];
@@ -637,12 +641,12 @@ async function doLogin(){
   const err = document.getElementById('liErr');
   const btn = document.getElementById('btnEnter');
 
-  if(!u || !p){ err.textContent = 'Enter username/email and password.'; return; }
+  if(!u || !p){ err.textContent = 'Enter username and password.'; return; }
   err.textContent = 'Signing in…';
   if(btn){ btn.disabled = true; }
 
-  // real Supabase Auth sign-in (accepts username OR email; "@" => email)
-  const res = await SUPA.signIn(u, p);
+  // real Supabase Auth sign-in (username -> email -> password)
+  const res = await SUPA.signInUsername(u, p);
   if(btn){ btn.disabled = false; }
   if(!res.ok){
     err.textContent = res.error || 'Wrong username or password.';
@@ -767,7 +771,7 @@ async function verifyOtp(){
   const code = document.getElementById('otpCode').value.trim();
   const err = document.getElementById('otpErr');
   err.style.color=''; err.textContent='';
-  if(code.length<6){ err.textContent='Enter the code we emailed you.'; return; }
+  if(code.length<6){ err.textContent='Enter the 6-digit code.'; return; }
   const btn=document.getElementById('btnVerifyOtp');
   if(btn){ btn.disabled=true; btn.textContent='Verifying…'; }
   const res = await SUPA.verifyEmailOtp(_otpEmail, code);
