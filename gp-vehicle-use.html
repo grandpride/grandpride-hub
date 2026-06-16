@@ -49,7 +49,18 @@
   .toast.show{opacity:1}
   .opsbadge{background:var(--red);color:#fff;border-radius:20px;font-size:10px;padding:1px 6px;margin-left:4px;font-weight:bold}
   .calc{font-size:13px;color:var(--gold-soft);margin-top:8px}
-  @media print{.top,.tabs,.btn,.pending .act{display:none!important}body{background:#fff;color:#000}.sigpad{border:1px solid #999}}
+  @media print{.top,.tabs,.btn,.pending .act{display:none!important}body{background:#fff;color:#000}.sigpad{border:1px solid #999}
+    .logtbl{font-size:8px}.logtbl th,.logtbl td{border:1px solid #999!important;color:#000!important}
+    .rep-scroll{overflow:visible!important}.sigimg{filter:none}.rep-head{color:#000!important}}
+  .rep-head{font-family:Georgia,serif;font-size:14px;margin:4px 2px 12px;color:var(--gold-soft);text-align:center;line-height:1.5}
+  .rep-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px}
+  .logtbl{border-collapse:collapse;width:100%;font-size:11px;background:#fff;color:#111}
+  .logtbl th{background:#1c1810;color:var(--gold-soft);font-weight:600;padding:6px 5px;border:1px solid #c9a24b33;
+    white-space:nowrap;font-size:10px;text-align:left}
+  .logtbl td{padding:5px;border:1px solid #ddd;vertical-align:top;white-space:nowrap}
+  .logtbl td.rmk{white-space:normal;min-width:140px}
+  .logtbl tbody tr:nth-child(even){background:#f6f4ef}
+  .sigimg{height:26px;width:auto;max-width:70px;display:block}
 </style>
 </head>
 <body>
@@ -276,7 +287,7 @@ async function renderReport(){
   if(!from||!to) return;
   $('reportBody').innerHTML='<div class="empty">Loading…</div>';
   try{
-    var url=SB_URL+'/rest/v1/gp_vehicle_use?select=*&out_date=gte.'+from+'&out_date=lte.'+to+'&order=out_date.desc';
+    var url=SB_URL+'/rest/v1/gp_vehicle_use?select=*&out_date=gte.'+from+'&out_date=lte.'+to+'&order=out_date.asc';
     var r=await fetch(url,{headers:sbH()});
     var rows=r.ok?await r.json():[];
     if(!rows.length){ $('reportBody').innerHTML='<div class="empty">No vehicle use in this period.</div>'; return; }
@@ -287,20 +298,47 @@ async function renderReport(){
       var d=x.driver_name||'—'; byDriver[d]=(byDriver[d]||0)+1;
     });
     var topDrivers=Object.keys(byDriver).sort((a,b)=>byDriver[b]-byDriver[a]);
+
+    // ---- summary cards ----
     var html='<div class="rep-sum" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">'+
       '<div class="panel" style="text-align:center;margin:0"><div style="font-family:Georgia,serif;font-size:24px;color:var(--gold-soft)">'+trips+'</div><div class="muted">Trips</div></div>'+
       '<div class="panel" style="text-align:center;margin:0"><div style="font-family:Georgia,serif;font-size:24px;color:var(--gold-soft)">'+totalKm.toLocaleString()+'</div><div class="muted">Total km</div></div>'+
       '<div class="panel" style="text-align:center;margin:0"><div style="font-family:Georgia,serif;font-size:24px;color:var(--gold-soft)">'+topDrivers.length+'</div><div class="muted">Drivers</div></div></div>';
-    html+='<div class="panel"><h3 style="font-size:14px">By driver</h3>'+topDrivers.map(d=>'<div class="ms">'+esc(d)+' — <b>'+byDriver[d]+' trip'+(byDriver[d]>1?'s':'')+'</b></div>').join('')+'</div>';
-    html+='<h3 style="font-family:Georgia,serif;font-size:15px;margin:10px 0 8px">Trips</h3>';
-    html+=rows.map(x=>{
-      var dist=(x.in_mileage&&x.out_mileage)?(x.in_mileage-x.out_mileage):0;
-      var st=x.status==='returned'?'<span class="pill" style="background:var(--green)">RETURNED</span>':'<span class="pill" style="background:var(--amber)">OUT</span>';
-      return '<div class="pending"><div class="pl">'+esc(x.plate)+' '+st+'</div>'+
-        '<div class="ms">'+esc(x.driver_name||'')+' · '+esc(x.purpose||'')+(x.destination?(' → '+esc(x.destination)):'')+'</div>'+
-        '<div class="ms">'+esc(x.out_date||'')+' '+esc(x.out_time||'')+(x.in_date?(' → '+esc(x.in_date)+' '+esc(x.in_time||'')):'')+(dist>0?(' · '+dist.toLocaleString()+' km'):'')+'</div>'+
-        (x.remark?'<div class="ms">📝 '+esc(x.remark)+'</div>':'')+'</div>';
-    }).join('');
+
+    // ---- report header line ----
+    html+='<div class="rep-head"><b>GRANDPRIDE — VEHICLE USE LOG</b><br><span class="muted">'+esc(from)+' to '+esc(to)+'</span></div>';
+
+    // ---- logbook table (matches paper book) ----
+    function sig(d){ return d ? '<img src="'+d+'" class="sigimg">' : ''; }
+    html+='<div class="rep-scroll"><table class="logtbl"><thead><tr>'+
+      '<th>Name</th><th>Car No</th><th>Car Model</th><th>Km Out</th><th>Date Out</th><th>Time Out</th><th>Fuel Out</th><th>Driver Sign</th><th>PIC Sign</th>'+
+      '<th>Date In</th><th>Time In</th><th>Km In</th><th>Fuel In</th><th>Driver Sign</th><th>PIC Sign</th><th>Remark</th>'+
+      '</tr></thead><tbody>'+
+      rows.map(x=>{
+        return '<tr>'+
+          '<td>'+esc(x.driver_name||'')+'</td>'+
+          '<td>'+esc(x.plate||'')+'</td>'+
+          '<td>'+esc(x.model||'')+'</td>'+
+          '<td>'+(x.out_mileage?Number(x.out_mileage).toLocaleString():'')+'</td>'+
+          '<td>'+esc(x.out_date||'')+'</td>'+
+          '<td>'+esc(x.out_time||'')+'</td>'+
+          '<td>'+(x.out_petrol!=null&&x.out_petrol!==''?esc(x.out_petrol)+'/8':'')+'</td>'+
+          '<td>'+sig(x.out_sign_driver)+'</td>'+
+          '<td>'+sig(x.out_sign_ops)+'</td>'+
+          '<td>'+esc(x.in_date||'')+'</td>'+
+          '<td>'+esc(x.in_time||'')+'</td>'+
+          '<td>'+(x.in_mileage?Number(x.in_mileage).toLocaleString():'')+'</td>'+
+          '<td>'+(x.in_petrol!=null&&x.in_petrol!==''?esc(x.in_petrol)+'/8':'')+'</td>'+
+          '<td>'+sig(x.in_sign_driver)+'</td>'+
+          '<td>'+sig(x.in_sign_ops)+'</td>'+
+          '<td class="rmk">'+esc(((x.purpose||'')+(x.destination?(' → '+x.destination):'')+(x.remark?(' · '+x.remark):'')).trim())+'</td>'+
+        '</tr>';
+      }).join('')+
+      '</tbody></table></div>';
+
+    // ---- by-driver summary ----
+    html+='<div class="panel" style="margin-top:14px"><h3 style="font-size:14px">By driver</h3>'+topDrivers.map(d=>'<div class="ms">'+esc(d)+' — <b>'+byDriver[d]+' trip'+(byDriver[d]>1?'s':'')+'</b></div>').join('')+'</div>';
+
     $('reportBody').innerHTML=html;
   }catch(e){ $('reportBody').innerHTML='<div class="empty">Could not load report.</div>'; }
 }
