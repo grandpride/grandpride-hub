@@ -153,6 +153,14 @@ document.addEventListener('input',function(e){var el=e.target;if(!el)return;var 
   if(t==='textarea'||(t==='input'&&(!el.type||el.type==='text'))){upcase(el);}},true);
 
 var FLEET=[], APPTS=[], EDIT_ID=null;
+// Google Apps Script Web App URL (shared Booking+Appointment sheet)
+var APPT_SHEET_URL='https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec';
+function apptSheetPush(rec){
+  try{ if(!APPT_SHEET_URL||APPT_SHEET_URL.indexOf('http')!==0) return;
+    rec.kind='appointment';
+    fetch(APPT_SHEET_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rec)}).catch(function(){});
+  }catch(e){}
+}
 var F_TYPE='rental', F_PAID='yes', F_DAYS=[7,5,3];
 
 /* ===== Load ===== */
@@ -266,6 +274,7 @@ async function saveAppt(){
       r=await fetch(SB_URL+'/rest/v1/gp_appointments',{method:'POST',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(row)});
     }
     if(!r.ok){ toast('Save failed'); return; }
+    apptSheetPush(Object.assign({}, row, {status: row.status||'upcoming'}));
     toast(EDIT_ID?'Appointment updated':'Appointment saved');
     resetForm(); setTab('list');
   }catch(e){ toast('Offline — not saved'); }
