@@ -249,7 +249,7 @@ function sbBase(){ return SUPABASE_URL.replace(/\/rest\/v1\/?$/,''); }
 function sbHeaders(extra){ return Object.assign({'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}, extra||{}); }
 var CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY);
 // Google Sheet logging via Apps Script web app (paste your /exec URL after deploying gp-booking-sheet.gs)
-var GS_BOOKING_URL = "";
+var GS_BOOKING_URL = "https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec";
 
 </script>
 
