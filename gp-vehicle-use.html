@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP Vehicle Use Log</title>
+<style>
+  :root{
+    --ink:#0a0908; --paper:#f5f3ee; --gold:#c9a24b; --gold-soft:#e3c887;
+    --grey:#9a958c; --line:rgba(201,162,75,.18); --card:#15120d;
+    --green:#5a9e6f; --red:#d2533f; --blue:#5b8bb0; --amber:#d4a23a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:Arial,Helvetica,sans-serif;background:var(--ink);color:var(--paper);margin:0;min-height:100vh;padding-bottom:40px}
+  .top{position:sticky;top:0;z-index:30;background:rgba(10,9,8,.96);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .top .lg{width:38px;height:38px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:Georgia,serif;color:var(--gold);font-size:15px;border:1px solid var(--line);flex:0 0 auto}
+  .top .ti h2{font-family:Georgia,serif;font-size:15px;letter-spacing:1px;margin:0}
+  .top .ti p{font-size:11px;color:var(--grey);margin:2px 0 0}
+  .wrap{max-width:680px;margin:0 auto;padding:14px 16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .panel h3{font-family:Georgia,serif;font-size:16px;margin:0 0 4px}
+  .muted{color:var(--grey);font-size:12px;line-height:1.5}
+  label{display:block;font-size:11px;letter-spacing:.5px;color:var(--grey);text-transform:uppercase;margin:12px 0 5px}
+  input,select,textarea{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;
+    border:1px solid var(--line);border-radius:10px;padding:12px}
+  input:focus,select:focus,textarea:focus{border-color:var(--gold);outline:none}
+  textarea{min-height:60px;resize:vertical}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{font-family:inherit;font-size:14px;padding:12px 14px;border-radius:10px;cursor:pointer;border:none}
+  .btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold-soft));color:#000;font-weight:bold}
+  .btn.ghost{background:transparent;border:1px solid var(--gold);color:var(--gold-soft)}
+  .btn.bad{background:transparent;border:1px solid var(--red);color:var(--red)}
+  .btn.sm{font-size:13px;padding:9px 11px}
+  .btn.full{width:100%}
+  .sigwrap{margin-top:4px}
+  .sigpad{width:100%;height:120px;background:#fff;border-radius:10px;border:1px solid var(--line);touch-action:none;display:block}
+  .pending{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+  .pending .pl{font-family:Georgia,serif;font-size:16px}
+  .pending .ms{font-size:12px;color:var(--grey);margin-top:3px}
+  .pill{font-size:10px;padding:4px 9px;border-radius:20px;font-weight:bold;background:#7b9ac8;color:#000}
+  .empty{text-align:center;color:var(--grey);padding:24px;font-size:14px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .tabs button{flex:1;background:transparent;border:1px solid var(--line);color:var(--gold-soft);padding:10px;border-radius:10px;font-size:13px;font-family:inherit;cursor:pointer}
+  .tabs button.on{background:linear-gradient(135deg,var(--gold),var(--gold-soft));color:#000;border-color:transparent;font-weight:bold}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c1810;border:1px solid var(--gold);
+    color:var(--gold-soft);padding:10px 18px;border-radius:10px;font-size:13px;z-index:80;opacity:0;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .calc{font-size:13px;color:var(--gold-soft);margin-top:8px}
+  @media print{.top,.tabs,.btn,.pending .act{display:none!important}body{background:#fff;color:#000}.sigpad{border:1px solid #999}}
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="lg">GP</div>
+    <div class="ti"><h2>VEHICLE USE LOG</h2><p id="syncNote">Company / internal use</p></div>
+  </div>
+
+  <div class="wrap">
+    <div class="tabs">
+      <button id="tabNew" class="on" onclick="setTab('new')">🚗 New (Sign Out)</button>
+      <button id="tabPending" onclick="setTab('pending')">↩️ Return (Sign In)</button>
+    </div>
+
+    <!-- NEW / SIGN OUT -->
+    <div id="newView">
+      <div class="panel">
+        <h3>Trip details</h3>
+        <label>Car</label>
+        <select id="carSel"><option value="">Select a car…</option></select>
+        <label>Driver name</label>
+        <select id="driverSel"><option value="">Select driver…</option></select>
+        <label>Purpose of use (what for?)</label>
+        <input id="purpose" placeholder="e.g. Fetch boss to airport">
+        <label>Destination (where to?)</label>
+        <input id="dest" placeholder="e.g. KLIA">
+      </div>
+
+      <div class="panel">
+        <h3>Vehicle OUT</h3>
+        <div class="two">
+          <div><label>Date out</label><input type="date" id="oDate"></div>
+          <div><label>Time out</label><input type="time" id="oTime"></div>
+        </div>
+        <div class="two">
+          <div><label>Mileage out (km)</label><input type="number" inputmode="numeric" id="oMile" placeholder="start odometer"></div>
+          <div><label>Petrol bar out</label><input type="number" inputmode="numeric" id="oPet" placeholder="0–8" min="0" max="8"></div>
+        </div>
+        <label>Driver signature</label>
+        <div class="sigwrap"><canvas class="sigpad" id="sigODrv"></canvas></div>
+        <button class="btn ghost sm" style="margin-top:6px" onclick="clearSig('sigODrv')">Clear</button>
+        <label>GP Operation signature</label>
+        <div class="sigwrap"><canvas class="sigpad" id="sigOOps"></canvas></div>
+        <button class="btn ghost sm" style="margin-top:6px" onclick="clearSig('sigOOps')">Clear</button>
+      </div>
+
+      <button class="btn gold full" onclick="signOut()">Sign Out — release car</button>
+    </div>
+
+    <!-- PENDING / SIGN IN -->
+    <div id="pendingView" style="display:none">
+      <div id="pendingList"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
+  <!-- SIGN IN MODAL -->
+  <div class="panel" id="inPanel" style="display:none;position:fixed;inset:0;z-index:60;overflow:auto;border-radius:0;margin:0;background:var(--ink);padding:16px">
+    <div style="max-width:680px;margin:0 auto">
+      <h3 id="inTitle" style="font-family:Georgia,serif;font-size:18px">Sign In — return car</h3>
+      <p class="muted" id="inSub"></p>
+      <div class="two">
+        <div><label>Date in</label><input type="date" id="iDate"></div>
+        <div><label>Time in</label><input type="time" id="iTime"></div>
+      </div>
+      <div class="two">
+        <div><label>Mileage in (km)</label><input type="number" inputmode="numeric" id="iMile" oninput="calcDist()" placeholder="end odometer"></div>
+        <div><label>Petrol bar in</label><input type="number" inputmode="numeric" id="iPet" placeholder="0–8" min="0" max="8"></div>
+      </div>
+      <div class="calc" id="distNote"></div>
+      <label>Remark (damage / issues / notes)</label>
+      <textarea id="iRem" placeholder="Anything to note about the trip or car"></textarea>
+      <label>Driver signature</label>
+      <div class="sigwrap"><canvas class="sigpad" id="sigIDrv"></canvas></div>
+      <button class="btn ghost sm" style="margin-top:6px" onclick="clearSig('sigIDrv')">Clear</button>
+      <label>GP Operation signature</label>
+      <div class="sigwrap"><canvas class="sigpad" id="sigIOps"></canvas></div>
+      <button class="btn ghost sm" style="margin-top:6px" onclick="clearSig('sigIOps')">Clear</button>
+      <button class="btn gold full" style="margin-top:14px" onclick="signIn()">Sign In — complete return</button>
+      <button class="btn ghost full" style="margin-top:8px" onclick="window.print()">🖨 Print this record</button>
+      <button class="btn bad full" style="margin-top:8px" onclick="closeIn()">Cancel</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+var SB_URL="https://iefevjkeckysdluzazeq.supabase.co";
+var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+function sbH(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
+var $=function(id){return document.getElementById(id);};
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(t){var el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800);}
+function todayISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function nowTime(){var d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function fmt(iso){if(!iso)return '';var d=new Date(iso);return d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});}
+
+var FLEET=[], STAFF=[], PENDING=[], IN_REC=null;
+
+/* ===== Signature pads ===== */
+var PADS={};
+function initPad(id){
+  var cv=$(id); if(!cv) return;
+  var r=cv.getBoundingClientRect();
+  cv.width=r.width*2; cv.height=r.height*2;
+  var ctx=cv.getContext('2d'); ctx.scale(2,2); ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle='#111';
+  var draw=false, has=false;
+  function pos(e){var rect=cv.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return{x:t.clientX-rect.left,y:t.clientY-rect.top};}
+  function down(e){draw=true;var p=pos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);e.preventDefault();}
+  function move(e){if(!draw)return;var p=pos(e);ctx.lineTo(p.x,p.y);ctx.stroke();has=true;PADS[id].has=true;e.preventDefault();}
+  function up(){draw=false;}
+  cv.onmousedown=down;cv.onmousemove=move;window.addEventListener('mouseup',up);
+  cv.ontouchstart=down;cv.ontouchmove=move;cv.ontouchend=up;
+  PADS[id]={cv:cv,ctx:ctx,has:false};
+}
+function clearSig(id){var p=PADS[id];if(p){p.ctx.clearRect(0,0,p.cv.width,p.cv.height);p.has=false;}}
+function sigData(id){var p=PADS[id];return (p&&p.has)?p.cv.toDataURL('image/png'):'';}
+
+/* ===== Load ===== */
+async function loadStaff(){
+  try{var r=await fetch(SB_URL+'/rest/v1/gp_staff?select=name&order=name.asc',{headers:sbH()});if(r.ok)STAFF=(await r.json()).map(x=>x.name).filter(Boolean);}catch(e){}
+  $('driverSel').innerHTML='<option value="">Select driver…</option>'+STAFF.map(n=>`<option>${esc(n)}</option>`).join('');
+}
+async function loadFleet(){
+  try{var r=await fetch(SB_URL+'/rest/v1/gp_fleet?select=*&order=plate.asc',{headers:sbH()});if(r.ok)FLEET=await r.json();}catch(e){}
+  $('carSel').innerHTML='<option value="">Select a car…</option>'+FLEET.map(c=>`<option value="${c.id}">${esc(c.plate)} — ${esc(c.model||'')}</option>`).join('');
+}
+async function loadPending(){
+  $('pendingList').innerHTML='<div class="empty">Loading…</div>';
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_vehicle_use?status=eq.out&select=*&order=created_at.desc',{headers:sbH()});
+    PENDING=r.ok?await r.json():[];
+  }catch(e){ PENDING=[]; }
+  if(!PENDING.length){ $('pendingList').innerHTML='<div class="empty">No cars currently signed out.</div>'; return; }
+  $('pendingList').innerHTML=PENDING.map(p=>`
+    <div class="pending">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div class="pl">${esc(p.plate)} <span class="pill">OUT</span></div>
+      </div>
+      <div class="ms">${esc(p.model||'')} · ${esc(p.driver_name||'')}</div>
+      <div class="ms">📋 ${esc(p.purpose||'—')}${p.destination?(' → '+esc(p.destination)):''}</div>
+      <div class="ms">Out: ${esc(p.out_date||'')} ${esc(p.out_time||'')} · ${p.out_mileage?Number(p.out_mileage).toLocaleString()+' km':''}</div>
+      <div class="act" style="margin-top:10px"><button class="btn gold sm full" onclick="openIn('${p.id}')">Sign In / Return</button></div>
+    </div>`).join('');
+}
+
+function setTab(t){
+  $('newView').style.display=t==='new'?'block':'none';
+  $('pendingView').style.display=t==='pending'?'block':'none';
+  $('tabNew').classList.toggle('on',t==='new');
+  $('tabPending').classList.toggle('on',t==='pending');
+  if(t==='pending') loadPending();
+}
+
+/* ===== SIGN OUT ===== */
+async function signOut(){
+  var carId=$('carSel').value;
+  var driver=$('driverSel').value;
+  var car=FLEET.find(c=>c.id===carId);
+  if(!car){ toast('Select a car'); return; }
+  if(!driver){ toast('Select a driver'); return; }
+  var purpose=($('purpose').value||'').trim();
+  if(!purpose){ toast('Enter the purpose'); return; }
+  var sigD=sigData('sigODrv'), sigO=sigData('sigOOps');
+  if(!sigD){ toast('Driver signature required'); return; }
+  if(!sigO){ toast('GP Operation signature required'); return; }
+  var oMile=parseInt($('oMile').value||'0',10)||0;
+  var now=new Date().toISOString();
+  var row={
+    fleet_id:car.id, plate:car.plate, model:car.model, driver_name:driver,
+    purpose:purpose, destination:($('dest').value||'').trim(), status:'out',
+    out_date:$('oDate').value||todayISO(), out_time:$('oTime').value||nowTime(),
+    out_mileage:oMile, out_petrol:parseInt($('oPet').value||'0',10)||0,
+    out_sign_driver:sigD, out_sign_ops:sigO, created_by:driver, created_at:now, updated_at:now
+  };
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_vehicle_use',{method:'POST',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(row)});
+    if(!r.ok){ toast('Save failed'); return; }
+    // flip the car to internal/company status in the fleet
+    var patch={status:'internal', remark:'Driver: '+driver+(purpose?(' — '+purpose):''), driver_sign:sigD, changed_by:driver, changed_at:now};
+    if(oMile && oMile>=(car.current_mileage||0)){ patch.current_mileage=oMile; patch.mileage_updated=now; }
+    await fetch(SB_URL+'/rest/v1/gp_fleet?id=eq.'+car.id,{method:'PATCH',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
+    await fetch(SB_URL+'/rest/v1/gp_fleet_log',{method:'POST',headers:sbH({'Prefer':'return=minimal'}),
+      body:JSON.stringify({fleet_id:car.id,plate:car.plate,model:car.model,status:'internal',remark:'Company use — '+driver,changed_by:driver,changed_at:now})});
+    toast('Signed out ✓ — car released');
+    resetNew();
+  }catch(e){ toast('Offline — not saved'); }
+}
+function resetNew(){
+  ['purpose','dest','oMile','oPet'].forEach(id=>$(id).value='');
+  $('carSel').value=''; $('driverSel').value='';
+  $('oDate').value=todayISO(); $('oTime').value=nowTime();
+  clearSig('sigODrv'); clearSig('sigOOps');
+}
+
+/* ===== SIGN IN ===== */
+function openIn(id){
+  IN_REC=PENDING.find(p=>p.id===id); if(!IN_REC) return;
+  $('inTitle').textContent='Sign In — '+IN_REC.plate;
+  $('inSub').textContent=(IN_REC.model||'')+' · '+(IN_REC.driver_name||'')+' · out at '+(IN_REC.out_mileage?Number(IN_REC.out_mileage).toLocaleString()+' km':'—');
+  $('iDate').value=todayISO(); $('iTime').value=nowTime();
+  $('iMile').value=''; $('iPet').value=''; $('iRem').value='';
+  $('distNote').textContent='';
+  $('inPanel').style.display='block';
+  setTimeout(()=>{ initPad('sigIDrv'); initPad('sigIOps'); },40);
+}
+function calcDist(){
+  var im=parseInt($('iMile').value||'0',10)||0;
+  var om=IN_REC?(IN_REC.out_mileage||0):0;
+  if(im && om && im>=om) $('distNote').textContent='Distance used: '+(im-om).toLocaleString()+' km';
+  else $('distNote').textContent='';
+}
+function closeIn(){ $('inPanel').style.display='none'; IN_REC=null; }
+async function signIn(){
+  if(!IN_REC) return;
+  var sigD=sigData('sigIDrv'), sigO=sigData('sigIOps');
+  if(!sigD){ toast('Driver signature required'); return; }
+  if(!sigO){ toast('GP Operation signature required'); return; }
+  var iMile=parseInt($('iMile').value||'0',10)||0;
+  var now=new Date().toISOString();
+  var patch={
+    status:'returned',
+    in_date:$('iDate').value||todayISO(), in_time:$('iTime').value||nowTime(),
+    in_mileage:iMile, in_petrol:parseInt($('iPet').value||'0',10)||0,
+    in_sign_driver:sigD, in_sign_ops:sigO, remark:($('iRem').value||'').trim(), updated_at:now
+  };
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/gp_vehicle_use?id=eq.'+IN_REC.id,{method:'PATCH',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
+    if(!r.ok){ toast('Save failed'); return; }
+    // offer to set car back to Ready at GP
+    var car=FLEET.find(c=>c.id===IN_REC.fleet_id);
+    if(car && confirm('Set '+IN_REC.plate+' back to “Ready at GP”?')){
+      var fp={status:'ready', remark:'', driver_sign:'', changed_by:IN_REC.driver_name||'ops', changed_at:now};
+      if(iMile && iMile>=(car.current_mileage||0)){ fp.current_mileage=iMile; fp.mileage_updated=now; }
+      await fetch(SB_URL+'/rest/v1/gp_fleet?id=eq.'+car.id,{method:'PATCH',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(fp)});
+      await fetch(SB_URL+'/rest/v1/gp_fleet_log',{method:'POST',headers:sbH({'Prefer':'return=minimal'}),
+        body:JSON.stringify({fleet_id:car.id,plate:car.plate,model:car.model,status:'ready',remark:'Returned from company use',changed_by:IN_REC.driver_name||'ops',changed_at:now})});
+    }
+    toast('Signed in ✓ — return complete');
+    closeIn(); loadPending(); loadFleet();
+  }catch(e){ toast('Offline — not saved'); }
+}
+
+/* ===== init ===== */
+(async function(){
+  $('oDate').value=todayISO(); $('oTime').value=nowTime();
+  await loadStaff(); await loadFleet();
+  setTimeout(()=>{ initPad('sigODrv'); initPad('sigOOps'); },60);
+})();
+</script>
+</body>
+</html>
