@@ -557,7 +557,7 @@ async function saveDB(){
 async function upsertUser(u){
   if(!useCloud) return;
   await SUPA.up('gp_staff', {
-    username:u.username, password:u.password, name:u.name, role:u.role,
+    username:u.username, name:u.name, role:u.role,
     company:u.company||null, title:u.title||null, birthday:u.birthday||null,
     reports_to: u.reportsTo||null, can_post_notice:!!u.canPostNotice,
     apps: u.apps||[], updated_at:new Date().toISOString()
@@ -575,7 +575,7 @@ async function pullStaffFromCloud(){
   }
   // rebuild STAFF_SEED from cloud rows
   const fromCloud = r.data.map(row=>({
-    username:row.username, password:row.password, name:row.name, role:row.role,
+    username:row.username, name:row.name, role:row.role,
     company:row.company||undefined, title:row.title||undefined, birthday:row.birthday||undefined,
     reportsTo: row.reports_to? (function(){ try{ const v=JSON.parse(row.reports_to); return Array.isArray(v)?v:[v]; }catch(e){ return [row.reports_to]; } })() : undefined,
     canPostNotice:!!row.can_post_notice,
