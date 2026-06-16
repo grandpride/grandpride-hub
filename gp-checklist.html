@@ -332,9 +332,9 @@ function blankChecklist(){
     fuel_type:'RON97', tank_size:'', manual_ron100_price:'', lease_from:'', lease_to:'', duration_days:'',
     mileage_given:'', per_km:'', leasing_price:'', deposit:'',
     out_date:todayISO(), out_time:nowTime(), out_mileage:'', out_petrol:0,
-    out_defects:[], out_checks:{}, out_photos:[], out_sig_inspector:'', out_sig_customer:'', out_pdf_url:'',
+    out_defects:[], out_checks:{}, out_photos:[], out_defect_photos:[], out_video_sent:0, out_sig_inspector:'', out_sig_customer:'', out_pdf_url:'',
     in_date:'', in_time:'', in_mileage:'', in_petrol:0,
-    in_defects:[], in_checks:{}, in_photos:[], in_sig_inspector:'', in_sig_customer:'', in_pdf_url:''
+    in_defects:[], in_checks:{}, in_photos:[], in_defect_photos:[], in_video_sent:0, in_sig_inspector:'', in_sig_customer:'', in_pdf_url:''
   };
 }
 
@@ -662,6 +662,19 @@ function showForm(){
     <div class="photo-grid" id="photoGrid">
       ${PHOTO_SLOTS.map((lbl,i)=>photoSlot(lbl,i)).join('')}
     </div>
+
+    <h3 style="margin-top:18px">Defect Photos <span style="font-weight:400;color:var(--grey);font-size:12px">(close-ups of damage — add as many as needed)</span></h3>
+    <label class="btn sec mini bulk-btn">📷 Add defect photos
+      <input type="file" accept="image/*" multiple onchange="onDefectPhotos(this)">
+    </label>
+    <div class="photo-grid" id="defectPhotoGrid"></div>
+
+    <h3 style="margin-top:18px">Walkaround Video</h3>
+    <p style="color:var(--grey);font-size:12px;margin:2px 0 8px">Record a full-car video (2–3 clips ok). Videos are sent via WhatsApp, not stored here.</p>
+    <label class="btn sec mini bulk-btn">🎥 Record / pick video → WhatsApp
+      <input type="file" accept="video/*" capture="environment" multiple onchange="onVideoWA(this)">
+    </label>
+    <div id="videoNote" style="font-size:12px;color:var(--green);margin-top:8px"></div>
   </div>
 
   <div class="panel">
@@ -688,6 +701,9 @@ function showForm(){
     if(f('sig_customer')) loadPad('padCustomer', f('sig_customer'));
     renderMarkers();
     refreshPhotoSlots();
+    renderDefectPhotos();
+    const _vn=$('videoNote'), _vc=f('video_sent')||0;
+    if(_vn && _vc) _vn.textContent='✓ '+_vc+' video'+(_vc>1?'s':'')+' sent via WhatsApp for this stage.';
   },50);
   // live petrol price: show cached instantly, then refresh from gov API
   if(FUEL_PRICES) renderFuelBanner(); else { const c=loadFuelCache(); if(c){c.live=false;FUEL_PRICES=c;renderFuelBanner();} }
@@ -913,6 +929,47 @@ function onPhoto(i,input){
     refreshPhotoSlots();
   });
 }
+/* ===== EXTRA DEFECT PHOTOS (free-form, add as many as needed) ===== */
+function onDefectPhotos(input){
+  const files=[...(input.files||[])];
+  if(!files.length) return;
+  let pending=files.length;
+  files.forEach(file=>{
+    downscalePhoto(file,data=>{
+      const arr=(f('defect_photos')||[]).slice();
+      arr.push({data:data});
+      STATE.current[P()+'_defect_photos']=arr;
+      if(--pending===0) renderDefectPhotos();
+    });
+  });
+  input.value='';
+}
+function renderDefectPhotos(){
+  const grid=$('defectPhotoGrid'); if(!grid) return;
+  const arr=f('defect_photos')||[];
+  grid.innerHTML=arr.map((p,i)=>`<div class="photo-slot filled"><span class="rm" onclick="rmDefectPhoto(${i})">✕</span><img src="${p.data}"></div>`).join('');
+}
+function rmDefectPhoto(i){
+  const arr=(f('defect_photos')||[]).slice(); arr.splice(i,1);
+  STATE.current[P()+'_defect_photos']=arr; renderDefectPhotos();
+}
+/* ===== WALKAROUND VIDEO → WHATSAPP (not stored) ===== */
+function onVideoWA(input){
+  const files=[...(input.files||[])];
+  if(!files.length) return;
+  const plate=(STATE.current.plate||'').toUpperCase();
+  const stage=STATE.stage==='in'?'RETURN':'DELIVERY';
+  const n=files.length;
+  // Mark on the record that a video was taken (count only — file goes via WhatsApp)
+  STATE.current[P()+'_video_sent']=n;
+  const note=$('videoNote');
+  if(note) note.textContent='✓ '+n+' video'+(n>1?'s':'')+' ready — WhatsApp opened. Attach the clip(s) there.';
+  // Open WhatsApp with a pre-filled caption; staff attaches the video manually
+  const msg='Grandlab '+stage+' walkaround video'+(n>1?'s ('+n+')':'')+(plate?' — '+plate:'')+'\n(Attaching '+n+' video'+(n>1?'s':'')+' from the inspection.)';
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  input.value='';
+}
+
 /* shared: read a File, downscale to <=1000px JPEG, return data URL via callback */
 function downscalePhoto(file,cb){
   const reader=new FileReader();
@@ -1023,10 +1080,10 @@ function rowFor(a){
     customer_name:a.customer_name, customer_contact:a.customer_contact,
     car_model:a.car_model, car_plate:a.car_plate,
     out_date:a.out_date, out_time:a.out_time, out_mileage:a.out_mileage, out_petrol:a.out_petrol||0,
-    out_defects:a.out_defects||[], out_checks:a.out_checks||{}, out_photos:a.out_photos||[],
+    out_defects:a.out_defects||[], out_checks:a.out_checks||{}, out_photos:a.out_photos||[], out_defect_photos:a.out_defect_photos||[], out_video_sent:a.out_video_sent||0,
     out_sig_inspector:a.out_sig_inspector, out_sig_customer:a.out_sig_customer, out_pdf_url:a.out_pdf_url,
     in_date:a.in_date, in_time:a.in_time, in_mileage:a.in_mileage, in_petrol:a.in_petrol||0,
-    in_defects:a.in_defects||[], in_checks:a.in_checks||{}, in_photos:a.in_photos||[],
+    in_defects:a.in_defects||[], in_checks:a.in_checks||{}, in_photos:a.in_photos||[], in_defect_photos:a.in_defect_photos||[], in_video_sent:a.in_video_sent||0,
     in_sig_inspector:a.in_sig_inspector, in_sig_customer:a.in_sig_customer, in_pdf_url:a.in_pdf_url,
     created_by:a.created_by, updated_at:new Date().toISOString()
   };
