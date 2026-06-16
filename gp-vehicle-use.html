@@ -184,7 +184,7 @@ function todayISO(){var d=new Date();return d.getFullYear()+'-'+String(d.getMont
 function nowTime(){var d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
 function fmt(iso){if(!iso)return '';var d=new Date(iso);return d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',hour12:true});}
 
-var FLEET=[], STAFF=[], STAFF_ALL=[], PENDING=[], IN_REC=null;
+var FLEET=[], STAFF=[], STAFF_ALL=[], STAFF_OPS=[], OPS_USERNAMES=[], PENDING=[], IN_REC=null;
 
 /* ===== Signature pads ===== */
 var PADS={};
@@ -209,12 +209,16 @@ function sigData(id){var p=PADS[id];return (p&&p.has)?p.cv.toDataURL('image/png'
 async function loadStaff(){
   try{
     // only staff who can drive (flag) or whose title is Chauffeur
-    var r=await fetch(SB_URL+'/rest/v1/gp_staff?select=name,can_drive,title&order=name.asc',{headers:sbH()});
+    var r=await fetch(SB_URL+'/rest/v1/gp_staff?select=name,username,can_drive,can_authorize,title&order=name.asc',{headers:sbH()});
     if(r.ok){
       var rows=await r.json();
       STAFF_ALL=rows.map(x=>x.name).filter(Boolean);
       STAFF=rows.filter(x=>x.can_drive===true || (x.title&&String(x.title).toLowerCase().indexOf('chauffeur')>=0)).map(x=>x.name).filter(Boolean);
       if(!STAFF.length) STAFF=STAFF_ALL.slice(); // fallback: show all if none flagged yet
+      var ops=rows.filter(x=>x.can_authorize===true);
+      STAFF_OPS=ops.map(x=>x.name).filter(Boolean);
+      OPS_USERNAMES=ops.map(x=>x.username).filter(Boolean);
+      if(!STAFF_OPS.length) STAFF_OPS=STAFF_ALL.slice(); // fallback if none flagged yet
     }
   }catch(e){}
   $('driverSel').innerHTML='<option value="">Select driver…</option>'+STAFF.map(n=>`<option>${esc(n)}</option>`).join('');
@@ -342,9 +346,11 @@ async function signOut(){
   try{
     var r=await fetch(SB_URL+'/rest/v1/gp_vehicle_use',{method:'POST',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(row)});
     if(!r.ok){ toast('Save failed'); return; }
-    // notify GP Operation to sign (target 'all' = everyone; ops will see the badge)
-    pushNotify('🚗 Car release needs your sign-off',
-      driver+' wants '+car.plate+' for: '+purpose+'. Open Vehicle Use Log → Ops Sign.', 'all');
+    // notify the GP Operation people who can authorize (fallback to all if none set)
+    var title='🚗 Car release needs your sign-off';
+    var body=driver+' wants '+car.plate+' for: '+purpose+'. Open Vehicle Use Log → Ops Sign.';
+    if(OPS_USERNAMES.length) OPS_USERNAMES.forEach(function(u){ pushNotify(title, body, u); });
+    else pushNotify(title, body, 'all');
     toast('Sent ✓ — waiting for GP Operation to authorize');
     resetNew();
     loadOps();
@@ -393,7 +399,7 @@ function openOps(id){
     '<div class="ms"><b>Out:</b> '+esc(OPS_REC.out_date||'')+' '+esc(OPS_REC.out_time||'')+'</div>'+
     '<div class="ms"><b>Mileage:</b> '+(OPS_REC.out_mileage?Number(OPS_REC.out_mileage).toLocaleString()+' km':'—')+'</div>'+
     (OPS_REC.out_sign_driver?'<div class="ms" style="margin-top:6px"><b>Driver signed:</b></div><img src="'+OPS_REC.out_sign_driver+'" style="height:60px;background:#fff;border-radius:6px;margin-top:4px">':'');
-  $('opsBy').innerHTML='<option value="">Select staff…</option>'+STAFF_ALL.map(n=>`<option>${esc(n)}</option>`).join('');
+  $('opsBy').innerHTML='<option value="">Select staff…</option>'+STAFF_OPS.map(n=>`<option>${esc(n)}</option>`).join('');
   $('opsPanel').style.display='block';
   setTimeout(()=>initPad('sigOpsApprove'),40);
 }

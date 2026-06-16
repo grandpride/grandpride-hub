@@ -138,6 +138,7 @@ async function init(){
         reportsTo: row.reports_to? (function(){ try{ const v=JSON.parse(row.reports_to); return Array.isArray(v)?v:[v]; }catch(e){ return [row.reports_to]; } })() : undefined,
         canPostNotice:!!row.can_post_notice,
         canDrive:!!row.can_drive,
+        canAuthorize:!!row.can_authorize,
         apps: Array.isArray(row.apps)?row.apps:(row.apps?JSON.parse(row.apps):[])
       }));
       render(); return;
@@ -154,7 +155,7 @@ async function pushOne(s){
   await SUPA.up('gp_staff', {
     username:s.username, email:s.email||null, name:s.name, role:s.role,
     company:s.company||null, title:s.title||null, birthday:s.birthday||null,
-    reports_to: s.reportsTo? JSON.stringify(Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null, can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive,
+    reports_to: s.reportsTo? JSON.stringify(Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null, can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize,
     apps: s.apps||[], updated_at:new Date().toISOString()
   }, 'username');
 }
@@ -185,7 +186,7 @@ function render(){
       statusBtn = '<button class="btn ghost sm" onclick="openForm('+i+')" title="Add an email first">No email</button>';
     }
     return '<div class="staff-row"><div class="info"><div class="nm">'+s.name+
-      ' <span class="tag">'+s.role+'</span>'+(isCh?'<span class="tag chau">🚗 Chauffeur</span>':(s.canDrive?'<span class="tag chau">🚗 Driver</span>':''))+'</div>'+
+      ' <span class="tag">'+s.role+'</span>'+(isCh?'<span class="tag chau">🚗 Chauffeur</span>':(s.canDrive?'<span class="tag chau">🚗 Driver</span>':''))+(s.canAuthorize?'<span class="tag chau">✍️ GP Ops</span>':'')+'</div>'+
       '<div class="mt">'+s.username+' · '+(s.title||s.role)+(s.company?' · '+s.company:'')+'<br>'+appsOf(s)+'</div></div>'+
       '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">'+statusBtn+
       '<button class="btn ghost sm" onclick="openForm('+i+')">Edit</button></div></div>';
@@ -214,6 +215,7 @@ function openForm(idx){
   h+='<label>Reports to (optional — can pick more than one)</label><div class="appchecks" style="grid-template-columns:1fr">'+reportsChecks(s?s.reportsTo:[], s?s.username:'')+'</div>';
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:12px;cursor:pointer"><input type="checkbox" id="fNotice" '+(s&&s.canPostNotice?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> Can post notices / announcements</label>';
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fDrive" '+(s&&s.canDrive?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> 🚗 Can drive (shows in Vehicle Use Log)</label>';
+  h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fAuth" '+(s&&s.canAuthorize?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> ✍️ Can authorize as GP Operation (sign-off vehicle release)</label>';
   h+='<button class="btn" onclick="saveStaff('+(idx!==undefined?idx:'-1')+')">'+(s?'Save changes':'Add staff')+'</button>';
   if(s && s.username!=='admin') h+='<button class="btn bad" onclick="delStaff('+idx+')">Delete staff</button>';
   document.getElementById('sheet').innerHTML=h;
@@ -234,7 +236,7 @@ async function inviteExisting(idx){
     role:s.role, company:s.company||null, title:s.title||null,
     birthday:s.birthday||null,
     reports_to: s.reportsTo? (Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null,
-    can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, apps:s.apps||[],
+    can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize, apps:s.apps||[],
     existing:true   // tells the function to link to the existing row, not insert a new one
   });
   if(!res.ok){ toast('Invite failed: '+(res.error||'unknown')); return; }
@@ -262,6 +264,7 @@ async function saveStaff(idx){
     reportsTo: (function(){ const a=[...document.querySelectorAll('.repChk')].filter(c=>c.checked).map(c=>c.value); return a.length?a:undefined; })(),
     canPostNotice:document.getElementById('fNotice').checked||undefined,
     canDrive: (document.getElementById('fDrive')&&document.getElementById('fDrive').checked) || (document.getElementById('fTitle').value||'').toLowerCase().indexOf('chauffeur')>=0 || undefined,
+    canAuthorize: (document.getElementById('fAuth')&&document.getElementById('fAuth').checked) || undefined,
     apps };
 
   if(isNew){
@@ -276,6 +279,7 @@ async function saveStaff(idx){
       reports_to: obj.reportsTo? (Array.isArray(obj.reportsTo)?obj.reportsTo:[obj.reportsTo]) : null,
       can_post_notice: !!obj.canPostNotice,
       can_drive: !!obj.canDrive,
+      can_authorize: !!obj.canAuthorize,
       apps: obj.apps||[]
     });
     if(!res.ok){ toast('Invite failed: '+(res.error||'unknown')); return; }
