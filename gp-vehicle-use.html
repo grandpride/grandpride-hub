@@ -168,7 +168,15 @@ function sigData(id){var p=PADS[id];return (p&&p.has)?p.cv.toDataURL('image/png'
 
 /* ===== Load ===== */
 async function loadStaff(){
-  try{var r=await fetch(SB_URL+'/rest/v1/gp_staff?select=name&order=name.asc',{headers:sbH()});if(r.ok)STAFF=(await r.json()).map(x=>x.name).filter(Boolean);}catch(e){}
+  try{
+    // only staff who can drive (flag) or whose title is Chauffeur
+    var r=await fetch(SB_URL+'/rest/v1/gp_staff?select=name,can_drive,title&order=name.asc',{headers:sbH()});
+    if(r.ok){
+      var rows=await r.json();
+      STAFF=rows.filter(x=>x.can_drive===true || (x.title&&String(x.title).toLowerCase().indexOf('chauffeur')>=0)).map(x=>x.name).filter(Boolean);
+      if(!STAFF.length) STAFF=rows.map(x=>x.name).filter(Boolean); // fallback: show all if none flagged yet
+    }
+  }catch(e){}
   $('driverSel').innerHTML='<option value="">Select driver…</option>'+STAFF.map(n=>`<option>${esc(n)}</option>`).join('');
 }
 async function loadFleet(){
