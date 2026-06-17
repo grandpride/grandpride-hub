@@ -89,7 +89,7 @@
    form, and sends Supabase Auth email invites so staff set their own passwords.
    Working copy is kept in localStorage so you don't lose edits on refresh. */
 
-const OPT_IN_APPS = ['mia','jobboard','gpbooking','gpagreement','gpchecklist','gpdaily','gpfleet','gpuse','gpappt','gprecord','gpdeposit']; // apps that are NOT given by default — assigned per-staff
+const OPT_IN_APPS = ['mia','jobboard','gpbooking','gpagreement','gpchecklist','gpdaily','gpfleet','gpuse','gpappt','gprecord','gpdeposit','gpchauffeur']; // apps that are NOT given by default — assigned per-staff
 const APP_LIST = [
   {key:'attendance', label:'Attendance'},
   {key:'tasklog',    label:'Daily Task Log'},
@@ -108,6 +108,7 @@ const APP_LIST = [
   {key:'gpappt',      label:'GP Appointment Reminder'},
   {key:'gprecord',    label:'GP Record Summary'},
   {key:'gpdeposit',   label:'GP Deposit Return'},
+  {key:'gpchauffeur', label:'GP Chauffeur'},
 ];
 const ROLES = ['Admin','Manager','HOD','Receptionist','Finance','Staff'];
 const COMPANIES = ['Grandlab','Grandpride'];
@@ -140,6 +141,8 @@ async function init(){
         canPostNotice:!!row.can_post_notice,
         canDrive:!!row.can_drive,
         canAuthorize:!!row.can_authorize,
+        isChauffeur:!!row.is_chauffeur,
+        canChauffeurOps:!!row.can_chauffeur_ops,
         apps: Array.isArray(row.apps)?row.apps:(row.apps?JSON.parse(row.apps):[])
       }));
       render(); return;
@@ -156,7 +159,7 @@ async function pushOne(s){
   await SUPA.up('gp_staff', {
     username:s.username, email:s.email||null, name:s.name, role:s.role,
     company:s.company||null, title:s.title||null, birthday:s.birthday||null,
-    reports_to: s.reportsTo? JSON.stringify(Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null, can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize,
+    reports_to: s.reportsTo? JSON.stringify(Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null, can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize, is_chauffeur:!!s.isChauffeur, can_chauffeur_ops:!!s.canChauffeurOps,
     apps: s.apps||[], updated_at:new Date().toISOString()
   }, 'username');
 }
@@ -217,6 +220,8 @@ function openForm(idx){
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:12px;cursor:pointer"><input type="checkbox" id="fNotice" '+(s&&s.canPostNotice?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> Can post notices / announcements</label>';
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fDrive" '+(s&&s.canDrive?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> 🚗 Can drive (shows in Vehicle Use Log)</label>';
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fAuth" '+(s&&s.canAuthorize?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> ✍️ Can authorize as GP Operation (sign-off vehicle release)</label>';
+  h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fChauf" '+(s&&s.isChauffeur?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> 🧍 Is a chauffeur (shows on Chauffeur board)</label>';
+  h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fChaufOps" '+(s&&s.canChauffeurOps?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> 🎩 Can manage chauffeur status (GP Operation – chauffeur)</label>';
   h+='<button class="btn" onclick="saveStaff('+(idx!==undefined?idx:'-1')+')">'+(s?'Save changes':'Add staff')+'</button>';
   if(s && s.username!=='admin') h+='<button class="btn bad" onclick="delStaff('+idx+')">Delete staff</button>';
   document.getElementById('sheet').innerHTML=h;
@@ -237,7 +242,7 @@ async function inviteExisting(idx){
     role:s.role, company:s.company||null, title:s.title||null,
     birthday:s.birthday||null,
     reports_to: s.reportsTo? (Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null,
-    can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize, apps:s.apps||[],
+    can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize, is_chauffeur:!!s.isChauffeur, can_chauffeur_ops:!!s.canChauffeurOps, apps:s.apps||[],
     existing:true   // tells the function to link to the existing row, not insert a new one
   });
   if(!res.ok){ toast('Invite failed: '+(res.error||'unknown')); return; }
@@ -266,6 +271,8 @@ async function saveStaff(idx){
     canPostNotice:document.getElementById('fNotice').checked||undefined,
     canDrive: (document.getElementById('fDrive')&&document.getElementById('fDrive').checked) || (document.getElementById('fTitle').value||'').toLowerCase().indexOf('chauffeur')>=0 || undefined,
     canAuthorize: (document.getElementById('fAuth')&&document.getElementById('fAuth').checked) || undefined,
+    isChauffeur: (document.getElementById('fChauf')&&document.getElementById('fChauf').checked) || (document.getElementById('fTitle').value||'').toLowerCase().indexOf('chauffeur')>=0 || undefined,
+    canChauffeurOps: (document.getElementById('fChaufOps')&&document.getElementById('fChaufOps').checked) || undefined,
     apps };
 
   if(isNew){

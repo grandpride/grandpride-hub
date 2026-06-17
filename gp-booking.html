@@ -134,6 +134,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <label>Pickup Address</label><textarea id="ch_pickup" placeholder="Pickup location"></textarea>
       <label>Standby Time (or KIV)</label><input id="ch_standby" placeholder="e.g. 11pm or KIV">
       <label>Location URL (Google Map)</label><input id="ch_maps" placeholder="https://maps.google.com/...">
+      <label>Assign chauffeur</label>
+      <select id="ch_driver"><option value="">Select chauffeur…</option></select>
     </div>
     <div class="panel">
       <h3>Pricing</h3>
@@ -380,7 +382,9 @@ async function saveBooking(){
     var r=await fetch(sbBase()+'/rest/v1/gp_bookings', {
       method:'POST', headers:sbHeaders({'Prefer':'return=minimal'}), body:JSON.stringify(row)
     });
-    if(r.ok){ toast('Booking saved ✓'); window._lastId=id; logToSheet(row); upsertRecord(d); }
+    if(r.ok){ toast('Booking saved ✓'); window._lastId=id; logToSheet(row); upsertRecord(d);
+      if(SVC==='chauffeur'){ var drv=$('ch_driver')&&$('ch_driver').value; if(drv) setChauffeurOutside(drv, (d.customer_name||'')+' job'); }
+    }
     else { var t=await r.text(); toast('Save failed — '+r.status+' '+t); }
   }catch(e){ toast('Error: '+e.message); }
 }
@@ -549,6 +553,29 @@ function onCarPick(prefix){
 
 setSvc('leasing');
 loadFleetCars();
+loadChauffeurs();
+
+var CHAUFFEURS=[];
+async function loadChauffeurs(){
+  try{
+    var r=await fetch(sbBase()+'/rest/v1/gp_staff?is_chauffeur=eq.true&select=username,name&order=name.asc',{headers:sbHeaders2()});
+    if(r.ok) CHAUFFEURS=await r.json();
+    if(!CHAUFFEURS.length){
+      var r2=await fetch(sbBase()+'/rest/v1/gp_staff?select=username,name,title&order=name.asc',{headers:sbHeaders2()});
+      if(r2.ok){ CHAUFFEURS=(await r2.json()).filter(x=>x.title&&String(x.title).toLowerCase().indexOf('chauffeur')>=0); }
+    }
+  }catch(e){}
+  var sel=$('ch_driver'); if(sel) sel.innerHTML='<option value="">Select chauffeur…</option>'+CHAUFFEURS.map(c=>`<option value="${esc(c.username)}">${esc(c.name||c.username)}</option>`).join('');
+}
+async function setChauffeurOutside(username, note){
+  if(!username) return;
+  try{
+    await fetch(sbBase()+'/rest/v1/gp_staff?username=eq.'+encodeURIComponent(username),
+      {method:'PATCH',headers:sbHeaders({'Prefer':'return=minimal'}),body:JSON.stringify({chauffeur_status:'outside',chauffeur_note:note||'',chauffeur_updated:new Date().toISOString()})});
+    await fetch(sbBase()+'/rest/v1/gp_chauffeur_log',{method:'POST',headers:sbHeaders({'Prefer':'return=minimal'}),
+      body:JSON.stringify({staff_username:username,status:'outside',note:note||'',by_name:'booking'})});
+  }catch(e){}
+}
 $('le_start') && $('le_start').addEventListener('change',updateDuration);
 $('le_end') && $('le_end').addEventListener('change',updateDuration);
 </script>
