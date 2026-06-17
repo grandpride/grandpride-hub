@@ -1178,6 +1178,7 @@ async function updateRecordFromChecklist(a, st){
       if(a.per_km) patch.per_km_exceed=parseFloat(a.per_km)||0;
     } else if(st==='in'){
       patch.car_status='done';
+      patch.deposit_stage='awaiting_deposit';
       var beg=parseInt(a.out_mileage||0,10)||0, end=parseInt(a.in_mileage||0,10)||0;
       patch.end_mileage=end;
       var used=end-beg; if(used>0) patch.mileage_used=used;
@@ -1185,6 +1186,9 @@ async function updateRecordFromChecklist(a, st){
       var given=parseInt(a.mileage_given||0,10)||0, perkm=parseFloat(a.per_km||0)||0;
       var exceedKm=used-given;
       if(exceedKm>0 && perkm>0) patch.exceed_mileage_rm=Math.round(exceedKm*perkm*100)/100;
+      // carry petrol bars at return + tank size for petrol-shortfall calc in Deposit Return
+      patch.in_petrol=parseInt(a.in_petrol||0,10)||0;
+      patch.tank_size=parseFloat(a.tank_size||0)||0;
     }
     // PATCH the matching record by key, return the full updated row
     var q='car_plate=eq.'+encodeURIComponent(plate)+'&customer_name=eq.'+encodeURIComponent(cust);

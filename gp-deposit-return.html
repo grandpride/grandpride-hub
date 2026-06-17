@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP Deposit Return</title>
+<style>
+  :root{
+    --ink:#0a0908; --paper:#f5f3ee; --gold:#c9a24b; --gold-soft:#e3c887;
+    --grey:#9a958c; --line:rgba(201,162,75,.18); --card:#15120d;
+    --green:#5a9e6f; --red:#d2533f; --amber:#d4a23a;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:Arial,Helvetica,sans-serif;background:var(--ink);color:var(--paper);margin:0;min-height:100vh;padding-bottom:40px}
+  .top{position:sticky;top:0;z-index:30;background:rgba(10,9,8,.96);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .top .lg{width:38px;height:38px;background:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;color:var(--gold);font-size:15px;border:1px solid var(--line);flex:0 0 auto}
+  .top .ti h2{font-family:Georgia,serif;font-size:15px;letter-spacing:1px;margin:0}
+  .top .ti p{font-size:11px;color:var(--grey);margin:2px 0 0}
+  .wrap{max-width:680px;margin:0 auto;padding:14px 16px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+  .panel h3{font-family:Georgia,serif;font-size:16px;margin:0 0 8px}
+  .muted{color:var(--grey);font-size:12px;line-height:1.5}
+  label{display:block;font-size:11px;letter-spacing:.4px;color:var(--grey);text-transform:uppercase;margin:11px 0 4px}
+  input{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;border:1px solid var(--line);border-radius:9px;padding:11px;text-align:left;-webkit-appearance:none}
+  input:focus{border-color:var(--gold);outline:none}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{font-family:inherit;font-size:14px;padding:12px;border-radius:10px;cursor:pointer;border:none;width:100%}
+  .btn.gold{background:linear-gradient(135deg,var(--gold),var(--gold-soft));color:#000;font-weight:bold}
+  .btn.ghost{background:transparent;border:1px solid var(--gold);color:var(--gold-soft)}
+  .btn.bad{background:transparent;border:1px solid var(--red);color:var(--red)}
+  .btn.sm{font-size:13px;padding:9px 11px;width:auto}
+  .pend{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer}
+  .pend .pl{font-family:Georgia,serif;font-size:16px}
+  .pend .ms{font-size:12px;color:var(--grey);margin-top:4px}
+  .ded-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .ded-row .lbl{color:var(--paper)} .ded-row .amt{color:var(--red);font-weight:bold}
+  .ded-row.pos .amt{color:var(--green)}
+  .total-row{display:flex;justify-content:space-between;padding:12px 0 0;font-family:Georgia,serif;font-size:20px;color:var(--gold-soft);font-weight:bold}
+  .dmg{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+  .dmg input.d{flex:1} .dmg input.a{width:110px}
+  .dmg .x{background:transparent;border:1px solid var(--red);color:var(--red);border-radius:8px;width:36px;height:40px;flex:0 0 auto;cursor:pointer}
+  .chip{display:inline-block;background:#2a2620;color:var(--gold-soft);border-radius:20px;padding:3px 10px;font-size:11px;margin-left:6px}
+  .empty{text-align:center;color:var(--grey);padding:30px 18px;font-size:14px}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c1810;border:1px solid var(--gold);color:var(--gold-soft);padding:10px 18px;border-radius:10px;font-size:13px;z-index:80;opacity:0;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media print{ .top,.btn,.tabs{display:none!important} body{background:#fff;color:#000} .panel{border:1px solid #999} }
+</style>
+</head>
+<body>
+  <div class="top">
+    <div class="lg">GP</div>
+    <div class="ti"><h2>DEPOSIT RETURN</h2><p id="syncNote">Final costing</p></div>
+  </div>
+
+  <div class="wrap">
+    <!-- PENDING LIST -->
+    <div id="listView">
+      <p class="muted" style="margin:0 0 12px">Cars returned and awaiting deposit costing. Tap one to finish.</p>
+      <div id="pendList"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- COSTING -->
+    <div id="costView" style="display:none">
+      <div class="panel" id="recInfo"></div>
+
+      <div class="panel">
+        <h3>Deductions</h3>
+
+        <label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:14px">
+          <input type="checkbox" id="smokeOn" style="width:18px;height:18px" onchange="recalc()"> Smoke smell charge
+          <span class="chip" id="smokeChip"></span>
+        </label>
+
+        <label>Exceed mileage (auto from checklist)</label>
+        <input id="exMileage" readonly style="opacity:.75">
+
+        <label>Exceed petrol (auto from market price)</label>
+        <input id="exPetrol" readonly style="opacity:.75">
+        <p class="muted" id="petrolNote"></p>
+
+        <label>New damage (add each item)</label>
+        <div id="dmgList"></div>
+        <button class="btn ghost sm" onclick="addDmg()" style="margin-top:4px">+ Add damage item</button>
+
+        <label style="margin-top:14px">Summons</label>
+        <div class="two">
+          <div><label style="margin-top:0">JPJ (RM)</label><input id="sJpj" type="number" inputmode="decimal" value="0" oninput="recalc()"></div>
+          <div><label style="margin-top:0">Police (RM)</label><input id="sPolice" type="number" inputmode="decimal" value="0" oninput="recalc()"></div>
+        </div>
+        <label>MPSJ (RM)</label>
+        <input id="sMpsj" type="number" inputmode="decimal" value="0" oninput="recalc()">
+      </div>
+
+      <div class="panel">
+        <div class="ded-row"><span class="lbl">Deposit held</span><span class="amt" id="rDep" style="color:var(--green)">RM 0.00</span></div>
+        <div id="dedBreak"></div>
+        <div class="total-row"><span>Refund to customer</span><span id="rRefund">RM 0.00</span></div>
+      </div>
+
+      <button class="btn gold" onclick="finish()">✓ Finalize & send to Summary</button>
+      <button class="btn ghost" style="margin-top:8px" onclick="genReceipt()">🧾 Generate receipt (print/PDF)</button>
+      <button class="btn ghost" style="margin-top:8px" onclick="backToList()">← Back to list</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+var SB_URL="https://iefevjkeckysdluzazeq.supabase.co";
+var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+function sbH(x){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, x||{}); }
+// Record Summary Google Sheet (same /exec as gp-record-summary.html)
+var REC_SHEET_URL='https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec';
+// settings
+var SMOKE_AMOUNT = 5000;   // editable default
+
+var $=function(id){return document.getElementById(id);};
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(t){var el=$('toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800);}
+function n(v){var x=parseFloat(v);return isNaN(x)?0:x;}
+function rm(v){return 'RM '+n(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+var PEND=[], REC=null, FUEL=null, DMG=[];
+
+/* ===== live fuel price (gov API, same source as checklist) ===== */
+async function loadFuel(){
+  try{
+    var r=await fetch('https://api.data.gov.my/data-catalogue?id=fuelprice&limit=1&sort=-date',{cache:'no-store'});
+    if(r.ok){ var j=await r.json(); if(j&&j.length){ FUEL={ron95:n(j[0].ron95),ron97:n(j[0].ron97)}; } }
+  }catch(e){}
+  if(!FUEL) FUEL={ron95:2.05, ron97:3.18}; // fallback
+}
+
+/* ===== load pending (returned, awaiting deposit) ===== */
+async function loadPending(){
+  $('pendList').innerHTML='<div class="empty">Loading…</div>';
+  try{
+    var r=await fetch(SB_URL+"/rest/v1/gp_records?deposit_stage=eq.awaiting_deposit&select=*&order=updated_at.desc",{headers:sbH()});
+    PEND=r.ok?await r.json():[];
+    $('syncNote').textContent='Live • '+PEND.length+' awaiting';
+  }catch(e){ PEND=[]; $('syncNote').textContent='Offline'; }
+  if(!PEND.length){ $('pendList').innerHTML='<div class="empty">No cars awaiting deposit costing.</div>'; return; }
+  $('pendList').innerHTML=PEND.map(p=>`
+    <div class="pend" onclick="openRec('${p.id}')">
+      <div class="pl">${esc(p.car_plate||'')} <span class="chip">${esc(p.car_model||'')}</span></div>
+      <div class="ms">${esc(p.customer_name||'')} · deposit ${rm(p.deposit)}</div>
+      <div class="ms">Returned ${esc(p.end_date||p.dep_return_date||'')} · used ${p.mileage_used||0} km</div>
+    </div>`).join('');
+}
+
+function openRec(id){
+  REC=PEND.find(x=>x.id===id); if(!REC) return;
+  DMG = Array.isArray(REC.damage_items)?REC.damage_items.slice():[];
+  $('listView').style.display='none'; $('costView').style.display='block';
+  $('recInfo').innerHTML=
+    '<h3>'+esc(REC.car_plate||'')+' — '+esc(REC.car_model||'')+'</h3>'+
+    '<div class="muted">'+esc(REC.customer_name||'')+'</div>'+
+    '<div class="muted">Mileage used: '+(REC.mileage_used||0)+' km (given '+(REC.mileage_given||0)+')</div>'+
+    '<div class="muted">Petrol at return: '+(REC.in_petrol||0)+'/8 · tank '+(REC.tank_size||0)+'L</div>';
+  $('smokeChip').textContent=rm(SMOKE_AMOUNT);
+  $('smokeOn').checked = n(REC.smoke_charge)>0;
+  $('sJpj').value=n(REC.summons_jpj); $('sPolice').value=n(REC.summons_police); $('sMpsj').value=n(REC.summons_mpsj);
+  renderDmg();
+  recalc();
+}
+function backToList(){ $('costView').style.display='none'; $('listView').style.display='block'; REC=null; loadPending(); }
+
+/* damage items */
+function renderDmg(){
+  $('dmgList').innerHTML=DMG.map((d,i)=>`
+    <div class="dmg">
+      <input class="d" placeholder="Damage description" value="${esc(d.desc||'')}" oninput="DMG[${i}].desc=this.value">
+      <input class="a" type="number" inputmode="decimal" placeholder="RM" value="${d.amt||''}" oninput="DMG[${i}].amt=parseFloat(this.value||'0')||0;recalc()">
+      <button class="x" onclick="DMG.splice(${i},1);renderDmg();recalc()">✕</button>
+    </div>`).join('');
+}
+function addDmg(){ DMG.push({desc:'',amt:0}); renderDmg(); }
+
+/* exceed petrol = bars short × (tank/8) × price */
+function petrolCharge(){
+  if(!REC) return 0;
+  var barsAtReturn=n(REC.in_petrol);        // 0-8
+  var full=8;
+  var barsShort=Math.max(0, full-barsAtReturn);
+  var tank=n(REC.tank_size);
+  if(!tank || !barsShort) return 0;
+  var litres=(tank/8)*barsShort;
+  var price=(FUEL&&FUEL.ron97)?FUEL.ron97:3.18; // use RON97 as default; most rentals are 97
+  return Math.round(litres*price*100)/100;
+}
+
+function recalc(){
+  if(!REC) return;
+  var smoke = $('smokeOn').checked ? SMOKE_AMOUNT : 0;
+  var exM = n(REC.exceed_mileage_rm);
+  var exP = petrolCharge();
+  var dmg = DMG.reduce((a,b)=>a+n(b.amt),0);
+  var sJ=n($('sJpj').value), sP=n($('sPolice').value), sM=n($('sMpsj').value);
+  var totalDed = smoke+exM+exP+dmg+sJ+sP+sM;
+  var dep = n(REC.deposit);
+  var refund = dep - totalDed; // can be negative (customer owes)
+
+  $('exMileage').value=rm(exM);
+  $('exPetrol').value=rm(exP);
+  $('petrolNote').textContent = (n(REC.tank_size)? ((8-n(REC.in_petrol))+' bars short × '+(n(REC.tank_size)/8).toFixed(1)+'L × '+rm((FUEL&&FUEL.ron97)||3.18).replace('RM ','RM')+'/L') : 'Tank size not set on checklist — petrol charge 0');
+  $('rDep').textContent=rm(dep);
+
+  var rows='';
+  function row(lbl,amt){ if(amt>0) rows+='<div class="ded-row"><span class="lbl">'+lbl+'</span><span class="amt">− '+rm(amt)+'</span></div>'; }
+  row('Smoke smell',smoke); row('Exceed mileage',exM); row('Exceed petrol',exP);
+  DMG.forEach(d=>{ if(n(d.amt)>0) row('Damage: '+(d.desc||'item'), n(d.amt)); });
+  row('Summons JPJ',sJ); row('Summons Police',sP); row('Summons MPSJ',sM);
+  if(!rows) rows='<div class="muted" style="padding:9px 0">No deductions.</div>';
+  $('dedBreak').innerHTML=rows;
+
+  var rf=$('rRefund');
+  rf.textContent=rm(refund);
+  rf.style.color = refund<0 ? 'var(--red)' : 'var(--gold-soft)';
+  // stash for save
+  REC._calc={smoke:smoke,exM:exM,exP:exP,dmg:dmg,sJ:sJ,sP:sP,sM:sM,totalDed:totalDed,refund:refund};
+}
+
+async function finish(){
+  if(!REC) return;
+  recalc();
+  var c=REC._calc;
+  var patch={
+    smoke_charge:c.smoke, petrol_charge:c.exP, damage_items:DMG.filter(d=>n(d.amt)>0||(d.desc||'').trim()),
+    repair:c.dmg, summons_jpj:c.sJ, summons_police:c.sP, summons_mpsj:c.sM,
+    deposit_return:Math.max(0,c.refund),
+    dep_return_date:new Date().toISOString().slice(0,10),
+    deposit_stage:'deposit_done', car_status:'done', updated_at:new Date().toISOString()
+  };
+  try{
+    var r=await fetch(SB_URL+"/rest/v1/gp_records?id=eq."+REC.id,{method:'PATCH',headers:sbH({'Prefer':'return=representation'}),body:JSON.stringify(patch)});
+    if(!r.ok){ toast('Save failed'); return; }
+    var rows=await r.json();
+    if(rows&&rows.length) sheetPush(rows[0]);
+    toast('Finalized ✓ — sent to Summary');
+    backToList();
+  }catch(e){ toast('Offline — not saved'); }
+}
+function sheetPush(rec){
+  try{ if(!REC_SHEET_URL||REC_SHEET_URL.indexOf('http')!==0) return;
+    fetch(REC_SHEET_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rec)}).catch(function(){});
+  }catch(e){}
+}
+
+/* receipt */
+function genReceipt(){
+  if(!REC) return; recalc(); var c=REC._calc;
+  var w=window.open('','_blank');
+  var rows='';
+  function rr(l,a){ if(a>0) rows+='<tr><td>'+l+'</td><td style="text-align:right">− '+rm(a)+'</td></tr>'; }
+  rr('Smoke smell',c.smoke); rr('Exceed mileage',c.exM); rr('Exceed petrol',c.exP);
+  DMG.forEach(d=>{ if(n(d.amt)>0) rr('Damage: '+(d.desc||'item'),n(d.amt)); });
+  rr('Summons JPJ',c.sJ); rr('Summons Police',c.sP); rr('Summons MPSJ',c.sM);
+  w.document.write('<html><head><title>Deposit Return</title><style>body{font-family:Arial;padding:30px;color:#111}h2{font-family:Georgia}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:7px 4px;border-bottom:1px solid #ddd}.tot{font-weight:bold;font-size:18px}</style></head><body>'+
+    '<h2>GRANDPRIDE — Deposit Return</h2>'+
+    '<p><b>Customer:</b> '+esc(REC.customer_name||'')+'<br><b>Car:</b> '+esc(REC.car_model||'')+' ('+esc(REC.car_plate||'')+')<br><b>Date:</b> '+new Date().toLocaleDateString()+'</p>'+
+    '<table><tr><td>Deposit held</td><td style="text-align:right">'+rm(REC.deposit)+'</td></tr>'+rows+
+    '<tr class="tot"><td>Refund to customer</td><td style="text-align:right">'+rm(Math.max(0,c.refund))+'</td></tr></table>'+
+    (c.refund<0?'<p style="color:#c00"><b>Customer owes: '+rm(Math.abs(c.refund))+'</b></p>':'')+
+    '<p style="margin-top:30px;color:#666;font-size:12px">Grandpride Luxury Travel Sdn Bhd</p>'+
+    '<script>window.print()<\/script></body></html>');
+  w.document.close();
+}
+
+/* init */
+(async function(){ await loadFuel(); await loadPending(); })();
+</script>
+</body>
+</html>
