@@ -193,15 +193,25 @@
   <div class="modal" id="svcModal">
     <div class="sheet">
       <h3 id="svcTitle">Mark serviced</h3>
-      <label>Done at mileage (km)</label>
-      <input id="svcKm" type="number" inputmode="numeric">
-      <label>Done on date</label>
+      <div id="svcKmWrap">
+        <label>Done at mileage (km)</label>
+        <input id="svcKm" type="number" inputmode="numeric">
+      </div>
+      <div id="svcExpWrap" style="display:none">
+        <label id="svcExpLbl">New expiry date</label>
+        <input id="svcExp" type="date">
+        <p class="ms" style="color:var(--grey)">Renews for 12 months — countdown alerts 10 days before this date.</p>
+      </div>
+      <label id="svcDateLbl">Done on date</label>
       <input id="svcDate" type="date">
       <label>Done by</label>
       <select id="svcBy"><option value="">Select staff…</option></select>
       <label>Remark (optional)</label>
       <input id="svcRem" placeholder="e.g. changed at Exotic Workshop">
-      <button class="btn gold full" style="margin-top:12px" onclick="confirmServiced()">Confirm serviced</button>
+      <label id="svcPhotoLbl">Photo (receipt / sticker / proof)</label>
+      <input id="svcPhoto" type="file" accept="image/*" onchange="onSvcPhoto(this)">
+      <div id="svcPhotoPrev"></div>
+      <button class="btn gold full" style="margin-top:12px" onclick="confirmServiced()">Confirm</button>
       <button class="btn bad full" style="margin-top:8px" onclick="closeSvc()">Cancel</button>
     </div>
   </div>
@@ -224,11 +234,12 @@ var STATUSES = [
 ];
 
 var MAINT_ITEMS = [
-  {k:'engine_oil', name:'Engine Oil',  dkm:10000, dmo:6},
-  {k:'atf_oil',    name:'ATF Oil',     dkm:40000, dmo:24},
-  {k:'tyre',       name:'Tyre',        dkm:40000, dmo:36},
-  {k:'balancing',  name:'Balancing',   dkm:10000, dmo:6},
-  {k:'alignment',  name:'Alignment',   dkm:10000, dmo:6}
+  {k:'engine_oil',    name:'Engine Oil',     dkm:10000, dmo:6},
+  {k:'atf_oil',       name:'ATF Oil',        dkm:40000, dmo:24},
+  {k:'tire_balancing',name:'Tire Balancing', dkm:10000, dmo:6},
+  {k:'tire_alignment',name:'Tire Alignment', dkm:10000, dmo:6},
+  {k:'roadtax',       name:'Roadtax',        dkm:0,     dmo:12, dateOnly:true, alertDays:10},
+  {k:'insurance',     name:'Insurance',      dkm:0,     dmo:12, dateOnly:true, alertDays:10}
 ];
 function maintName(k){ var m=MAINT_ITEMS.find(x=>x.k===k); return m?m.name:k; }
 function statName(k){ var s=STATUSES.find(x=>x.k===k); return s?s.name:k; }
@@ -248,19 +259,21 @@ function dueInfo(item, cfg, currentKm){
   if(!cfg || (!cfg.last_km && !cfg.last_date)) return {level:'unset', label:'Not set'};
   var kmInt = cfg.km_interval || item.dkm;
   var moInt = cfg.month_interval || item.dmo;
-  var nextKm = cfg.last_km ? (cfg.last_km + kmInt) : null;
+  var dateOnly = !!item.dateOnly;
+  var alertDays = item.alertDays || 14;
+  var nextKm = (!dateOnly && cfg.last_km) ? (cfg.last_km + kmInt) : null;
   var nextDate = cfg.last_date ? addMonths(cfg.last_date, moInt) : null;
   var kmLeft = (nextKm!=null && currentKm) ? (nextKm - currentKm) : null;
   var daysLeft = nextDate ? daysBetween(new Date(), nextDate) : null;
   // whichever comes first decides the level
   var overdue = (kmLeft!=null && kmLeft<=0) || (daysLeft!=null && daysLeft<=0);
-  var soon    = (kmLeft!=null && kmLeft<=1000) || (daysLeft!=null && daysLeft<=14);
+  var soon    = (kmLeft!=null && kmLeft<=1000) || (daysLeft!=null && daysLeft<=alertDays);
   var level = overdue?'over':(soon?'soon':'ok');
   // build a short label
   var parts=[];
   if(kmLeft!=null) parts.push(kmLeft<=0?('km over by '+Math.abs(kmLeft)):('in '+kmLeft+' km'));
-  if(daysLeft!=null) parts.push(daysLeft<=0?('date over by '+Math.abs(daysLeft)+'d'):('in '+daysLeft+'d'));
-  return {level:level, kmLeft:kmLeft, daysLeft:daysLeft, nextKm:nextKm, nextDate:nextDate,
+  if(daysLeft!=null) parts.push(daysLeft<=0?('OVERDUE by '+Math.abs(daysLeft)+'d'):('in '+daysLeft+' days'));
+  return {level:level, kmLeft:kmLeft, daysLeft:daysLeft, nextKm:nextKm, nextDate:nextDate, dateOnly:dateOnly,
           label:parts.join(' · ')||'—'};
 }
 // Worst level across all items for a car (for board badge)
@@ -516,17 +529,36 @@ function renderMaintList(){
     var cfg=maint[it.k]||{};
     var info=dueInfo(it,cfg,km);
     var cls=info.level==='over'?'due-over':(info.level==='soon'?'due-soon':(info.level==='unset'?'':'due-ok'));
-    var nextTxt=(info.level==='unset')?'Not set — tap “Serviced” to start':
-      ('Next: '+(info.nextKm?info.nextKm.toLocaleString()+' km':'—')+(info.nextDate?' / '+new Date(info.nextDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'')+' · '+info.label);
+    var nextTxt;
+    if(info.level==='unset'){
+      nextTxt = it.dateOnly ? 'Not set — tap “Renew” to set expiry' : 'Not set — tap “Serviced” to start';
+    } else if(it.dateOnly){
+      var d=info.daysLeft;
+      var cd = d<=0 ? ('⏰ EXPIRED '+Math.abs(d)+' days ago — renew now')
+             : (d<=it.alertDays ? ('⏰ '+d+' days left — renew soon') : (d+' days left'));
+      nextTxt = 'Expires: '+(info.nextDate?new Date(info.nextDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—')+' · '+cd;
+    } else {
+      nextTxt = 'Next: '+(info.nextKm?info.nextKm.toLocaleString()+' km':'—')+(info.nextDate?' / '+new Date(info.nextDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'')+' · '+info.label;
+    }
+    var intervalTxt = it.dateOnly ? ('Every '+it.dmo+' months') : ('Every '+it.dkm.toLocaleString()+' km / '+it.dmo+' mo');
+    var photo = cfg.photo ? `<img src="${cfg.photo}" onclick="viewPhoto('${it.k}')" style="width:54px;height:54px;border-radius:8px;object-fit:cover;border:1px solid var(--line);cursor:pointer;margin-right:8px">` : '';
     return `<div class="mrow">
+      ${photo}
       <div style="flex:1">
         <div class="mn">${esc(it.name)}</div>
         <div class="ms ${cls}">${esc(nextTxt)}</div>
-        <div class="ms">Every ${it.dkm.toLocaleString()} km / ${it.dmo} mo</div>
+        <div class="ms">${esc(intervalTxt)}</div>
       </div>
-      <button class="btn ghost sm" onclick="openSvc('${it.k}')">Serviced</button>
+      <button class="btn ghost sm" onclick="openSvc('${it.k}')">${it.dateOnly?'Renew':'Serviced'}</button>
     </div>`;
   }).join('');
+}
+function viewPhoto(itemKey){
+  var cfg=(MAINT_CAR.maint||{})[itemKey]||{};
+  if(!cfg.photo) return;
+  var w=window.open('','_blank');
+  w.document.write('<html><head><title>'+maintName(itemKey)+' — '+esc(MAINT_CAR.plate)+'</title></head><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="'+cfg.photo+'" style="max-width:100%;max-height:100vh"></body></html>');
+  w.document.close();
 }
 async function saveMaint(){
   if(!MAINT_CAR) return;
@@ -547,35 +579,74 @@ function closeMaint(){ $('maintModal').classList.remove('show'); MAINT_CAR=null;
 /* mark an item serviced -> resets last_km/last_date, logs it */
 function openSvc(itemKey){
   SVC_ITEM=itemKey;
-  $('svcTitle').textContent='Mark serviced — '+maintName(itemKey);
+  SVC_PHOTO='';
+  var it=MAINT_ITEMS.find(x=>x.k===itemKey)||{};
+  var cfg=(MAINT_CAR.maint||{})[itemKey]||{};
+  $('svcTitle').textContent=(it.dateOnly?'Renew — ':'Mark serviced — ')+maintName(itemKey);
+  // toggle km vs expiry
+  $('svcKmWrap').style.display = it.dateOnly ? 'none' : 'block';
+  $('svcExpWrap').style.display = it.dateOnly ? 'block' : 'none';
+  $('svcDateLbl').textContent = it.dateOnly ? 'Renewed on date' : 'Done on date';
   $('svcKm').value=MAINT_CAR.current_mileage||'';
+  // default new expiry = today + 12 months
+  var exp=new Date(); exp.setFullYear(exp.getFullYear()+1);
+  $('svcExp').value=exp.toISOString().slice(0,10);
   $('svcDate').value=todayISO();
   $('svcRem').value='';
+  $('svcPhoto').value=''; $('svcPhotoPrev').innerHTML=cfg.photo?('<img src="'+cfg.photo+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;margin-top:8px">'):'';
+  if(cfg.photo) SVC_PHOTO=cfg.photo;
   $('svcBy').innerHTML='<option value="">Select staff…</option>'+STAFF.map(n=>`<option>${esc(n)}</option>`).join('');
   $('svcModal').classList.add('show');
+}
+var SVC_PHOTO='';
+function onSvcPhoto(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var img=new Image(), rdr=new FileReader();
+  rdr.onload=function(){ img.onload=function(){
+    var max=1000, w=img.width, h=img.height;
+    if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
+    var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    SVC_PHOTO=cv.toDataURL('image/jpeg',0.7);
+    $('svcPhotoPrev').innerHTML='<img src="'+SVC_PHOTO+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;margin-top:8px">';
+  }; img.src=rdr.result; };
+  rdr.readAsDataURL(f);
 }
 function closeSvc(){ $('svcModal').classList.remove('show'); SVC_ITEM=null; }
 async function confirmServiced(){
   if(!MAINT_CAR||!SVC_ITEM) return;
-  var km=parseInt($('svcKm').value||'0',10)||0;
+  var it=MAINT_ITEMS.find(x=>x.k===SVC_ITEM);
+  var dateOnly=!!(it&&it.dateOnly);
   var date=$('svcDate').value||todayISO();
   var by=$('svcBy').value;
   var rem=($('svcRem').value||'').trim();
-  if(!km){ toast('Enter mileage done at'); return; }
   if(!by){ toast('Pick who did it'); return; }
-  var it=MAINT_ITEMS.find(x=>x.k===SVC_ITEM);
   var maint=Object.assign({},MAINT_CAR.maint||{});
   var cfg=maint[SVC_ITEM]||{};
-  cfg.km_interval=cfg.km_interval||it.dkm;
-  cfg.month_interval=cfg.month_interval||it.dmo;
-  cfg.last_km=km; cfg.last_date=date;
+  var km=0, nextKm=null, nextDate;
+  if(dateOnly){
+    // expiry date drives everything; month_interval back-computed so dueInfo lands on the chosen expiry
+    var expVal=$('svcExp').value;
+    if(!expVal){ toast('Pick the new expiry date'); return; }
+    var exp=new Date(expVal);
+    cfg.last_date=date;
+    cfg.month_interval=Math.max(1, Math.round((exp-new Date(date))/(1000*60*60*24*30.44)));
+    cfg.km_interval=0;
+    nextDate=exp;
+  } else {
+    km=parseInt($('svcKm').value||'0',10)||0;
+    if(!km){ toast('Enter mileage done at'); return; }
+    cfg.km_interval=cfg.km_interval||it.dkm;
+    cfg.month_interval=cfg.month_interval||it.dmo;
+    cfg.last_km=km; cfg.last_date=date;
+    nextKm=km+cfg.km_interval;
+    nextDate=addMonths(date,cfg.month_interval);
+  }
+  if(SVC_PHOTO) cfg.photo=SVC_PHOTO;
   maint[SVC_ITEM]=cfg;
-  var nextKm=km+cfg.km_interval;
-  var nextDate=addMonths(date,cfg.month_interval);
   var now=new Date().toISOString();
   var patch={maint:maint};
-  // bump current mileage if this is higher
-  if(km>=(MAINT_CAR.current_mileage||0)){ patch.current_mileage=km; patch.mileage_updated=now; }
+  if(!dateOnly && km>=(MAINT_CAR.current_mileage||0)){ patch.current_mileage=km; patch.mileage_updated=now; }
   try{
     var r=await fetch(SB_URL+'/rest/v1/gp_fleet?id=eq.'+MAINT_CAR.id,
       {method:'PATCH',headers:sbH({'Prefer':'return=minimal'}),body:JSON.stringify(patch)});
