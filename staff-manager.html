@@ -90,6 +90,37 @@
    Working copy is kept in localStorage so you don't lose edits on refresh. */
 
 const OPT_IN_APPS = ['mia','jobboard','gpbooking','gpagreement','gpchecklist','gpdaily','gpfleet','gpuse','gpappt','gprecord','gpdeposit','gpchauffeur']; // apps that are NOT given by default — assigned per-staff
+
+/* ===== Staff photo upload (ImgBB) ===== */
+const IMGBB_KEY = 'e8dbe75e3933b7bf63be0253e1b122d6';
+async function onStaffPhoto(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var note=document.getElementById('fPhotoNote'); if(note) note.textContent='Uploading…';
+  try{
+    var b64=await downscaleImg(f, 600);
+    var fd=new FormData(); fd.append('image', b64.split(',')[1]);
+    var r=await fetch('https://api.imgbb.com/1/upload?key='+IMGBB_KEY,{method:'POST',body:fd});
+    var j=await r.json();
+    if(j&&j.data&&j.data.url){
+      document.getElementById('fPhotoUrl').value=j.data.url;
+      document.getElementById('fPhotoPrev').innerHTML='<img src="'+j.data.url+'" style="width:100%;height:100%;object-fit:cover">';
+      if(note) note.textContent='Photo ready ✓';
+    } else { if(note) note.textContent='Upload failed — try again'; }
+  }catch(e){ if(note) note.textContent='Upload error'; }
+}
+function downscaleImg(file, max){
+  return new Promise(function(res,rej){
+    var img=new Image(), rdr=new FileReader();
+    rdr.onload=function(){ img.onload=function(){
+      var w=img.width,h=img.height;
+      if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
+      var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      res(cv.toDataURL('image/jpeg',0.8));
+    }; img.onerror=rej; img.src=rdr.result; };
+    rdr.onerror=rej; rdr.readAsDataURL(file);
+  });
+}
 const APP_LIST = [
   {key:'attendance', label:'Attendance'},
   {key:'tasklog',    label:'Daily Task Log'},
@@ -143,6 +174,7 @@ async function init(){
         canAuthorize:!!row.can_authorize,
         isChauffeur:!!row.is_chauffeur,
         canChauffeurOps:!!row.can_chauffeur_ops,
+        photoUrl:row.photo_url||'',
         apps: Array.isArray(row.apps)?row.apps:(row.apps?JSON.parse(row.apps):[])
       }));
       render(); return;
@@ -159,7 +191,7 @@ async function pushOne(s){
   await SUPA.up('gp_staff', {
     username:s.username, email:s.email||null, name:s.name, role:s.role,
     company:s.company||null, title:s.title||null, birthday:s.birthday||null,
-    reports_to: s.reportsTo? JSON.stringify(Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null, can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize, is_chauffeur:!!s.isChauffeur, can_chauffeur_ops:!!s.canChauffeurOps,
+    reports_to: s.reportsTo? JSON.stringify(Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null, can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize, is_chauffeur:!!s.isChauffeur, can_chauffeur_ops:!!s.canChauffeurOps, photo_url:s.photoUrl||null,
     apps: s.apps||[], updated_at:new Date().toISOString()
   }, 'username');
 }
@@ -204,6 +236,15 @@ function openForm(idx){
   h+='<div class="row2"><div><label>Username</label><input id="fUser" value="'+(s?s.username:'')+'" autocapitalize="none"></div>'+
      '<div><label>Email '+(s?'':'<span style="text-transform:none;color:var(--grey)">(invite sent here)</span>')+'</label><input id="fEmail" type="email" value="'+(s&&s.email?s.email:'')+'" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="name@example.com"'+(s?' '+'':'')+'></div></div>';
   h+='<label>Full name</label><input id="fName" value="'+(s?s.name.replace(/"/g,'&quot;'):'')+'">';
+  h+='<label>Photo (circle avatar)</label>'+
+     '<div style="display:flex;align-items:center;gap:12px">'+
+       '<div id="fPhotoPrev" style="width:56px;height:56px;border-radius:50%;background:#2a2620;display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--gold-soft);font-family:Georgia,serif;flex:0 0 auto">'+
+         (s&&s.photoUrl?'<img src="'+s.photoUrl+'" style="width:100%;height:100%;object-fit:cover">':(s?s.name.slice(0,1).toUpperCase():'?'))+
+       '</div>'+
+       '<input type="file" accept="image/*" id="fPhoto" onchange="onStaffPhoto(this)" style="flex:1">'+
+     '</div>'+
+     '<input type="hidden" id="fPhotoUrl" value="'+(s&&s.photoUrl?s.photoUrl:'')+'">'+
+     '<div id="fPhotoNote" style="font-size:11px;color:var(--grey);margin-top:4px"></div>';
   h+='<div class="row2"><div><label>Role</label><select id="fRole">'+ROLES.map(r=>'<option'+(s&&s.role===r?' selected':'')+'>'+r+'</option>').join('')+'</select></div>'+
      '<div><label>Company</label><select id="fCompany"><option value="">—</option>'+COMPANIES.map(c=>'<option'+(s&&s.company===c?' selected':'')+'>'+c+'</option>').join('')+'</select></div></div>';
   h+='<label>Title <span style="text-transform:none;color:var(--grey)">(pick Chauffeur for chauffeur rules)</span></label>'+
@@ -242,7 +283,7 @@ async function inviteExisting(idx){
     role:s.role, company:s.company||null, title:s.title||null,
     birthday:s.birthday||null,
     reports_to: s.reportsTo? (Array.isArray(s.reportsTo)?s.reportsTo:[s.reportsTo]) : null,
-    can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize, is_chauffeur:!!s.isChauffeur, can_chauffeur_ops:!!s.canChauffeurOps, apps:s.apps||[],
+    can_post_notice:!!s.canPostNotice, can_drive:!!s.canDrive, can_authorize:!!s.canAuthorize, is_chauffeur:!!s.isChauffeur, can_chauffeur_ops:!!s.canChauffeurOps, photo_url:s.photoUrl||null, apps:s.apps||[],
     existing:true   // tells the function to link to the existing row, not insert a new one
   });
   if(!res.ok){ toast('Invite failed: '+(res.error||'unknown')); return; }
@@ -273,6 +314,7 @@ async function saveStaff(idx){
     canAuthorize: (document.getElementById('fAuth')&&document.getElementById('fAuth').checked) || undefined,
     isChauffeur: (document.getElementById('fChauf')&&document.getElementById('fChauf').checked) || (document.getElementById('fTitle').value||'').toLowerCase().indexOf('chauffeur')>=0 || undefined,
     canChauffeurOps: (document.getElementById('fChaufOps')&&document.getElementById('fChaufOps').checked) || undefined,
+    photoUrl: (document.getElementById('fPhotoUrl')&&document.getElementById('fPhotoUrl').value) || undefined,
     apps };
 
   if(isNew){
