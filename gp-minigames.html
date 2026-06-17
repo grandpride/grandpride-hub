@@ -135,6 +135,8 @@
   .rank{font-family:"Archivo",sans-serif;font-weight:800;width:26px;color:var(--mute)}
   .lbrow:nth-child(1) .rank{color:var(--scan)}
   .lbrow .nm{flex:1} .lbrow .sc{font-family:"Archivo",sans-serif;font-weight:700}
+  .lbrow.top{background:linear-gradient(90deg,rgba(201,162,75,.14),transparent);border-radius:8px;padding-left:8px}
+  .lbrow.top .nm{font-weight:800;color:var(--gold-soft,#e3c887)} .lbrow.top .rank{font-size:18px}
   .muted{color:var(--mute);font-size:13px;text-align:center;padding:16px}
   .seg{display:flex;gap:6px;margin-bottom:12px}
   .seg button{flex:1;background:var(--bay2);border:1px solid var(--line);color:var(--mute);border-radius:9px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
@@ -278,6 +280,22 @@ let player={name:"",pin:""};
 let lastGame="inspect", lastScore=0, lastSummary={};
 
 /* ===== login / menu ===== */
+/* Auto-login from the Hub session (this app opens from the Hub). */
+function hubAutoLogin(){
+  try{
+    var uname = localStorage.getItem('grandpride_last_user');
+    if(!uname) return false;
+    var db = JSON.parse(localStorage.getItem('grandpride_hub_v3')||'null');
+    var u = db && db.users ? db.users.find(function(x){return x.username===uname;}) : null;
+    var name = (u && u.name) ? u.name : uname;
+    player = { name:name, pin:(u&&u.username)||uname };
+    $('hello').textContent='Pick a drill, '+name+'.';
+    $('who').textContent=name;
+    show('s-menu');
+    return true;
+  }catch(e){ return false; }
+}
+
 $('enter').onclick=()=>{
   const n=$('name').value.trim();
   if(!n){$('loginErr').textContent="Enter your name to start.";$('loginErr').classList.add('show');return;}
@@ -632,9 +650,12 @@ async function loadBoard(game){
   }catch(e){console.warn('board fail',e);}}
   if(!rows.length){rows=JSON.parse(localStorage.getItem('ta_scores')||'[]').filter(r=>r.game===game).sort((a,b)=>b.score-a.score).slice(0,10);}
   $('b_src').textContent=src;
-  el.innerHTML=rows.length?rows.map((r,i)=>`<div class="lbrow"><span class="rank">${i+1}</span><span class="nm">${(r.staff_name||'—').replace(/[<>]/g,'')}</span><span class="sc">${r.score}</span></div>`).join('')
+  el.innerHTML=rows.length?rows.map((r,i)=>`<div class="lbrow${i===0?' top':''}"><span class="rank">${i===0?'⭐':(i+1)}</span><span class="nm">${(r.staff_name||'—').replace(/[<>]/g,'')}</span><span class="sc">${r.score}</span></div>`).join('')
     :'<div class="muted">No scores yet for this drill.</div>';
 }
+
+/* try Hub auto-login on open; if no session, show name screen */
+hubAutoLogin();
 </script>
 </body>
 </html>
