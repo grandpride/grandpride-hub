@@ -653,6 +653,15 @@ async function pullHubDataFromCloud(){
   if(st.ok && st.data.length){
     const m = st.data.find(r=>r.id==='managers');
     if(m && m.data) DB.managers = m.data;
+    // attendance geofence — so ALL staff get the office location + see the map
+    const geo = st.data.find(r=>r.id==='attendance_geo');
+    if(geo && geo.data){
+      if(!DB.attSettings) DB.attSettings = { gsUrl:'', imgbbKey:'', lat:null, lng:null, radius:150 };
+      DB.attSettings.lat = geo.data.lat;
+      DB.attSettings.lng = geo.data.lng;
+      DB.attSettings.radius = geo.data.radius || 150;
+      saveDB();
+    }
   }
   // reminders
   const rm = await SUPA.all('gp_reminders');
@@ -2609,6 +2618,10 @@ function renderAttAdmin(){
     s.lng=parseFloat(document.getElementById('geoLng').value)||null;
     s.radius=parseInt(document.getElementById('geoRad').value)||150;
     saveDB(); toast('Office location saved');
+    // sync the geofence to all staff via the cloud
+    if(useCloud && SUPA.isReady()){
+      SUPA.up('gp_settings',{id:'attendance_geo',data:{lat:s.lat,lng:s.lng,radius:s.radius},updated_at:new Date().toISOString()},'id');
+    }
     document.getElementById('geoStatus').textContent = s.lat?('Set: '+s.lat.toFixed(5)+', '+s.lng.toFixed(5)+' · '+s.radius+'m'):'Not set yet';
   });
   document.getElementById('saveGs').addEventListener('click',()=>{
