@@ -58,7 +58,7 @@
     <!-- PENDING LIST -->
     <div id="listView">
       <p class="muted" style="margin:0 0 12px">Cars returned and awaiting deposit costing. Tap one to finish.</p>
-      <div id="pendList"><div class="empty">Loadingâ¦</div></div>
+      <div id="pendList"><div class="empty">Loading…</div></div>
     </div>
 
     <!-- COSTING -->
@@ -99,9 +99,9 @@
         <div class="total-row"><span>Refund to customer</span><span id="rRefund">RM 0.00</span></div>
       </div>
 
-      <button class="btn gold" onclick="finish()">â Finalize & send to Summary</button>
-      <button class="btn ghost" style="margin-top:8px" onclick="genReceipt()">ð§¾ Generate receipt (print/PDF)</button>
-      <button class="btn ghost" style="margin-top:8px" onclick="backToList()">â Back to list</button>
+      <button class="btn gold" onclick="finish()">✓ Finalize & send to Summary</button>
+      <button class="btn ghost" style="margin-top:8px" onclick="genReceipt()">🧾 Generate receipt (print/PDF)</button>
+      <button class="btn ghost" style="margin-top:8px" onclick="backToList()">← Back to list</button>
     </div>
   </div>
 
@@ -135,18 +135,18 @@ async function loadFuel(){
 
 /* ===== load pending (returned, awaiting deposit) ===== */
 async function loadPending(){
-  $('pendList').innerHTML='<div class="empty">Loadingâ¦</div>';
+  $('pendList').innerHTML='<div class="empty">Loading…</div>';
   try{
     var r=await fetch(SB_URL+"/rest/v1/gp_records?deposit_stage=eq.awaiting_deposit&select=*&order=updated_at.desc",{headers:sbH()});
     PEND=r.ok?await r.json():[];
-    $('syncNote').textContent='Live â¢ '+PEND.length+' awaiting';
+    $('syncNote').textContent='Live • '+PEND.length+' awaiting';
   }catch(e){ PEND=[]; $('syncNote').textContent='Offline'; }
   if(!PEND.length){ $('pendList').innerHTML='<div class="empty">No cars awaiting deposit costing.</div>'; return; }
   $('pendList').innerHTML=PEND.map(p=>`
     <div class="pend" onclick="openRec('${p.id}')">
       <div class="pl">${esc(p.car_plate||'')} <span class="chip">${esc(p.car_model||'')}</span></div>
-      <div class="ms">${esc(p.customer_name||'')} Â· deposit ${rm(p.deposit)}</div>
-      <div class="ms">Returned ${esc(p.end_date||p.dep_return_date||'')} Â· used ${p.mileage_used||0} km</div>
+      <div class="ms">${esc(p.customer_name||'')} · deposit ${rm(p.deposit)}</div>
+      <div class="ms">Returned ${esc(p.end_date||p.dep_return_date||'')} · used ${p.mileage_used||0} km</div>
     </div>`).join('');
 }
 
@@ -155,10 +155,10 @@ function openRec(id){
   DMG = Array.isArray(REC.damage_items)?REC.damage_items.slice():[];
   $('listView').style.display='none'; $('costView').style.display='block';
   $('recInfo').innerHTML=
-    '<h3>'+esc(REC.car_plate||'')+' â '+esc(REC.car_model||'')+'</h3>'+
+    '<h3>'+esc(REC.car_plate||'')+' — '+esc(REC.car_model||'')+'</h3>'+
     '<div class="muted">'+esc(REC.customer_name||'')+'</div>'+
     '<div class="muted">Mileage used: '+(REC.mileage_used||0)+' km (given '+(REC.mileage_given||0)+')</div>'+
-    '<div class="muted">Petrol at return: '+(REC.in_petrol||0)+'/8 Â· tank '+(REC.tank_size||0)+'L</div>';
+    '<div class="muted">Petrol at return: '+(REC.in_petrol||0)+'/8 · tank '+(REC.tank_size||0)+'L</div>';
   $('smokeChip').textContent=rm(SMOKE_AMOUNT);
   $('smokeOn').checked = n(REC.smoke_charge)>0;
   $('sJpj').value=n(REC.summons_jpj); $('sPolice').value=n(REC.summons_police); $('sMpsj').value=n(REC.summons_mpsj);
@@ -173,7 +173,7 @@ function renderDmg(){
     <div class="dmg">
       <input class="d" placeholder="Damage description" value="${esc(d.desc||'')}" oninput="DMG[${i}].desc=this.value">
       <input class="a" type="number" inputmode="decimal" placeholder="RM" value="${d.amt||''}" oninput="DMG[${i}].amt=parseFloat(this.value||'0')||0;recalc()">
-      <button class="x" onclick="DMG.splice(${i},1);renderDmg();recalc()">â</button>
+      <button class="x" onclick="DMG.splice(${i},1);renderDmg();recalc()">✕</button>
     </div>`).join('');
 }
 function addDmg(){ DMG.push({desc:'',amt:0}); renderDmg(); }
@@ -204,11 +204,11 @@ function recalc(){
 
   $('exMileage').value=rm(exM);
   $('exPetrol').value=rm(exP);
-  $('petrolNote').textContent = (n(REC.tank_size)? ((8-n(REC.in_petrol))+' bars short Ã '+(n(REC.tank_size)/8).toFixed(1)+'L Ã '+rm((FUEL&&FUEL.ron97)||3.18).replace('RM ','RM')+'/L') : 'Tank size not set on checklist â petrol charge 0');
+  $('petrolNote').textContent = (n(REC.tank_size)? ((8-n(REC.in_petrol))+' bars short Ã '+(n(REC.tank_size)/8).toFixed(1)+'L Ã '+rm((FUEL&&FUEL.ron97)||3.18).replace('RM ','RM')+'/L') : 'Tank size not set on checklist — petrol charge 0');
   $('rDep').textContent=rm(dep);
 
   var rows='';
-  function row(lbl,amt){ if(amt>0) rows+='<div class="ded-row"><span class="lbl">'+lbl+'</span><span class="amt">â '+rm(amt)+'</span></div>'; }
+  function row(lbl,amt){ if(amt>0) rows+='<div class="ded-row"><span class="lbl">'+lbl+'</span><span class="amt">− '+rm(amt)+'</span></div>'; }
   row('Smoke smell',smoke); row('Exceed mileage',exM); row('Exceed petrol',exP);
   DMG.forEach(d=>{ if(n(d.amt)>0) row('Damage: '+(d.desc||'item'), n(d.amt)); });
   row('Summons JPJ',sJ); row('Summons Police',sP); row('Summons MPSJ',sM);
@@ -238,9 +238,9 @@ async function finish(){
     if(!r.ok){ toast('Save failed'); return; }
     var rows=await r.json();
     if(rows&&rows.length) sheetPush(rows[0]);
-    toast('Finalized â â sent to Summary');
+    toast('Finalized ✓ — sent to Summary');
     backToList();
-  }catch(e){ toast('Offline â not saved'); }
+  }catch(e){ toast('Offline — not saved'); }
 }
 function sheetPush(rec){
   try{ if(!REC_SHEET_URL||REC_SHEET_URL.indexOf('http')!==0) return;
@@ -253,12 +253,12 @@ function genReceipt(){
   if(!REC) return; recalc(); var c=REC._calc;
   var w=window.open('','_blank');
   var rows='';
-  function rr(l,a){ if(a>0) rows+='<tr><td>'+l+'</td><td style="text-align:right">â '+rm(a)+'</td></tr>'; }
+  function rr(l,a){ if(a>0) rows+='<tr><td>'+l+'</td><td style="text-align:right">− '+rm(a)+'</td></tr>'; }
   rr('Smoke smell',c.smoke); rr('Exceed mileage',c.exM); rr('Exceed petrol',c.exP);
   DMG.forEach(d=>{ if(n(d.amt)>0) rr('Damage: '+(d.desc||'item'),n(d.amt)); });
   rr('Summons JPJ',c.sJ); rr('Summons Police',c.sP); rr('Summons MPSJ',c.sM);
   w.document.write('<html><head><title>Deposit Return</title><style>body{font-family:Arial;padding:30px;color:#111}h2{font-family:Georgia}table{width:100%;border-collapse:collapse;margin-top:12px}td{padding:7px 4px;border-bottom:1px solid #ddd}.tot{font-weight:bold;font-size:18px}</style></head><body>'+
-    '<h2>GRANDPRIDE â Deposit Return</h2>'+
+    '<h2>GRANDPRIDE — Deposit Return</h2>'+
     '<p><b>Customer:</b> '+esc(REC.customer_name||'')+'<br><b>Car:</b> '+esc(REC.car_model||'')+' ('+esc(REC.car_plate||'')+')<br><b>Date:</b> '+new Date().toLocaleDateString()+'</p>'+
     '<table><tr><td>Deposit held</td><td style="text-align:right">'+rm(REC.deposit)+'</td></tr>'+rows+
     '<tr class="tot"><td>Refund to customer</td><td style="text-align:right">'+rm(Math.max(0,c.refund))+'</td></tr></table>'+
