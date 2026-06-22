@@ -64,13 +64,14 @@
 </head>
 <body>
   <div class="top">
+    <button onclick="history.back()" style="background:transparent;border:1px solid var(--line);color:var(--gold-soft);width:34px;height:34px;border-radius:8px;font-size:18px;cursor:pointer;flex:0 0 auto">←</button>
     <div class="lg">GP</div>
     <div class="ti"><h2>RECORD SUMMARY</h2><p id="syncNote">Rental records</p></div>
   </div>
 
   <div class="wrap">
     <div class="monthbar" id="monthBar"></div>
-    <div id="view"><div class="empty">Loading…</div></div>
+    <div id="view"><div class="empty">Loadingâ¦</div></div>
   </div>
 
   <!-- EDIT MODAL -->
@@ -80,7 +81,7 @@
       <div id="emFields"></div>
       <button class="btn gold" style="margin-top:14px" onclick="saveRecord()">Save</button>
       <button class="btn ghost" style="margin-top:8px" onclick="closeEdit()">Cancel</button>
-      <button class="btn bad" style="margin-top:8px" onclick="deleteRecord()">🗑 Delete record</button>
+      <button class="btn bad" style="margin-top:8px" onclick="deleteRecord()">ð Delete record</button>
     </div>
   </div>
 
@@ -91,7 +92,7 @@ var SB_URL="https://iefevjkeckysdluzazeq.supabase.co";
 var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
 function sbH(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
 // Google Apps Script Web App URL for the Record Summary sheet (set after deploy)
-// Standalone Record Summary sheet — deploy RecordSummary_AppsScript.gs to its OWN
+// Standalone Record Summary sheet â deploy RecordSummary_AppsScript.gs to its OWN
 // Google Sheet and paste that /exec URL here.
 var REC_SHEET_URL='https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec';
 var $=function(id){return document.getElementById(id);};
@@ -112,7 +113,7 @@ async function loadAll(){
   try{
     var r=await fetch(SB_URL+'/rest/v1/gp_records?select=*&order=created_at.desc',{headers:sbH()});
     ALL=r.ok?await r.json():[];
-    $('syncNote').textContent='Live • '+ALL.length+' records';
+    $('syncNote').textContent='Live â¢ '+ALL.length+' records';
   }catch(e){ ALL=[]; $('syncNote').textContent='Offline'; }
   buildMonthBar();
   render();
@@ -130,7 +131,7 @@ function monthKeysPresent(){
 }
 function buildMonthBar(){
   var keys=monthKeysPresent();
-  var btns='<button class="'+(VIEW_KEY==='SUMMARY'?'on':'')+'" onclick="setView(\'SUMMARY\')">📊 Summary</button>';
+  var btns='<button class="'+(VIEW_KEY==='SUMMARY'?'on':'')+'" onclick="setView(\'SUMMARY\')">ð Summary</button>';
   btns+=keys.map(k=>'<button class="'+(VIEW_KEY===k?'on':'')+'" onclick="setView(\''+k+'\')">'+k+'</button>').join('');
   $('monthBar').innerHTML=btns;
 }
@@ -172,7 +173,7 @@ function renderMonth(key){
     h+='<div class="scroll"><table><thead><tr><th>No</th><th>Customer</th><th>Type</th><th>Plan</th><th>Car Model</th><th>Plate</th><th>Rate</th><th>Start</th><th>End</th><th>Balance Mth</th><th>'+key+' Paid</th><th>Paid Amt</th><th>Total Paid</th></tr></thead><tbody>';
     lto.forEach((r,i)=>{
       var pm=(r.paid_months&&r.paid_months[key])||{};
-      var paidThis=pm.paid?'✓':'—';
+      var paidThis=pm.paid?'â':'â';
       tPaid+=+r.total_paid||0;
       h+='<tr onclick="editRecord(\''+r.id+'\')"><td>'+(i+1)+'</td><td>'+esc(r.customer_name)+'</td><td>'+up(r.service)+'</td><td>'+esc(r.plan||'')+'</td><td>'+esc(r.car_model)+'</td><td>'+esc(r.car_plate)+'</td><td>'+rm(r.rental_rate)+'</td><td>'+esc(r.start_date||'')+'</td><td>'+esc(r.end_date||'')+'</td><td>'+esc(r.balance_month||'')+'</td><td style="text-align:center" class="'+(pm.paid?'done':'')+'">'+paidThis+'</td><td>'+rm(pm.amount)+'</td><td>'+rm(r.total_paid)+'</td></tr>';
     });
@@ -235,7 +236,7 @@ function renderSummary(){
     h+='<tr style="cursor:pointer" onclick="setView(\''+k+'\')"><td><b>'+k+'</b></td><td>'+rm(rInc)+'</td><td>'+rm(rDep)+'</td><td>'+rm(rRet)+'</td><td>'+rm(lInc)+'</td><td>'+rm(sInc)+'</td><td>'+drv.length+'</td><td>'+rm(dInc)+'</td><td><b>'+rm(mTot)+'</b></td></tr>';
   });
   h+='</tbody></table></div>';
-  h+='<button class="btn ghost" style="margin-top:14px;max-width:260px" onclick="window.print()">🖨 Print / Save PDF</button>';
+  h+='<button class="btn ghost" style="margin-top:14px;max-width:260px" onclick="window.print()">ð¨ Print / Save PDF</button>';
   $('view').innerHTML=h;
 }
 
@@ -330,8 +331,8 @@ async function saveRecord(){
     }
     if(!r.ok){ var t=await r.text(); toast('Save failed: '+t.slice(0,60)); return; }
     sheetPush(body);
-    toast('Saved ✓'); closeEdit(); loadAll();
-  }catch(e){ toast('Offline — not saved'); }
+    toast('Saved â'); closeEdit(); loadAll();
+  }catch(e){ toast('Offline â not saved'); }
 }
 async function deleteRecord(){
   if(!EDIT||!EDIT.id) { closeEdit(); return; }

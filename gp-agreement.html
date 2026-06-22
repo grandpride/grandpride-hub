@@ -1211,7 +1211,30 @@ async function delSaved(id){
 }
 
 /* ---- init ---- */
-showChooser();
+/* if arriving from Appointment with prefill, open a lease form filled from the booking */
+function tryApptPrefill(){
+  try{
+    var p=new URLSearchParams(location.search);
+    if(p.get('from')!=='appt') return false;
+    var raw=sessionStorage.getItem('gp_agreement_prefill'); if(!raw) return false;
+    var d=JSON.parse(raw);
+    var a=blankLEASE();
+    a.lessee_name = d.customer_name||'';
+    a.v_make_model = (d.car_model||'').toUpperCase();
+    a.v_reg = (d.car_plate||'').toUpperCase();
+    a.v_year = d.v_year||'';
+    a.lease_from = (d.start||d.rental_date||'').slice(0,10);
+    a.lease_to = (d.end||'').slice(0,10);
+    a.leasing_price = d.rate||d.full_amount||'';
+    if(d.insured_pct){ a.insurance_insured=String(d.insured_pct); a.insurance_bear=String(Math.max(0,100-(parseFloat(d.insured_pct)||0))); }
+    if(d.fuel_type) a.petrol_type=d.fuel_type;
+    STATE.current=a; STATE.view='lease';
+    showLeaseForm();
+    sessionStorage.removeItem('gp_agreement_prefill');
+    return true;
+  }catch(e){ return false; }
+}
+if(!tryApptPrefill()) showChooser();
 
 </script>
 </body>
