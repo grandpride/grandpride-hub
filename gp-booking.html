@@ -105,7 +105,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <label>Deposit (RM)</label><input id="le_dep" type="number" inputmode="decimal" oninput="calcLeasing()" placeholder="0.00">
       <label>Deposit paid?</label>
       <div class="seg" id="le_depseg" style="display:flex;gap:8px">
-        <div class="opt sel" data-v="no" onclick="leDepPaid('no')" style="flex:1;text-align:center;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:#100e0b;cursor:pointer">Not yet</div>
+        <div class="opt sel" data-v="no" onclick="leDepPaid('no')" style="flex:1;text-align:center;padding:11px;border:1.5px solid var(--gold);border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--gold-soft));color:#000;font-weight:bold;cursor:pointer">Not yet</div>
         <div class="opt" data-v="yes" onclick="leDepPaid('yes')" style="flex:1;text-align:center;padding:11px;border:1.5px solid var(--line);border-radius:10px;background:#100e0b;cursor:pointer">Paid</div>
       </div>
       <div id="le_depPaidWrap" style="display:none">
@@ -588,7 +588,15 @@ function onCarPick(prefix){
 }
 
 var LE_DEP_PAID='no';
-function leDepPaid(v){ LE_DEP_PAID=v; document.querySelectorAll('#le_depseg .opt').forEach(o=>o.classList.toggle('sel',o.dataset.v===v));
+function leDepPaid(v){ LE_DEP_PAID=v;
+  document.querySelectorAll('#le_depseg .opt').forEach(function(o){
+    var on=o.dataset.v===v;
+    o.classList.toggle('sel',on);
+    o.style.borderColor = on ? 'var(--gold)' : 'var(--line)';
+    o.style.background  = on ? 'linear-gradient(135deg,var(--gold),var(--gold-soft))' : '#100e0b';
+    o.style.color       = on ? '#000' : 'var(--paper)';
+    o.style.fontWeight  = on ? 'bold' : 'normal';
+  });
   $('le_depPaidWrap').style.display=v==='yes'?'block':'none'; }
 
 setSvc('leasing');
