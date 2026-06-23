@@ -288,6 +288,10 @@ function showChooser(){
         <div class="ico">📤</div><h3>New Delivery (OUT)</h3>
         <p>Inspect a vehicle going out to the customer. Mark defects, take photos, both sign.</p>
       </div>
+      <div class="type-card" onclick="startIntake()">
+        <div class="ico">📋</div><h3>General Intake (IN)</h3>
+        <p>Customer brings their car to us for rental. Inspect, mark defects, take photos. Only GP Operation signs.</p>
+      </div>
       <div class="type-card" onclick="showPending()">
         <div class="ico">📥</div><h3>Return (BACK)</h3>
         <p>Car came back? Find the open checklist by plate and do the return inspection.</p>
@@ -333,6 +337,8 @@ function blankChecklist(){
     mileage_given:'', per_km:'', leasing_price:'', deposit:'',
     out_date:todayISO(), out_time:nowTime(), out_mileage:'', out_petrol:0,
     out_defects:[], out_checks:{}, out_photos:[], out_defect_photos:[], out_video_sent:0, out_sig_inspector:'', out_sig_customer:'', out_pdf_url:'',
+    intake_date:todayISO(), intake_time:nowTime(), intake_mileage:'', intake_petrol:0,
+    intake_defects:[], intake_checks:{}, intake_photos:[], intake_defect_photos:[], intake_video_sent:0, intake_sig_inspector:'', intake_pdf_url:'',
     in_date:'', in_time:'', in_mileage:'', in_petrol:0,
     in_defects:[], in_checks:{}, in_photos:[], in_defect_photos:[], in_video_sent:0, in_sig_inspector:'', in_sig_customer:'', in_pdf_url:''
   };
@@ -340,6 +346,10 @@ function blankChecklist(){
 
 function startDelivery(){
   STATE.current=blankChecklist(); STATE.stage='out';
+  showForm();
+}
+function startIntake(){
+  STATE.current=blankChecklist(); STATE.current.is_intake=true; STATE.stage='intake';
   showForm();
 }
 
@@ -511,8 +521,8 @@ function P(){ return STATE.stage; } // 'out' or 'in'
 function f(key){ return STATE.current[P()+'_'+key]; }
 function showForm(){
   const a=STATE.current; const st=STATE.stage; STATE.view='form';
-  const stageLabel = st==='out' ? 'Delivery (OUT)' : 'Return (BACK)';
-  setSub(PLAN_NAME[a.plan]+' — '+stageLabel);
+  const stageLabel = st==='out' ? 'Delivery (OUT)' : (st==='intake' ? 'General Intake (IN)' : 'Return (BACK)');
+  setSub((a.plan?PLAN_NAME[a.plan]+' — ':'')+stageLabel);
   $('listBtn').style.display='none';
   const lockShared = st==='in'; // shared car/customer fields locked on return
   activeDefect = st==='in' ? 'ND' : 'D';
@@ -643,6 +653,10 @@ function showForm(){
     ${chkBlock('bluetooth','Have you assisted the customer in connecting the Bluetooth?')}
     ${chkBlock('smoking','No smoking inside the vehicle. RM5,000 penalty applies if smoking is detected.')}
     ${chkBlock('fuel','Fuel policy: vehicle must be returned with the same fuel level. If lower, charged for the shortfall at current market petrol price (bars short × tank ÷ 5 × price/L).')}`
+      : st==='intake'
+      ? `${chkBlock('inspection','Have you completed the car inspection?')}
+    ${chkBlockYN('fuel_same','Petrol fuel level recorded?')}
+    ${chkBlockYN('existing_damage','Any existing damage noted & photographed?')}`
       : `${chkBlockYN('smoke_smell','Does the car have any smoke smell?')}
     ${chkBlockYN('fuel_same','Does the petrol fuel follow the same level?')}
     ${chkBlockYN('new_damage','Does this car have any new damage?')}`}
@@ -682,12 +696,12 @@ function showForm(){
 
   <div class="panel">
     <h3>Signatures</h3>
-    <label>Grandlab Inspector signature</label>
+    <label>Grandlab / GP Operation signature</label>
     <div class="sigwrap"><canvas class="sigpad" id="padInspector"></canvas>
       <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padInspector')">Clear</button></div></div>
-    <label style="margin-top:12px">Customer signature</label>
+    ${st==='intake' ? '' : `<label style="margin-top:12px">Customer signature</label>
     <div class="sigwrap"><canvas class="sigpad" id="padCustomer"></canvas>
-      <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padCustomer')">Clear</button></div></div>
+      <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padCustomer')">Clear</button></div></div>`}
   </div>
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
@@ -699,9 +713,9 @@ function showForm(){
 
   // restore state into pads + render markers + photos
   setTimeout(()=>{
-    initPad('padInspector'); initPad('padCustomer');
+    initPad('padInspector'); if(document.getElementById('padCustomer')) initPad('padCustomer');
     if(f('sig_inspector')) loadPad('padInspector', f('sig_inspector'));
-    if(f('sig_customer')) loadPad('padCustomer', f('sig_customer'));
+    if(f('sig_customer') && document.getElementById('padCustomer')) loadPad('padCustomer', f('sig_customer'));
     renderMarkers();
     refreshPhotoSlots();
     renderDefectPhotos();
@@ -1132,7 +1146,7 @@ function validate(){
   if(!f('petrol')){ toast('Select petrol bar'); return false; }
   if(photoCount()<10){ toast('All 10 photos required ('+photoCount()+'/10)'); return false; }
   if(!getPad('padInspector')&&!f('sig_inspector')){ toast('Inspector signature needed'); return false; }
-  if(!getPad('padCustomer')&&!f('sig_customer')){ toast('Customer signature needed'); return false; }
+  if(STATE.stage!=='intake' && !getPad('padCustomer')&&!f('sig_customer')){ toast('Customer signature needed'); return false; }
   return true;
 }
 
@@ -1262,8 +1276,8 @@ async function generateChecklist(){
       // Auto-status: offer to set the car On Leasing (delivery) / Ready (return)
       if(st==='out') maybeSetFleetLeasing(a);
       else if(st==='in') maybeSetFleetReady(a);
-      // Update the shared rental record (gp_records)
-      updateRecordFromChecklist(a, st);
+      // Update the shared rental record (gp_records) — not for general intake
+      if(st!=='intake') updateRecordFromChecklist(a, st);
     } else { toast('Failed: '+(out.error||'unknown')); }
   }catch(e){ toast('Error: '+e.message); }
   finally{ restore(); }
@@ -1322,7 +1336,7 @@ function buildPayload(a, st, diagramPng){
   const yn=v=> v===true?'YES':(v===false?'NO':'');
   const base={
     id:a.id, plan:a.plan, plan_name:PLAN_NAME[a.plan], car_type:(a.car_type||'sedan'),
-    stage:st, stage_name:(st==='out'?'DELIVERY':'RETURN'),
+    stage:st, stage_name:(st==='out'?'DELIVERY':(st==='intake'?'GENERAL INTAKE':'RETURN')),
     customer_name:a.customer_name, customer_contact:a.customer_contact,
     car_model:a.car_model, car_plate:a.car_plate,
     date:f('date'), time:f('time'), mileage:f('mileage'), petrol:String(f('petrol')||''),
