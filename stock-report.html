@@ -422,6 +422,10 @@ function openProductForm(pid){
   h+='<label>Description</label><textarea id="fDesc">'+(p?(p.desc||''):'')+'</textarea>';
   h+='<label>Min qty alert</label><input id="fMin" type="number" value="'+(p?(p.minQty||0):0)+'">';
   if(canFinance()) h+='<label>Unit cost (RM)</label><input id="fCost" type="number" value="'+(p?(p.cost||''):'')+'">';
+  if(p && can('products')){
+    h+='<label>Set current quantity (correction)</label><input id="fQty" type="number" min="0" value="'+balanceOf(pid)+'">';
+    h+='<div class="muted" style="font-size:12px;margin-top:2px">Current balance: '+balanceOf(pid)+'. Change this only to fix a wrong amount.</div>';
+  }
   if(!p){
     h+='<label>Opening stock quantity (optional)</label><input id="fOpen" type="number" min="0" value="0" placeholder="0">';
     if(canFinance()) h+='<label>Opening stock total cost (RM, optional)</label><input id="fOpenCost" type="number" placeholder="0">';
@@ -444,7 +448,24 @@ function openProductForm(pid){
     const obj={ category:document.getElementById('fCat').value, name, desc:document.getElementById('fDesc').value.trim(),
       minQty:Number(document.getElementById('fMin').value)||0,
       cost: canFinance()? (Number(document.getElementById('fCost').value)||0) : (p?p.cost:0), photo:photoData };
-    if(p){ Object.assign(p,obj); toast('Product updated'); pushProduct(p); }
+    if(p){ Object.assign(p,obj); pushProduct(p);
+      // quantity correction: make balance equal the typed number via one adjustment movement
+      var qEl=document.getElementById('fQty');
+      if(qEl){
+        var target=Number(qEl.value);
+        if(!isNaN(target) && target>=0){
+          var curBal=balanceOf(p.id);
+          var diff=target-curBal;
+          if(diff!==0){
+            var mv={ id:'m'+Date.now(), productId:p.id, productName:p.name, category:p.category,
+              type:(diff>0?'in':'out'), qty:Math.abs(diff), note:'Quantity correction (was '+curBal+', set to '+target+')',
+              by:current.name, keyedBy:current.name, at:nowStr(), month:thisMonth(), edited:true };
+            DB.movements.push(mv); syncMovement(mv); pushMove(mv);
+          }
+        }
+      }
+      toast('Product updated');
+    }
     else {
       obj.id='p'+Date.now(); DB.products.push(obj); pushProduct(obj);
       const openQty = Number(document.getElementById('fOpen') ? document.getElementById('fOpen').value : 0) || 0;
