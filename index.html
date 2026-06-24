@@ -517,7 +517,7 @@ let current = null;       // logged-in user
    After editing staff.js, push to Netlify. Bump LS_KEY (e.g. _v3 -> _v4)
    whenever you change the staff list so phones reload it.
    ============================================================ */
-const GS_URL = 'https://script.google.com/macros/s/AKfycbxkX6_D_JSDcqiWiuB9c4cdgbLk-zmtX0TF_rViCrp4KnCxLxZb3VrEIDtqv8qDDiU/exec';
+const GS_URL = 'https://script.google.com/macros/s/AKfycbx0Gwt-lJu8xSoWL_rva48PCBw1yvsYL5sqIj3XJxfpnMqe60kJWN1p5PWxJNFyqFA/exec';
 const IMGBB_KEY = 'e8dbe75e3933b7bf63be0253e1b122d6';
 /* ALL_APPS and STAFF_SEED are defined in staff.js (loaded above) */
 /* ==================== END SETTINGS ==================== */
@@ -1502,8 +1502,8 @@ let attClockTimer = null;
 function attData(){
   if(!DB.attendance) DB.attendance = {};      // { username: { 'YYYY-MM-DD': {amIn,lunchOut,lunchIn,pmOut,leave,lateMins,otMins,status} } }
   if(!DB.attSettings) DB.attSettings = { gsUrl:'', imgbbKey:'', lat:null, lng:null, radius:150 };
-  // always keep the baked-in URL + key in sync (so staff never configure them)
-  if(GS_URL && !DB.attSettings.gsUrl) DB.attSettings.gsUrl = GS_URL;
+  // always force the baked-in URL (so a previously-saved stale URL can never block it)
+  if(GS_URL) DB.attSettings.gsUrl = GS_URL;
   if(IMGBB_KEY && !DB.attSettings.imgbbKey) DB.attSettings.imgbbKey = IMGBB_KEY;
   if(DB.attSettings.radius==null) DB.attSettings.radius=150;
   if(!DB.leaveReqs) DB.leaveReqs = {};        // { username: [ {date,type,reason,status} ] }
@@ -1595,13 +1595,15 @@ function morningLate(amInMin){
   return (Math.floor(over/30)+1)*30; // 09:15-09:44 -> 30, 09:45-10:14 -> 60 ...
 }
 
-/* Lunch late: only if break longer than 60 min. Overage counted in same 30-min blocks. */
+/* Lunch late: lunch is 1 hour. 10-min grace (up to 70 min is fine), then count
+   EXACT minutes over the hour. A break beyond ~2.5 hrs is a missed lunch-in punch,
+   so it's forgiven entirely (0) rather than piling on a penalty. */
 function lunchLate(lunchOutMin, lunchInMin){
   if(lunchOutMin==null || lunchInMin==null) return 0;
   const brk = lunchInMin - lunchOutMin;
-  if(brk <= 60) return 0;
-  const over = brk - 60;
-  return Math.ceil(over/30)*30;
+  if(brk > 150) return 0;           // > 2.5 hrs = likely a missed punch; forgive it
+  if(brk <= 70) return 0;           // 1 hour + 10 min grace = on time
+  return brk - 60;                  // exact minutes past the 1-hour lunch
 }
 
 /* OT: minutes worked after 19:00, only for entitled staff. */
