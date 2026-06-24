@@ -2582,8 +2582,9 @@ function renderAttAdmin(){
     <div class="att-card"><h4>Google Sheets Sync</h4>
       <input class="att-input" id="gsUrl" placeholder="Apps Script Web App URL" value="${s.gsUrl||''}">
       <button class="btn" id="saveGs">Save Sheets URL</button>
+      <button class="btn ghost" id="syncAllGs" style="margin-top:8px">⤴ Sync ALL existing records to Sheet</button>
       <button class="btn ghost" id="testGs" style="margin-top:8px">Send Test Month to Sheet</button>
-      <p class="small">Every punch posts to your Google Sheet — each staff gets their own tab, with auto late &amp; OT counts. Tap "Send Test Month" to push a full sample month so you can see the format.</p>
+      <p class="small">Every punch posts to your Google Sheet — each staff gets their own tab, with auto late &amp; OT counts. Use "Sync ALL existing records" once to backfill everything already clocked in. Tap "Send Test Month" to push a sample month so you can see the format.</p>
       <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
         <input class="att-input" id="imgbbKey" placeholder="ImgBB API key (for MC proof links)" value="${s.imgbbKey||''}">
         <button class="btn ghost" id="saveImgbb">Save ImgBB Key</button>
@@ -2627,6 +2628,8 @@ function renderAttAdmin(){
   document.getElementById('saveGs').addEventListener('click',()=>{
     s.gsUrl=document.getElementById('gsUrl').value.trim(); saveDB(); toast('Sheets URL saved');
   });
+  var syncAllBtn=document.getElementById('syncAllGs');
+  if(syncAllBtn) syncAllBtn.addEventListener('click', syncAllAttendanceToSheet);
   document.getElementById('saveImgbb').addEventListener('click',()=>{
     s.imgbbKey=document.getElementById('imgbbKey').value.trim(); saveDB(); toast('ImgBB key saved');
   });
@@ -2864,6 +2867,32 @@ function staffTodayRows(){
     }
     return `<div class="rec-row"><span class="d">${u.name}</span><span>${st}</span></div>`;
   }).join('') || '<div class="rec-row"><span class="d">No staff</span></div>';
+}
+
+/* Backfill: push every stored attendance record to the Sheet (one-time catch-up). */
+async function syncAllAttendanceToSheet(){
+  const url = DB.attSettings && DB.attSettings.gsUrl;
+  if(!url){ toast('Set the Sheets URL first'); return; }
+  attData();
+  let count=0, staff=0;
+  const usernames=Object.keys(DB.attendance||{});
+  if(!usernames.length){ toast('No records to sync'); return; }
+  toast('Syncing… please wait');
+  for(const username of usernames){
+    const days=DB.attendance[username]||{};
+    const dates=Object.keys(days).sort();
+    if(dates.length) staff++;
+    for(const dateKey of dates){
+      const rec=days[dateKey]||{};
+      try{
+        await syncAttendance(username, dateKey, rec, null);
+        count++;
+        // small delay so we don't flood the Apps Script
+        await new Promise(r=>setTimeout(r, 120));
+      }catch(e){ console.warn('backfill failed', username, dateKey, e); }
+    }
+  }
+  toast('Synced '+count+' records for '+staff+' staff ✓');
 }
 
 /* sync one record to Supabase + Google Sheets */
