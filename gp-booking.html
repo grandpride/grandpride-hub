@@ -137,6 +137,13 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <h3>Hire Driver / Bodyguard</h3>
       <label>Customer Name</label><input id="ch_name" placeholder="Customer name">
       <label>Contact</label><input id="ch_contact" type="tel" placeholder="01x-xxxxxxx">
+      <label>Car (from fleet)</label>
+      <select id="ch_car" onchange="onCarPick('ch')"><option value="">Select car…</option></select>
+      <input id="ch_model" type="hidden">
+      <div class="row">
+        <div><label>Plate Number</label><input id="ch_plate" readonly placeholder="auto-filled" style="opacity:.7"></div>
+        <div></div>
+      </div>
       <div class="row">
         <div><label>Start Date & Time</label><input id="ch_start" type="datetime-local"></div>
         <div><label>End Date & Time</label><input id="ch_end" type="datetime-local"></div>
@@ -334,6 +341,7 @@ function collect(){
   if(SVC==='chauffeur'){
     return Object.assign(common,{
       customer_name:g('ch_name'), contact:g('ch_contact'),
+      car_model:g('ch_model'), car_plate:g('ch_plate'),
       start:g('ch_start'), end:g('ch_end'),
       pickup:g('ch_pickup'), standby:g('ch_standby'), maps:g('ch_maps'),
       rate:num('ch_rate'), rate_covers:g('ch_hours'), ot_rate:num('ch_ot'),
@@ -504,6 +512,7 @@ function waText(){
     L.push('*Service:* Driver / Bodyguard');
     L.push('*Name:* '+d.customer_name);
     L.push('*Contact:* '+d.contact);
+    if(d.car_model||d.car_plate) L.push('*Car:* '+(d.car_model||'')+(d.car_plate?(' ('+d.car_plate+')'):''));
     if(d.start||d.end) L.push('*Period:* '+fmtDT(d.start)+' → '+fmtDT(d.end));
     if(d.pickup) L.push('*Pickup:* '+d.pickup);
     if(d.standby) L.push('*Standby:* '+d.standby);
@@ -575,8 +584,8 @@ async function loadFleetCars(){
   var opts='<option value="">Select car…</option>'+FLEET.map(function(c){
     return '<option value="'+c.id+'" data-plate="'+(c.plate||'')+'" data-model="'+((c.model||'').replace(/"/g,'&quot;'))+'">'+(c.plate||'')+' — '+(c.model||'')+'</option>';
   }).join('');
-  ['le_car','su_car','lt_car'].forEach(function(id){ var el=$(id); if(el) el.innerHTML=opts; });
-  if(!FLEET.length){ ['le_car','su_car','lt_car'].forEach(function(id){ var el=$(id); if(el) el.innerHTML='<option value="">No cars in fleet — add in GP Vehicle Fleet first</option>'; }); }
+  ['le_car','su_car','lt_car','ch_car'].forEach(function(id){ var el=$(id); if(el) el.innerHTML=opts; });
+  if(!FLEET.length){ ['le_car','su_car','lt_car','ch_car'].forEach(function(id){ var el=$(id); if(el) el.innerHTML='<option value="">No cars in fleet — add in GP Vehicle Fleet first</option>'; }); }
 }
 function onCarPick(prefix){
   var sel=$(prefix+'_car'); if(!sel) return;
