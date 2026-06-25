@@ -588,6 +588,7 @@ async function pullStaffFromCloud(){
     company:row.company||undefined, title:row.title||undefined, birthday:row.birthday||undefined,
     reportsTo: row.reports_to? (function(){ try{ const v=JSON.parse(row.reports_to); return Array.isArray(v)?v:[v]; }catch(e){ return [row.reports_to]; } })() : undefined,
     canPostNotice:!!row.can_post_notice,
+    isChauffeur:!!row.is_chauffeur,
     apps: Array.isArray(row.apps)?row.apps:(row.apps?JSON.parse(row.apps):[])
   }));
   // make admin always present
@@ -1542,7 +1543,12 @@ function attData(){
 const TOP_ROLES = ['CEO','Managing Director','Group CEO'];
 function isChauffeur(username){
   const u = DB.users.find(x=>x.username===username);
-  return !!(u && u.title && u.title.toLowerCase().indexOf('chauffeur')>=0);
+  if(!u) return false;
+  // the "Is a chauffeur" checkbox in Staff Manager is the primary signal
+  if(u.isChauffeur || u.is_chauffeur) return true;
+  // fallback: job title contains driver / chauffeur / bodyguard
+  const t = (u.title||'').toLowerCase();
+  return t.indexOf('chauffeur')>=0 || t.indexOf('driver')>=0 || t.indexOf('bodyguard')>=0;
 }
 function chauffeurCfg(username){
   const c = (DB.chauffeurCfg && DB.chauffeurCfg[username]) || {};
