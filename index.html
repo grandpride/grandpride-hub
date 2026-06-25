@@ -1897,22 +1897,21 @@ async function doPunch(){
   attData();
   const s=DB.attSettings;
   const chauffeur = isChauffeur(current.username);
-  // geofence check (all punches) if office location is set
+  // chauffeur: no geofence/GPS at all — clock in from anywhere, but still take a proof selfie
+  if(chauffeur){
+    const photo = await captureOffsiteSelfie(null);
+    if(!photo){ toast('Clock-in needs a photo'); return; }
+    finishPunch(photo, null);
+    return;
+  }
+  // office staff: geofence check (all punches) if office location is set
   if(s.lat && s.lng){
     const loc = geoLast || await getLocOnce();
     if(!loc){ toast('Need your location to clock in — allow GPS'); return; }
     if(!loc.inside){
-      if(chauffeur){
-        // chauffeur: off-site is normal, but must take a watermarked selfie as proof
-        const photo = await captureOffsiteSelfie(loc);
-        if(!photo){ toast('Off-site clock-in needs a photo'); return; }
-        finishPunch(photo, loc);
-        return;
-      } else {
-        // office staff: cannot clock in away from the office
-        toast('You are '+Math.round(loc.dist)+'m away — clock in at the office');
-        return;
-      }
+      // office staff: cannot clock in away from the office
+      toast('You are '+Math.round(loc.dist)+'m away — clock in at the office');
+      return;
     }
   }
   finishPunch(null, geoLast);
