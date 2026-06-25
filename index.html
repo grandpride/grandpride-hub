@@ -805,7 +805,24 @@ async function sendOtp(){
   }
   const res = await SUPA.sendEmailOtp(email);
   if(!res.ok){
-    err.textContent = res.error || 'Could not send code. Try again.';
+    var msg = res.error || 'Could not send code. Try again.';
+    // Supabase rate limit: "you can only request this after N seconds"
+    var rl = /after (\d+) seconds/i.exec(msg);
+    if(rl || /security purposes/i.test(msg)){
+      var wait = rl ? parseInt(rl[1],10) : 6;
+      err.textContent = 'Please wait '+wait+'s before requesting another code.';
+      if(btn){
+        var left = wait;
+        btn.textContent = 'Wait '+left+'s';
+        var iv = setInterval(function(){
+          left--;
+          if(left<=0){ clearInterval(iv); btn.disabled=false; btn.textContent='Send Code'; err.textContent=''; }
+          else { btn.textContent='Wait '+left+'s'; }
+        }, 1000);
+      }
+      return;
+    }
+    err.textContent = msg;
     if(btn){ btn.disabled=false; btn.textContent='Send Code'; }
     return;
   }
