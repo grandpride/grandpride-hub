@@ -42,7 +42,14 @@ var SUPA = (function(){
     var ok = await loadLib();
     if(!ok || !window.supabase) return false;
     try{
-      client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: {
+          detectSessionInUrl: true,   // read invite/recovery token from the URL and create a session
+          flowType: 'implicit',       // invite links use #access_token=… (implicit), not PKCE code
+          persistSession: true,
+          autoRefreshToken: true
+        }
+      });
       ready = true;
       return true;
     }catch(e){ ready = false; return false; }
@@ -118,10 +125,15 @@ var SUPA = (function(){
   async function hasInviteSession(){
     if(!_capturedInviteType) return false;
     if(!isReady()){ var ok = await init(); if(!ok) return false; }
-    try{
-      var r = await client.auth.getSession();
-      return !!(r && r.data && r.data.session);
-    }catch(e){ return false; }
+    // detectSessionInUrl processes the token asynchronously — retry briefly until the session appears
+    for(var i=0;i<10;i++){
+      try{
+        var r = await client.auth.getSession();
+        if(r && r.data && r.data.session) return true;
+      }catch(e){}
+      await new Promise(function(res){ setTimeout(res, 250); });
+    }
+    return false;
   }
 
   // Set (or reset) the password for the user in the current invite/recovery session
@@ -199,34 +211,6 @@ var SUPA = (function(){
     }catch(e){ return { ok:false, error:String(e), data:[] }; }
   }
 
-  // Send an admin-only Auth invite by calling the invite-staff Edge Function.
-  // payload: { email, name, username, role, existing?, profile? }
-  // The Edge Function verifies (server-side) that the CALLER is an admin,
-  // creates the Auth user, emails the invite, and inserts/links the gp_staff row.
-  async function inviteStaff(payload){
-    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
-    try{
-      // must be signed in — the function reads the caller's session to check admin
-      var sess = await client.auth.getSession();
-      var token = sess && sess.data && sess.data.session ? sess.data.session.access_token : null;
-      if(!token) return { ok:false, error:'You must be logged in as admin to invite.' };
-
-      var res = await fetch(SUPABASE_URL + '/functions/v1/invite-staff', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + token,
-          'apikey': SUPABASE_ANON_KEY
-        },
-        body: JSON.stringify(payload || {})
-      });
-      var out = {};
-      try{ out = await res.json(); }catch(e){}
-      if(!res.ok || out.error) return { ok:false, error: out.error || ('HTTP '+res.status) };
-      return { ok:true, auth_id: out.auth_id };
-    }catch(e){ return { ok:false, error:String(e) }; }
-  }
-
   // delete by match
   async function del(table, match){
     if(!isReady()) return { ok:false, offline:true };
@@ -242,6 +226,5 @@ var SUPA = (function(){
   return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;},
            signInUsername:signInUsername, signInEmail:signInEmail, signIn:signIn, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile,
            pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession, setMyPassword:setMyPassword, clearAuthHash:clearAuthHash,
-           emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp,
-           inviteStaff:inviteStaff };
+           emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp };
 })();
