@@ -44,8 +44,8 @@ var SUPA = (function(){
     try{
       client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
-          detectSessionInUrl: true,   // read invite/recovery token from the URL and create a session
-          flowType: 'implicit',       // invite links use #access_token=… (implicit), not PKCE code
+          detectSessionInUrl: true,
+          flowType: 'implicit',
           persistSession: true,
           autoRefreshToken: true
         }
@@ -125,7 +125,6 @@ var SUPA = (function(){
   async function hasInviteSession(){
     if(!_capturedInviteType) return false;
     if(!isReady()){ var ok = await init(); if(!ok) return false; }
-    // detectSessionInUrl processes the token asynchronously — retry briefly until the session appears
     for(var i=0;i<10;i++){
       try{
         var r = await client.auth.getSession();
@@ -163,7 +162,9 @@ var SUPA = (function(){
   async function emailExistsInStaff(email){
     if(!isReady()){ var ok = await init(); if(!ok) return false; }
     try{
-      var r = await client.from('gp_staff').select('username').eq('email', email).limit(1);
+      var e = String(email||'').trim();
+      // case-insensitive match so 'Ali@x.com' and 'ali@x.com' both work
+      var r = await client.from('gp_staff').select('username').ilike('email', e).limit(1);
       return !!(r.data && r.data.length);
     }catch(e){ return false; }
   }
