@@ -263,7 +263,7 @@ function openForm(idx){
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fAuth" '+(s&&s.canAuthorize?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> ✍️ Can authorize as GP Operation (sign-off vehicle release)</label>';
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fChauf" '+(s&&s.isChauffeur?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> 🧍 Is a chauffeur (shows on Chauffeur board)</label>';
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fChaufOps" '+(s&&s.canChauffeurOps?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> 🎩 Can manage chauffeur status (GP Operation – chauffeur)</label>';
-  h+='<button class="btn" onclick="saveStaff('+(idx!==undefined?idx:'-1')+')">'+(s?'Save changes':'Add staff')+'</button>';
+  h+='<button class="btn" id="saveStaffBtn" onclick="saveStaff('+(idx!==undefined?idx:'-1')+')">'+(s?'Save changes':'Add staff')+'</button>';
   if(s && s.username!=='admin') h+='<button class="btn bad" onclick="delStaff('+idx+')">Delete staff</button>';
   document.getElementById('sheet').innerHTML=h;
   document.getElementById('modal').classList.add('show');
@@ -321,6 +321,8 @@ async function saveStaff(idx){
     // NEW staff → send a secure email invite via the Edge Function. The function
     // verifies this caller is an admin, creates the Auth user, emails the invite,
     // and inserts the gp_staff row. No password is set here.
+    const btn=document.getElementById('saveStaffBtn');
+    if(btn){ btn.disabled=true; btn.textContent='Sending invite…'; }
     toast('Sending invite…');
     const res = await SUPA.inviteStaff({
       email, username, name,
@@ -330,9 +332,17 @@ async function saveStaff(idx){
       can_post_notice: !!obj.canPostNotice,
       can_drive: !!obj.canDrive,
       can_authorize: !!obj.canAuthorize,
+      is_chauffeur: !!obj.isChauffeur,
+      can_chauffeur_ops: !!obj.canChauffeurOps,
+      photo_url: obj.photoUrl||null,
       apps: obj.apps||[]
     });
-    if(!res.ok){ toast('Invite failed: '+(res.error||'unknown')); return; }
+    if(!res.ok){
+      // keep the form exactly as it is so nothing is lost — just re-enable + show why
+      if(btn){ btn.disabled=false; btn.textContent='Add staff'; }
+      toast('Invite failed: '+(res.error||'unknown'));
+      return;
+    }
     staff.push(obj); persist(); closeModal(); render();
     toast('Invite sent to '+email);
   } else {

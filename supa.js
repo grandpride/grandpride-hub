@@ -189,6 +189,37 @@ var SUPA = (function(){
     }catch(e){ return { ok:false, error:String(e) }; }
   }
 
+  /* ===== INVITE STAFF (admin only) =====
+     Calls the server-side 'invite-staff' Edge Function which holds the
+     service_role key, verifies the caller is an admin, creates the Auth
+     user, emails the invite, and inserts/links the gp_staff row.
+     The service key is NEVER in this file. */
+  var INVITE_FN_URL = SUPABASE_URL + '/functions/v1/invite-staff';
+  async function inviteStaff(payload){
+    if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
+    try{
+      // pass the admin's current session token so the function can verify admin rights
+      var sess = await client.auth.getSession();
+      var token = (sess && sess.data && sess.data.session) ? sess.data.session.access_token : SUPABASE_ANON_KEY;
+      var ctrl = new AbortController();
+      var timer = setTimeout(function(){ ctrl.abort(); }, 15000); // 15s so it never hangs forever
+      var r = await fetch(INVITE_FN_URL, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':'Bearer '+token, 'apikey':SUPABASE_ANON_KEY },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal
+      });
+      clearTimeout(timer);
+      var data = {};
+      try{ data = await r.json(); }catch(e){}
+      if(!r.ok){ return { ok:false, error:(data && (data.error||data.message)) || ('Server error '+r.status) }; }
+      return { ok:true, data: data };
+    }catch(e){
+      if(e && e.name === 'AbortError') return { ok:false, error:'Timed out — check connection / invite-staff function.' };
+      return { ok:false, error:String(e) };
+    }
+  }
+
   // upsert one or many rows into a table
   async function up(table, rows, onConflict){
     if(!isReady()) return { ok:false, offline:true };
@@ -227,5 +258,5 @@ var SUPA = (function(){
   return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;},
            signInUsername:signInUsername, signInEmail:signInEmail, signIn:signIn, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile,
            pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession, setMyPassword:setMyPassword, clearAuthHash:clearAuthHash,
-           emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp };
+           emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp, inviteStaff:inviteStaff };
 })();
