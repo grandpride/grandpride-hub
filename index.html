@@ -1777,7 +1777,7 @@ function renderAttClock(){
   const subLine = statusBits.length ? statusBits.join(' · ')+extra : stageInfo.hint;
 
   const orbAttr = stage===4 ? 'disabled style="opacity:.55;cursor:default"' : '';
-  const geoSet = DB.attSettings.lat && DB.attSettings.lng;
+  const geoSet = DB.attSettings.lat && DB.attSettings.lng && !isChauffeur(current.username);
   // chauffeur assignment for today (and next upcoming)
   let asgBanner='';
   if(isChauffeur(current.username)){
@@ -1834,7 +1834,7 @@ function renderAttClock(){
   if(pb && stage<4) pb.addEventListener('click', doPunch);
   const gl=document.getElementById('goLeaveBtn');
   if(gl) gl.addEventListener('click',()=>{ attTab='leave'; renderAttendance(); });
-  if(stage<4 && DB.attSettings.lat && DB.attSettings.lng) updateGeoView();
+  if(stage<4 && DB.attSettings.lat && DB.attSettings.lng && !isChauffeur(current.username)) updateGeoView();
 }
 
 // live location vars
