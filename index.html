@@ -1544,11 +1544,9 @@ const TOP_ROLES = ['CEO','Managing Director','Group CEO'];
 function isChauffeur(username){
   const u = DB.users.find(x=>x.username===username);
   if(!u) return false;
-  // the "Is a chauffeur" checkbox in Staff Manager is the primary signal
-  if(u.isChauffeur || u.is_chauffeur) return true;
-  // fallback: job title contains driver / chauffeur / bodyguard
-  const t = (u.title||'').toLowerCase();
-  return t.indexOf('chauffeur')>=0 || t.indexOf('driver')>=0 || t.indexOf('bodyguard')>=0;
+  // ONLY the "Is a chauffeur" checkbox in Staff Manager decides this —
+  // no title guessing, so managers/others are never matched by accident.
+  return !!(u.isChauffeur || u.is_chauffeur);
 }
 function chauffeurCfg(username){
   const c = (DB.chauffeurCfg && DB.chauffeurCfg[username]) || {};
