@@ -16,8 +16,13 @@ var _capturedInviteType = (function(){
     var h = window.location.hash || '';
     var q = window.location.search || '';
     var m = h.match(/[#&]type=([a-zA-Z_]+)/) || q.match(/[?&]type=([a-zA-Z_]+)/);
-    var hasToken = /access_token=/.test(h) || /access_token=/.test(q) || /code=/.test(q);
-    if(m && hasToken && (m[1]==='invite' || m[1]==='recovery' || m[1]==='signup')) return m[1];
+    var hasAccessToken = /access_token=/.test(h) || /access_token=/.test(q);
+    var hasCode = /[?&]code=/.test(q);
+    // explicit type in the URL (implicit flow: #access_token=...&type=invite)
+    if(m && (hasAccessToken||hasCode) && (m[1]==='invite' || m[1]==='recovery' || m[1]==='signup')) return m[1];
+    // PKCE flow: invite/recovery links arrive as ...?code=XXXX with NO type=.
+    // Treat a bare ?code= on page load as a recovery/invite so we still force set-password.
+    if(hasCode && !m) return 'recovery';
   }catch(e){}
   return null;
 })();
@@ -42,10 +47,14 @@ var SUPA = (function(){
     var ok = await loadLib();
     if(!ok || !window.supabase) return false;
     try{
+      // pick the auth flow that matches the link format actually present in the URL:
+      // PKCE links look like ?code=... ; implicit links look like #access_token=...
+      var qs = window.location.search || '';
+      var usePkce = /[?&]code=/.test(qs);
       client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
           detectSessionInUrl: true,
-          flowType: 'implicit',
+          flowType: usePkce ? 'pkce' : 'implicit',
           persistSession: true,
           autoRefreshToken: true
         }
