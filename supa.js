@@ -207,9 +207,20 @@ var SUPA = (function(){
   async function inviteStaff(payload){
     if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
     try{
-      // pass the admin's current session token so the function can verify admin rights
-      var sess = await client.auth.getSession();
-      var token = (sess && sess.data && sess.data.session) ? sess.data.session.access_token : SUPABASE_ANON_KEY;
+      // Need the admin's REAL login session token (not the anon key) so the
+      // Edge Function can verify admin rights. Retry briefly in case the session
+      // is still being restored from storage after page load.
+      var token = null;
+      for(var i=0;i<8;i++){
+        var sess = await client.auth.getSession();
+        if(sess && sess.data && sess.data.session && sess.data.session.access_token){
+          token = sess.data.session.access_token; break;
+        }
+        await new Promise(function(res){ setTimeout(res, 250); });
+      }
+      if(!token){
+        return { ok:false, error:'Not signed in — open Staff Manager from inside the Hub while logged in as admin, then try again.' };
+      }
       var ctrl = new AbortController();
       var timer = setTimeout(function(){ ctrl.abort(); }, 15000); // 15s so it never hangs forever
       var r = await fetch(INVITE_FN_URL, {
