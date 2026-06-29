@@ -395,6 +395,7 @@
   <div class="topbar">
     <div class="who" style="display:flex;align-items:center;gap:10px">
       <div id="hbAvatar" style="width:38px;height:38px;border-radius:50%;background:#2a2620;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;color:var(--gold-soft);font-size:15px;overflow:hidden;flex:0 0 auto"></div>
+      <input type="file" id="selfPhotoInput" accept="image/*" style="display:none" onchange="uploadMyPhoto(this)">
       <div>
         <b id="hbName">—</b>
         <span id="hbRole">—</span>
@@ -889,14 +890,53 @@ function goHub(){ if(attClockTimer) clearInterval(attClockTimer); renderHub(); s
 /* ================= HUB RENDER ================= */
 let currentHubTab = 'modules';
 
+async function uploadMyPhoto(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  toast('Uploading photo…');
+  try{
+    // downscale to 600px
+    var b64=await new Promise(function(res,rej){
+      var img=new Image(), rdr=new FileReader();
+      rdr.onload=function(){ img.onload=function(){
+        var max=600,w=img.width,h=img.height;
+        if(w>max||h>max){ if(w>h){ h=Math.round(h*max/w); w=max; } else { w=Math.round(w*max/h); h=max; } }
+        var cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(img,0,0,w,h);
+        res(cv.toDataURL('image/jpeg',0.8));
+      }; img.onerror=rej; img.src=rdr.result; };
+      rdr.onerror=rej; rdr.readAsDataURL(f);
+    });
+    // upload to ImgBB
+    var fd=new FormData(); fd.append('image', b64.split(',')[1]);
+    var r=await fetch('https://api.imgbb.com/1/upload?key='+(DB.attSettings&&DB.attSettings.imgbbKey||IMGBB_KEY), {method:'POST',body:fd});
+    var j=await r.json();
+    if(!(j&&j.data&&j.data.url)){ toast('Upload failed — try again'); return; }
+    var url=j.data.url;
+    // save to my own gp_staff row (RLS allows updating your own row)
+    if(useCloud && SUPA.isReady()){
+      var c=SUPA.client();
+      var u=await SUPA.currentAuthUser();
+      if(u){ await c.from('gp_staff').update({ photo_url:url }).eq('auth_id', u.id); }
+    }
+    current.photoUrl=url;
+    // update the avatar immediately
+    var av=document.getElementById('hbAvatar');
+    if(av) av.innerHTML='<img src="'+url+'" style="width:100%;height:100%;object-fit:cover">';
+    toast('Photo updated ✓');
+  }catch(e){ toast('Upload error'); }
+  input.value='';
+}
+
 function renderHub(){
   document.getElementById('hbName').textContent = current.name;
   document.getElementById('hbRole').textContent = current.role;
-  // avatar: photo or initials
   var av=document.getElementById('hbAvatar');
   if(av){
     if(current.photoUrl){ av.innerHTML='<img src="'+current.photoUrl+'" style="width:100%;height:100%;object-fit:cover">'; }
     else { av.textContent=(current.name||'?').split(' ').map(function(w){return w[0];}).slice(0,2).join('').toUpperCase(); }
+    av.style.cursor='pointer';
+    av.title='Tap to change your photo';
+    av.onclick=function(){ var fi=document.getElementById('selfPhotoInput'); if(fi) fi.click(); };
   }
   document.getElementById('adminGear').style.display = current.role==='Admin' ? 'block':'none';
   const hl=document.getElementById('hubLogo'); if(hl && !hl.innerHTML) hl.innerHTML = `<img src="${LOGO}" alt="Grandpride">`;
