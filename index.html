@@ -1749,7 +1749,7 @@ function renderAttClock(){
   if(!DB.attendance[current.username]) DB.attendance[current.username]={};
   const rec = DB.attendance[current.username][k] || {};
   const dateStr = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-  if(day===0){
+  if(day===0 && !isChauffeur(current.username)){
     wrap.innerHTML = `
       <div class="clock-time" id="liveClock">--:--</div>
       <div class="clock-date">${dateStr} — Day Off</div>
@@ -1982,6 +1982,8 @@ function finishPunch(photo, loc){
 
 /* When a staff punches, log the most recent past Sunday once, so each week's Sunday shows in the sheet. */
 function maybeSendSunday(username, dateKey){
+  // Chauffeurs may actually work Sundays — never auto-stamp them as "Off".
+  if(isChauffeur(username)) return;
   if(!DB.sundaySent) DB.sundaySent={};
   if(!DB.sundaySent[username]) DB.sundaySent[username]=[];
   // find the Sunday of THIS week (the one just before/at this date)
@@ -1991,6 +1993,9 @@ function maybeSendSunday(username, dateKey){
   const sk=todayKey(sun);
   if(sk>=dateKey) return; // don't log today if today is Sunday-or-future edge
   if(DB.sundaySent[username].includes(sk)) return;
+  // never overwrite a Sunday that already has a real clock-in
+  const existing = DB.attendance[username] && DB.attendance[username][sk];
+  if(existing && existing.amIn) return;
   DB.sundaySent[username].push(sk);
   // send a Sunday-off marker row (no punch times)
   syncAttendance(username, sk, {amIn:null,lunchOut:null,lunchIn:null,pmOut:null,status:'Sunday — Off',lateMins:0,otMins:0,leave:null,_dateKey:sk}, {punch:'Sunday', time:''});
@@ -2102,6 +2107,25 @@ function cancelTodayLeave(){
 
 function renderAttRecord(){
   const wrap=document.getElementById('attBody');
+  // pull this user's attendance fresh from the cloud so records made on other
+  // sessions/devices (or that didn't persist locally) always show here.
+  if(useCloud && SUPA.isReady() && !renderAttRecord._refreshing){
+    renderAttRecord._refreshing = true;
+    SUPA.all('gp_attendance').then(at=>{
+      renderAttRecord._refreshing = false;
+      if(at.ok){
+        let changed=false;
+        at.data.forEach(row=>{
+          if(row.username!==current.username) return;
+          if(!DB.attendance[row.username]) DB.attendance[row.username]={};
+          const prev=JSON.stringify(DB.attendance[row.username][row.date_key]||null);
+          DB.attendance[row.username][row.date_key] = row.rec || {};
+          if(JSON.stringify(row.rec||{})!==prev) changed=true;
+        });
+        if(changed){ saveDB(); if(attTab==='record') renderAttRecord(); }
+      }
+    }).catch(()=>{ renderAttRecord._refreshing=false; });
+  }
   const recs = DB.attendance[current.username] || {};
   const keys = Object.keys(recs).sort().reverse().slice(0,31);
   const initials = (current.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
