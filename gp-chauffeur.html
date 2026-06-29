@@ -95,12 +95,26 @@ function loadMe(){
 }
 
 var CH=[], PICK=null, PICK_STATUS='ready';
+function fetchT(url, opts, ms){
+  return Promise.race([
+    fetch(url, opts),
+    new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('timeout')); }, ms||10000); })
+  ]);
+}
 async function load(){
+  // show something immediately so it's never a blank "Loading…"
+  $('list').innerHTML='<div class="empty">Loading chauffeurs…</div>';
   try{
-    var r=await fetch(SB_URL+"/rest/v1/gp_staff?is_chauffeur=eq.true&select=*&order=name.asc",{headers:sbH()});
-    CH = r.ok ? await r.json() : [];
+    var r=await fetchT(SB_URL+"/rest/v1/gp_staff?is_chauffeur=eq.true&select=*&order=name.asc",{headers:sbH()}, 10000);
+    if(!r.ok){
+      var t=''; try{ t=await r.text(); }catch(e){}
+      $('list').innerHTML='<div class="empty">Server error '+r.status+'.<br><small>'+esc((t||'').slice(0,160))+'</small></div>';
+      $('syncNote').textContent='Error '+r.status;
+      return;
+    }
+    CH = await r.json();
     if(!CH.length){
-      var r2=await fetch(SB_URL+"/rest/v1/gp_staff?select=*&order=name.asc",{headers:sbH()});
+      var r2=await fetchT(SB_URL+"/rest/v1/gp_staff?select=*&order=name.asc",{headers:sbH()}, 10000);
       if(r2.ok){
         var all=await r2.json();
         CH=all.filter(function(x){ return x.is_chauffeur===true || (x.title && String(x.title).toLowerCase().indexOf('chauffeur')>=0); });
@@ -108,10 +122,13 @@ async function load(){
     }
     $('syncNote').textContent='Live • '+CH.length+' chauffeurs';
   }catch(e){
-    CH=[]; $('syncNote').textContent='Could not load';
+    CH=[];
+    $('syncNote').textContent='Could not load';
+    $('list').innerHTML='<div class="empty">Could not load chauffeurs.<br><small>'+esc(String(e&&e.message||e))+'</small><br><br>Check connection, or that the chauffeur columns exist (run the schema SQL).</div>';
     console.warn('chauffeur load error', e);
+    return;
   }
-  try{ render(); }catch(e){ console.warn('render error', e); $('list').innerHTML='<div class="empty">Error showing chauffeurs.</div>'; }
+  try{ render(); }catch(e){ console.warn('render error', e); $('list').innerHTML='<div class="empty">Error showing chauffeurs.<br><small>'+esc(String(e&&e.message||e))+'</small></div>'; }
 }
 function render(){
   // counts
