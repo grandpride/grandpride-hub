@@ -31,14 +31,32 @@ var SUPA = (function(){
   var client = null;
   var ready = false;
 
-  function loadLib(){
+  function loadOne(src, timeoutMs){
     return new Promise(function(resolve){
-      if(window.supabase && window.supabase.createClient) return resolve(true);
+      var done=false;
       var s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-      s.onload = function(){ resolve(true); };
-      s.onerror = function(){ resolve(false); };
+      s.src = src;
+      var t = setTimeout(function(){ if(!done){ done=true; try{s.remove();}catch(e){} resolve(false); } }, timeoutMs||7000);
+      s.onload = function(){ if(!done){ done=true; clearTimeout(t); resolve(!!(window.supabase && window.supabase.createClient)); } };
+      s.onerror = function(){ if(!done){ done=true; clearTimeout(t); try{s.remove();}catch(e){} resolve(false); } };
       document.head.appendChild(s);
+    });
+  }
+
+  function loadLib(){
+    return new Promise(async function(resolve){
+      if(window.supabase && window.supabase.createClient) return resolve(true);
+      // Try multiple CDNs — some mobile carriers block/timeout one but not others.
+      var cdns = [
+        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
+        'https://unpkg.com/@supabase/supabase-js@2',
+        'https://cdn.skypack.dev/@supabase/supabase-js@2'
+      ];
+      for(var i=0;i<cdns.length;i++){
+        var ok = await loadOne(cdns[i], 7000);
+        if(ok) return resolve(true);
+      }
+      resolve(false);
     });
   }
 
