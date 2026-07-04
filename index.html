@@ -1592,6 +1592,20 @@ function chauffeurCfg(username){
   const c = (DB.chauffeurCfg && DB.chauffeurCfg[username]) || {};
   return { workHours:+c.workHours||10, lunchHours:+c.lunchHours||1.5, normalRate:+c.normalRate||0, otRate:+c.otRate||0 };
 }
+/* Which attendance day is 'active' for this user right now.
+   If yesterday has an open clock-in (in, not out) and today hasn't started,
+   we stay on yesterday so an after-midnight clock-out completes that shift. */
+function activeAttKey(username){
+  username = username || (current && current.username);
+  const k = todayKey();
+  if(!username || !DB.attendance || !DB.attendance[username]) return k;
+  const y=new Date(); y.setDate(y.getDate()-1);
+  const yk=todayKey(y);
+  const yrec=DB.attendance[username][yk];
+  const trec=DB.attendance[username][k];
+  if(yrec && yrec.amIn && !yrec.pmOut && !(trec && trec.amIn)) return yk;
+  return k;
+}
 function todayKey(d=new Date()){
   // use LOCAL date parts (toISOString uses UTC which rolls back a day before 08:00 in +08:00)
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
@@ -1785,11 +1799,16 @@ function renderAttendance(){
 function renderAttClock(){
   const wrap=document.getElementById('attBody');
   const day=new Date().getDay(); // 0 Sun
-  const k=todayKey();
   if(!DB.attendance[current.username]) DB.attendance[current.username]={};
+  // OVERNIGHT SHIFT: if yesterday has an open clock-in, activeAttKey returns yesterday
+  // so the staff clocks OUT to yesterday — no matter the time (6am staff, 8am chauffeur).
+  let k=activeAttKey(current.username);
+  let overnightOpen = (k!==todayKey());
   const rec = DB.attendance[current.username][k] || {};
-  const dateStr = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-  if(day===0 && !isChauffeur(current.username)){
+  const dateStr = overnightOpen
+    ? ('Shift from '+new Date(k).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+' — still open')
+    : new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  if(day===0 && !isChauffeur(current.username) && !overnightOpen){
     wrap.innerHTML = `
       <div class="clock-time" id="liveClock">--:--</div>
       <div class="clock-date">${dateStr} — Day Off</div>
@@ -1990,7 +2009,7 @@ function getLocOnce(){
 
 function finishPunch(photo, loc){
   const recs = DB.attendance[current.username] || (DB.attendance[current.username]={});
-  const k = todayKey();
+  const k = activeAttKey(current.username);
   const now = fmtTime(new Date());
   let rec = recs[k] || (recs[k]={ amIn:null,lunchOut:null,lunchIn:null,pmOut:null,leave:null,lateMins:0,otMins:0,status:'',offsite:{} });
   rec._dateKey = k;
