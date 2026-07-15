@@ -481,10 +481,12 @@ const APPS = [
   { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'daily-task-log.html' },
   { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'staff-manager.html', adminOnly:true },
   { id:'minigames',  label:'Minigames', svg:ICONS.minigames, logo:'', cat:'modules', section:'Minigames', link:'gp-minigames.html' },
+  { id:'joborder',   label:'Job Order',  svg:ICONS.joborder,   logo:'', cat:'grandlab', link:'grandlab_jobcard.html' },
   { id:'academy',    label:'Academy',    svg:ICONS.academy,    logo:'', cat:'grandlab' },
   { id:'dutyboard',  label:'DutyBoard',  svg:ICONS.dutyboard,  logo:'', cat:'grandlab' },
   { id:'stock',      label:'Stock Report', svg:ICONS.stock,    logo:'', cat:'grandlab', link:'stock-report.html' },
   { id:'mia',        label:'MIA - Sales Assistant', svg:ICONS.mia,        logo:'', cat:'grandlab', extUrl:'https://grandlab-mia.vercel.app' },
+  { id:'jobboard',   label:'Job Board',  svg:ICONS.jobboard,   logo:'', cat:'grandlab', extUrl:'https://grandlab-board.jimmykuek94.workers.dev' },
   { id:'gpbooking',   label:'GP Booking',            svg:ICONS.gpbooking,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-booking.html' },
   { id:'gpappt',      label:'GP Appointment',        svg:ICONS.gpappt,      logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-appointment.html' },
   { id:'gpagreement', label:'GP Agreement',          svg:ICONS.gpagreement, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-agreement.html' },
@@ -2993,6 +2995,21 @@ async function syncAllAttendanceToSheet(){
   const url = DB.attSettings && DB.attSettings.gsUrl;
   if(!url){ toast('Set the Sheets URL first'); return; }
   attData();
+  // Pull the COMPLETE attendance history straight from Supabase first, so the
+  // sync isn't limited to whatever happens to be in local memory. This is what
+  // guarantees every staff's every date gets pushed (fixes missing dates).
+  toast('Loading all records from cloud…');
+  if(useCloud && SUPA.isReady()){
+    try{
+      const at = await SUPA.all('gp_attendance');
+      if(at.ok){
+        at.data.forEach(row=>{
+          if(!DB.attendance[row.username]) DB.attendance[row.username]={};
+          DB.attendance[row.username][row.date_key] = row.rec || {};
+        });
+      }
+    }catch(e){ console.warn('cloud pull for sync failed', e); }
+  }
   let count=0, staff=0;
   const usernames=Object.keys(DB.attendance||{});
   if(!usernames.length){ toast('No records to sync'); return; }
@@ -3006,7 +3023,6 @@ async function syncAllAttendanceToSheet(){
       try{
         await syncAttendance(username, dateKey, rec, null);
         count++;
-        // small delay so we don't flood the Apps Script
         await new Promise(r=>setTimeout(r, 120));
       }catch(e){ console.warn('backfill failed', username, dateKey, e); }
     }
