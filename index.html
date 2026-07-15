@@ -2267,9 +2267,9 @@ function renderAttSummary(){
   Object.keys(recs).forEach(k=>{
     const r=recs[k];
     if(k.startsWith(yr)){
-      if(r.leave==='AL') alUsed++;
-      else if(r.leave==='MC') mcUsed++;
-      else if(r.leave==='EL') elUsed++;
+      if(r.leave==='AL') alUsed += (r.halfLeave?0.5:1);
+      else if(r.leave==='MC') mcUsed += (r.halfLeave?0.5:1);
+      else if(r.leave==='EL') elUsed += (r.halfLeave?0.5:1);
     }
     if(inPayrollPeriod(k, period)){
       if(r.leave==='Absent') absent++;
@@ -2397,8 +2397,15 @@ function renderAttLeave(){
         <option value="Paternity">Paternity Leave</option>
         <option value="Unpaid">Unpaid Leave</option>
       </select>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+      <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px">
         <label class="small" style="color:var(--grey)"><input type="checkbox" id="lvRangeChk"> Date range</label>
+        <label class="small" style="color:var(--grey)"><input type="checkbox" id="lvHalfChk"> Half day (½)</label>
+      </div>
+      <div class="ded-row" id="lvHalfWhichRow" style="display:none"><span>Which half</span>
+        <select class="att-input" style="margin:0;width:160px" id="lvHalfWhich">
+          <option value="AM">Morning (AM)</option>
+          <option value="PM">Afternoon (PM)</option>
+        </select>
       </div>
       <div class="ded-row"><span id="lvFromLbl">Date</span><input class="att-input" style="margin:0;width:160px" id="lvFrom" type="date" value="${todayKey()}"></div>
       <div class="ded-row" id="lvToRow" style="display:none"><span>To</span><input class="att-input" style="margin:0;width:160px" id="lvTo" type="date" value="${todayKey()}"></div>
@@ -2416,8 +2423,13 @@ function renderAttLeave(){
   // wiring
   const typeSel=document.getElementById('lvType');
   const rangeChk=document.getElementById('lvRangeChk');
+  const halfChk=document.getElementById('lvHalfChk');
   const fromEl=document.getElementById('lvFrom'), toEl=document.getElementById('lvTo');
   const updDays=()=>{
+    if(halfChk && halfChk.checked){
+      document.getElementById('lvDays').textContent = '½ day (0.5) — deducts half from your leave';
+      return;
+    }
     const f=fromEl.value, t=rangeChk.checked?toEl.value:fromEl.value;
     const n=countLeaveDays(f,t);
     document.getElementById('lvDays').textContent = n>0 ? (n+' working day'+(n>1?'s':'')+' (excludes Sundays)') : '';
@@ -2425,6 +2437,14 @@ function renderAttLeave(){
   const updType=()=>{
     document.getElementById('lvMcBox').style.display = typeSel.value==='MC'?'block':'none';
   };
+  if(halfChk) halfChk.addEventListener('change',()=>{
+    const on=halfChk.checked;
+    document.getElementById('lvHalfWhichRow').style.display = on?'flex':'none';
+    // half day is single-day only — turn off range and disable it
+    if(on){ rangeChk.checked=false; document.getElementById('lvToRow').style.display='none'; document.getElementById('lvFromLbl').textContent='Date'; }
+    rangeChk.disabled = on;
+    updDays();
+  });
   rangeChk.addEventListener('change',()=>{
     document.getElementById('lvToRow').style.display=rangeChk.checked?'flex':'none';
     document.getElementById('lvFromLbl').textContent=rangeChk.checked?'From':'Date';
@@ -2525,14 +2545,17 @@ function getSignature(who){
 async function submitLeave(){
   attData();
   const type=document.getElementById('lvType').value;
-  const rangeOn=document.getElementById('lvRangeChk').checked;
+  const halfEl=document.getElementById('lvHalfChk');
+  const isHalf = halfEl && halfEl.checked;
+  const halfWhich = isHalf ? (document.getElementById('lvHalfWhich').value||'AM') : '';
+  const rangeOn=!isHalf && document.getElementById('lvRangeChk').checked;
   const from=document.getElementById('lvFrom').value;
   const to=rangeOn?document.getElementById('lvTo').value:from;
   const reason=document.getElementById('lvReason').value.trim();
   if(!from){ toast('Pick a date'); return; }
   if(rangeOn && (!to || new Date(to)<new Date(from))){ toast('End date must be after start'); return; }
   if(!reason){ toast('Please enter a reason'); return; }
-  const days=countLeaveDays(from,to);
+  const days = isHalf ? 0.5 : countLeaveDays(from,to);
   if(days<=0){ toast('No working days selected'); return; }
   if(current.role!=='Admin'){
     const ent=leaveEntitlement(DB.joinDates && DB.joinDates[current.username], DB.confirmedDates && DB.confirmedDates[current.username]);
@@ -2549,7 +2572,7 @@ async function submitLeave(){
   const sig = await getSignature(current.name+' (Staff)');
   if(!sig){ toast('Signature required to submit'); return; }
   if(!DB.leaveReqs[current.username]) DB.leaveReqs[current.username]=[];
-  DB.leaveReqs[current.username].unshift({ from, to, days, type, reason, status:'Pending', proof, submitted:todayKey(), staffSig:sig });
+  DB.leaveReqs[current.username].unshift({ from, to, days, type, reason, status:'Pending', proof, submitted:todayKey(), staffSig:sig, half:isHalf?halfWhich:'' });
   // Notify the people this staff reports to that a leave application needs review
   notifySupervisors(current.username,
     '📋 Leave application — ' + current.name,
@@ -2602,7 +2625,8 @@ async function setLeaveStatus(ref, status){
           const ex = DB.attendance[uname][k] || {};
           DB.attendance[uname][k]={
             amIn:ex.amIn||null, lunchOut:ex.lunchOut||null, lunchIn:ex.lunchIn||null, pmOut:ex.pmOut||null,
-            status:r.type, lateMins:ex.lateMins||0, otMins:ex.otMins||0, leave:r.type, _dateKey:k
+            status:r.type + (r.half?(' ½'+r.half):''), lateMins:ex.lateMins||0, otMins:ex.otMins||0, leave:r.type, _dateKey:k,
+            halfLeave: r.half || ''
           };
           // send a dedicated leave-day row to the staff's sheet tab
           syncAttendance(uname, k, DB.attendance[uname][k], {punch:'Leave ('+r.type+')', time:''});

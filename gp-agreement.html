@@ -267,6 +267,31 @@ function nricFmt(el){
   el.value=out;
 }
 function upper(el){ el.value = el.value.toUpperCase(); }
+
+/* Customer vs Corporate lessee. Corporate re-labels the NRIC field to
+   "Company Registration Number" and drops the NRIC number formatting. */
+function setLesseeType(t){
+  if(STATE.current) STATE.current.lessee_type = t;
+  var nameLbl=document.getElementById('lbl_lessee_name');
+  var nricLbl=document.getElementById('lbl_lessee_nric');
+  var nameIn=document.getElementById('f_lessee_name');
+  var nricIn=document.getElementById('f_lessee_nric');
+  var cust=document.getElementById('lesseeTypeCust');
+  var corp=document.getElementById('lesseeTypeCorp');
+  var isCorp = (t==='corporate');
+  if(nameLbl) nameLbl.textContent = isCorp ? 'Company Name (UPPERCASE)' : 'Lessee name (UPPERCASE)';
+  if(nricLbl) nricLbl.textContent = isCorp ? 'Company Registration Number' : 'NRIC / Passport No.';
+  if(nameIn) nameIn.placeholder = isCorp ? 'GRANDPRIDE LUXURY TRAVEL SDN BHD' : 'DICKSON CHEN DI SHAN';
+  if(nricIn){
+    nricIn.placeholder = isCorp ? '201801035116 (1234567-A)' : '970515-23-5237';
+    // corporate reg numbers aren't NRIC-formatted; swap the input handler
+    if(isCorp){ nricIn.setAttribute('oninput','upper(this)'); nricIn.removeAttribute('inputmode'); }
+    else { nricIn.setAttribute('oninput','nricFmt(this)'); nricIn.setAttribute('inputmode','numeric'); }
+  }
+  // highlight the active button
+  if(cust) cust.className = isCorp ? 'btn sec' : 'btn';
+  if(corp) corp.className = isCorp ? 'btn' : 'btn sec';
+}
 var AGR_FLEET=[];
 async function loadAgrFleet(){
   var sel=document.getElementById('f_v_car'); if(!sel) return;
@@ -389,7 +414,7 @@ function blankLEASE(){
   return {
     id: uid(), type:'lease', status:'draft', created_at: todayISO(), created_by: curUser(),
     agreement_date:'',
-    lessee_name:'', lessee_nric:'', lessee_address:'',
+    lessee_type:'customer', lessee_name:'', lessee_nric:'', lessee_address:'',
     v_make_model:'', v_year:'', v_reg:'', v_engine:'', v_chassis:'', v_equip:'N/A', v_odo:'N/A',
     lease_from:'', lease_to:'', duration_days:'', vehicle_price:'', leasing_price:'',
     insurance_insured:'80', insurance_bear:'20', petrol_type:'RON97',
@@ -414,9 +439,14 @@ function showLeaseForm(){
     <input type="date" id="f_agreement_date" value="${esc(a.agreement_date)}" onclick="try{this.showPicker()}catch(e){}">
   </div>
   <div class="panel"><h3>Lessee Details</h3>
-    <label>Lessee name (UPPERCASE)</label>
+    <label>Lessee type</label>
+    <div class="row2" style="margin-bottom:10px">
+      <button type="button" id="lesseeTypeCust" class="btn sec" onclick="setLesseeType('customer')" style="width:100%">👤 Customer</button>
+      <button type="button" id="lesseeTypeCorp" class="btn sec" onclick="setLesseeType('corporate')" style="width:100%">🏢 Corporate</button>
+    </div>
+    <label id="lbl_lessee_name">Lessee name (UPPERCASE)</label>
     <input id="f_lessee_name" value="${esc(a.lessee_name)}" oninput="upper(this)" placeholder="DICKSON CHEN DI SHAN">
-    <label>NRIC / Passport No.</label>
+    <label id="lbl_lessee_nric">NRIC / Passport No.</label>
     <input id="f_lessee_nric" value="${esc(a.lessee_nric)}" inputmode="numeric" oninput="nricFmt(this)" placeholder="970515-23-5237">
     <label>Address</label>
     <textarea id="f_lessee_address" rows="2" placeholder="Full address">${esc(a.lessee_address)}</textarea>
@@ -472,6 +502,7 @@ function showLeaseForm(){
     <button class="btn sec" onclick="showChooser()">Cancel</button>
   </div>`;
   setTimeout(loadAgrFleet,30);
+  setTimeout(function(){ setLesseeType((STATE.current && STATE.current.lessee_type) || "customer"); },40);
 }
 
 function readLeaseForm(){
