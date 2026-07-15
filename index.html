@@ -1730,6 +1730,7 @@ function recomputeDay(username, rec){
     const wh=(worked/60).toFixed(1), oth=(ot/60).toFixed(1);
     let st = dow===0 ? ('Sunday OT '+wh+'h') : (ot>0 ? (wh+'h ('+oth+'h OT)') : (wh+'h'));
     if(rec.lateMins>0) st += ' · Late '+rec.lateMins+'m';
+    if(pm < am) st += ' · Overnight';   // clocked out next day
     rec.status = st;
     return rec;
   }
@@ -1740,9 +1741,10 @@ function recomputeDay(username, rec){
   if(am!=null) late += morningLate(am);
   late += lunchLate(lo, li);
   const entitled = !!(DB.otStaff && DB.otStaff[username]);
-  const ot = otMinutes(pm, entitled);
-  // early = clocked out before 6:30pm (only when they HAVE clocked out)
-  const early = earlyMinutes(pm);
+  const overnight = (pm!=null && am!=null && pm < am);
+  const ot = overnight ? 0 : otMinutes(pm, entitled);
+  // early = clocked out before 6:30pm (only when they HAVE clocked out) — never for overnight
+  const early = overnight ? 0 : earlyMinutes(pm);
   rec.lateMins = late;
   rec.otMins = ot;
   rec.earlyMins = early;
@@ -1756,6 +1758,7 @@ function recomputeDay(username, rec){
   if(late>0) parts.push(late>=60 ? ('Late '+(late/60)+' hr'+(late>60?'s':'')) : ('Late '+late+' min'));
   if(early>0) parts.push(early>=60 ? ('Early '+(early/60)+' hr'+(early>60?'s':'')) : ('Early '+early+' min'));
   if(ot>0) parts.push('OT '+fmtLate(ot));
+  if(pm!=null && am!=null && pm < am) parts.push('Overnight');   // clocked out next day
   rec.status = parts.length ? parts.join(' · ') : 'On Time';
   return rec;
 }
