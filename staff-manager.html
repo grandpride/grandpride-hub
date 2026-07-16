@@ -71,6 +71,7 @@
 <div class="wrap">
   <div class="card" style="margin-top:16px">
     <p class="muted">Add new staff to send them an email invite — they set their own password from the link. For existing staff without a login, add their email then tap <b>Invite</b>. Changes save to the cloud automatically.</p>
+    <div id="authWarn" style="display:none;background:#3a1a1a;border:1px solid #d2533f;color:#ffb3a6;padding:10px 12px;border-radius:8px;font-size:13px;margin:8px 0"></div>
   </div>
 
   <button class="btn" onclick="openForm()">+ Add new staff</button>
@@ -158,9 +159,22 @@ function reportsChecks(selectedArr, excludeUser){
 let staff = [];
 
 async function init(){
-  if(LOGO){ document.getElementById('topLogo').innerHTML='<img src="'+LOGO+'">'; }
+  if(LOGO){ document.getElementById('topLogo').innerHTML='<img src="'+LOGO+'"></img>'; }
   // try cloud first
   await SUPA.init();
+  // Wait for the admin's login session to restore from storage (shared from the
+  // Hub, same origin). Without this, invite/save can fail with "Not signed in".
+  let signedIn=false;
+  for(let i=0;i<12;i++){
+    const u = await SUPA.currentAuthUser();
+    if(u){ signedIn=true; break; }
+    await new Promise(r=>setTimeout(r,250));
+  }
+  if(!signedIn){
+    // no admin session — warn but still let them view (read-only via anon)
+    const warn=document.getElementById('authWarn');
+    if(warn){ warn.style.display='block'; warn.textContent='⚠ Not signed in as admin — reopen Staff Manager from inside the Hub while logged in. You can view staff but inviting/saving won\'t work until signed in.'; }
+  }
   if(SUPA.isReady()){
     const r = await SUPA.all('gp_staff');
     if(r.ok && r.data && r.data.length){
@@ -263,7 +277,7 @@ function openForm(idx){
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fAuth" '+(s&&s.canAuthorize?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> ✍️ Can authorize as GP Operation (sign-off vehicle release)</label>';
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fChauf" '+(s&&s.isChauffeur?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> 🧍 Is a chauffeur (shows on Chauffeur board)</label>';
   h+='<label style="display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;color:var(--paper);font-size:13px;margin-top:8px;cursor:pointer"><input type="checkbox" id="fChaufOps" '+(s&&s.canChauffeurOps?'checked':'')+' style="width:18px;height:18px;flex:0 0 auto"> 🎩 Can manage chauffeur status (GP Operation – chauffeur)</label>';
-  h+='<button class="btn" id="saveStaffBtn" onclick="saveStaff('+(idx!==undefined?idx:'-1')+')">'+(s?'Save changes':'Add staff')+'</button>';
+  h+='<button class="btn" onclick="saveStaff('+(idx!==undefined?idx:'-1')+')">'+(s?'Save changes':'Add staff')+'</button>';
   if(s && s.username!=='admin') h+='<button class="btn bad" onclick="delStaff('+idx+')">Delete staff</button>';
   document.getElementById('sheet').innerHTML=h;
   document.getElementById('modal').classList.add('show');
@@ -321,8 +335,6 @@ async function saveStaff(idx){
     // NEW staff → send a secure email invite via the Edge Function. The function
     // verifies this caller is an admin, creates the Auth user, emails the invite,
     // and inserts the gp_staff row. No password is set here.
-    const btn=document.getElementById('saveStaffBtn');
-    if(btn){ btn.disabled=true; btn.textContent='Sending invite…'; }
     toast('Sending invite…');
     const res = await SUPA.inviteStaff({
       email, username, name,
@@ -332,17 +344,9 @@ async function saveStaff(idx){
       can_post_notice: !!obj.canPostNotice,
       can_drive: !!obj.canDrive,
       can_authorize: !!obj.canAuthorize,
-      is_chauffeur: !!obj.isChauffeur,
-      can_chauffeur_ops: !!obj.canChauffeurOps,
-      photo_url: obj.photoUrl||null,
       apps: obj.apps||[]
     });
-    if(!res.ok){
-      // keep the form exactly as it is so nothing is lost — just re-enable + show why
-      if(btn){ btn.disabled=false; btn.textContent='Add staff'; }
-      toast('Invite failed: '+(res.error||'unknown'));
-      return;
-    }
+    if(!res.ok){ toast('Invite failed: '+(res.error||'unknown')); return; }
     staff.push(obj); persist(); closeModal(); render();
     toast('Invite sent to '+email);
   } else {
