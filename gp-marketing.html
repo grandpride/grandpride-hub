@@ -124,6 +124,24 @@
     .pie-card h4{color:#111}
     .brand{color:#111}
     .legend{color:#111}
+    /* FORCE white background + dark text on the whole report and every child,
+       so phone/Safari printing doesn't keep the dark theme */
+    html, body{ background:#fff!important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    #viewReport, #viewReport *{
+      background:#fff!important;
+      background-color:#fff!important;
+      color:#111!important;
+      box-shadow:none!important;
+    }
+    #viewReport .card, #viewReport .rep, #viewReport .kpi,
+    #viewReport .pie-card, #viewReport .bucketwrap{
+      border:1px solid #ccc!important;
+    }
+    /* keep the coloured pie slices + legend dots visible */
+    #viewReport svg *{ background:transparent!important; }
+    #viewReport .dot{ /* legend colour dots */ }
+    #viewReport h2, #viewReport h3, #viewReport .big{ color:#111!important; }
+    #viewReport h3{ color:#a67c00!important; }
   }
 </style>
 </head>
@@ -191,7 +209,10 @@
         <button class="btn sec" id="repWeekBtn" onclick="genReport('week')"><i class="ti ti-calendar-week"></i> Weekly (est.)</button>
       </div>
       <div class="hint">Monthly uses your exact entered figures. Weekly divides the month evenly (estimate) — your counts &amp; Meta spend are entered per month, not per week. Uses the month selected in the Dashboard/Counts month picker (<span id="repMonthLbl" style="color:var(--gold)"></span>).</div>
-      <button class="btn" style="margin-top:10px" onclick="window.print()"><i class="ti ti-printer"></i> Print / Save as PDF</button>
+      <div class="row2" style="margin-top:10px">
+        <button class="btn sec" onclick="window.print()"><i class="ti ti-printer"></i> Print</button>
+        <button class="btn" onclick="downloadPDF()"><i class="ti ti-file-download"></i> Generate PDF</button>
+      </div>
     </div>
     <div id="reportOut"></div>
   </div>
@@ -257,6 +278,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <script>
 const SUPABASE_URL="https://iefevjkeckysdluzazeq.supabase.co";
 const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
@@ -622,6 +644,32 @@ function renderSpendList(){
 function renderAll(){ renderDash(); }
 
 /* ---------- DETAILED REPORT ---------- */
+/* Generate a real PDF file from the report, on a clean white background. */
+function downloadPDF(){
+  const out=document.getElementById('reportOut');
+  if(!out || !out.innerHTML.trim()){ toast('Generate a report first',true); return; }
+  // wrap the report on a forced-white sheet so the dark theme doesn't carry over
+  const sheet=document.createElement('div');
+  sheet.style.cssText='background:#fff;color:#111;padding:16px;width:190mm';
+  sheet.innerHTML='<style>#pdfSheet *{background:#fff!important;color:#111!important;box-shadow:none!important;border-color:#ccc!important}#pdfSheet svg *{background:transparent!important}#pdfSheet h3{color:#a67c00!important}</style><div id="pdfSheet">'+out.innerHTML+'</div>';
+  document.body.appendChild(sheet);
+  const fname='GrandPride-Marketing-'+(YM||'report')+'.pdf';
+  toast('Building PDF…');
+  html2pdf().set({
+    margin:[8,8,8,8],
+    filename:fname,
+    image:{type:'jpeg',quality:0.95},
+    html2canvas:{scale:2,backgroundColor:'#ffffff',useCORS:true},
+    jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},
+    pagebreak:{mode:['css','legacy']}
+  }).from(sheet).save().then(()=>{
+    document.body.removeChild(sheet);
+  }).catch(e=>{
+    document.body.removeChild(sheet);
+    toast('PDF failed — try Print instead',true);
+  });
+}
+
 function genReport(period){
   const est = period==='week';
   // highlight the active period button: gold = active, sec (dark) = inactive
