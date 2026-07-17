@@ -230,7 +230,7 @@
         </div>
         <div class="row2">
           <div class="ci"><label>Walk-in / New</label><input id="in_walkin" type="number" inputmode="numeric" min="0" placeholder="0"></div>
-          <div class="ci"><label>App Booking</label><input id="in_appbook" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+          <div class="ci"><label>Website Booking</label><input id="in_appbook" type="number" inputmode="numeric" min="0" placeholder="0"></div>
         </div>
         <div id="otherSrcNote" class="hint" style="margin-top:8px"></div>
       </div>
@@ -489,7 +489,7 @@ function renderDash(){
   // Pie 1: ads outcome
   const p1=[['Success',S,'var(--green)'],['Ghost',G,'var(--red)'],['Ongoing',O,'var(--amber)']];
   // Pie 2: source
-  const p2=[['Ads',S,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)'],['Walk-in/New',os.walkin||0,'var(--green)'],['App Booking',os.appbook||0,'var(--amber)']];
+  const p2=[['Ads',S,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)'],['Walk-in/New',os.walkin||0,'var(--green)'],['Website Booking',os.appbook||0,'var(--amber)']];
   $('pies').innerHTML=
     pieCard('Ads outcome', p1, adsTotal) +
     pieCard('Where customers come from', p2, S+os.existing+os.referral+(os.walkin||0)+(os.appbook||0));
@@ -501,7 +501,7 @@ function renderDash(){
       Ad spend <b>RM${sp.spend.toFixed(2)}</b> · ${sp.clicks.toLocaleString()} clicks${sp.messaged?(' · '+sp.messaged+' messaged'):''}<br>
       ${cpl?('Cost per messaged lead <b>RM'+cpl.toFixed(2)+'</b><br>'):''}
       Cost per customer (success) <b style="color:var(--gold)">${cpa?('RM'+cpa.toFixed(2)):'— (enter success count)'}</b><br>
-      Sources — Ads <b>${S}</b> · Existing <b>${os.existing}</b> · Referral <b>${os.referral}</b> · Walk-in/New <b>${os.walkin||0}</b> · App Booking <b>${os.appbook||0}</b>
+      Sources — Ads <b>${S}</b> · Existing <b>${os.existing}</b> · Referral <b>${os.referral}</b> · Walk-in/New <b>${os.walkin||0}</b> · Website Booking <b>${os.appbook||0}</b>
     </div>`;
 }
 function pieCard(title, parts, total){
@@ -726,7 +726,7 @@ function genReport(period){
 
   // pies
   const p1=[['Success',totS,'var(--green)'],['Ghost',totG,'var(--red)'],['Ongoing',totO,'var(--amber)']];
-  const p2=[['Ads',totS,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)'],['Walk-in/New',os.walkin||0,'var(--green)'],['App Booking',os.appbook||0,'var(--amber)']];
+  const p2=[['Ads',totS,'var(--blue)'],['Existing',os.existing,'var(--purple)'],['Referral',os.referral,'var(--gold)'],['Walk-in/New',os.walkin||0,'var(--green)'],['Website Booking',os.appbook||0,'var(--amber)']];
 
   $('reportOut').innerHTML=`
   <div class="rep">
@@ -764,7 +764,7 @@ function genReport(period){
       <tr><td>GP Existing (returning)</td><td class="n">${nD(os.existing)}</td></tr>
       <tr><td>Referral</td><td class="n">${nD(os.referral)}</td></tr>
       <tr><td>Walk-in / New (organic)</td><td class="n">${nD(os.walkin||0)}</td></tr>
-      <tr><td>App Booking</td><td class="n">${nD(os.appbook||0)}</td></tr>
+      <tr><td>Website Booking</td><td class="n">${nD(os.appbook||0)}</td></tr>
       <tr><td><b>Total customers</b></td><td class="n"><b>${nD(sourceTotal)}</b></td></tr>
     </table>
 
