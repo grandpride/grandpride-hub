@@ -353,6 +353,29 @@ function balanceOf(pid){
   DB.movements.forEach(m=>{ if(m.productId===pid){ bal += (m.type==='in'? m.qty : -m.qty); } });
   return bal;
 }
+
+/* Balance as of the END of a given month (YYYY-MM): counts every movement
+   whose month is <= that month. This is the monthly CLOSING balance. */
+function balanceAsOfMonth(pid, ym){
+  let bal=0;
+  DB.movements.forEach(m=>{
+    if(m.productId===pid && m.month && m.month<=ym){
+      bal += (m.type==='in'? m.qty : -m.qty);
+    }
+  });
+  return bal;
+}
+
+/* Opening balance = closing balance of the PREVIOUS month (everything before ym). */
+function balanceBeforeMonth(pid, ym){
+  let bal=0;
+  DB.movements.forEach(m=>{
+    if(m.productId===pid && m.month && m.month<ym){
+      bal += (m.type==='in'? m.qty : -m.qty);
+    }
+  });
+  return bal;
+}
 function fmt(n){ return (Math.round(n*100)/100).toLocaleString(); }
 function nowStr(){ const d=new Date(); const p=x=>String(x).padStart(2,'0');
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes()); }
@@ -422,10 +445,6 @@ function openProductForm(pid){
   h+='<label>Description</label><textarea id="fDesc">'+(p?(p.desc||''):'')+'</textarea>';
   h+='<label>Min qty alert</label><input id="fMin" type="number" value="'+(p?(p.minQty||0):0)+'">';
   if(canFinance()) h+='<label>Unit cost (RM)</label><input id="fCost" type="number" value="'+(p?(p.cost||''):'')+'">';
-  if(p && can('products')){
-    h+='<label>Set current quantity (correction)</label><input id="fQty" type="number" min="0" value="'+balanceOf(pid)+'">';
-    h+='<div class="muted" style="font-size:12px;margin-top:2px">Current balance: '+balanceOf(pid)+'. Change this only to fix a wrong amount.</div>';
-  }
   if(!p){
     h+='<label>Opening stock quantity (optional)</label><input id="fOpen" type="number" min="0" value="0" placeholder="0">';
     if(canFinance()) h+='<label>Opening stock total cost (RM, optional)</label><input id="fOpenCost" type="number" placeholder="0">';
@@ -448,24 +467,7 @@ function openProductForm(pid){
     const obj={ category:document.getElementById('fCat').value, name, desc:document.getElementById('fDesc').value.trim(),
       minQty:Number(document.getElementById('fMin').value)||0,
       cost: canFinance()? (Number(document.getElementById('fCost').value)||0) : (p?p.cost:0), photo:photoData };
-    if(p){ Object.assign(p,obj); pushProduct(p);
-      // quantity correction: make balance equal the typed number via one adjustment movement
-      var qEl=document.getElementById('fQty');
-      if(qEl){
-        var target=Number(qEl.value);
-        if(!isNaN(target) && target>=0){
-          var curBal=balanceOf(p.id);
-          var diff=target-curBal;
-          if(diff!==0){
-            var mv={ id:'m'+Date.now(), productId:p.id, productName:p.name, category:p.category,
-              type:(diff>0?'in':'out'), qty:Math.abs(diff), note:'Quantity correction (was '+curBal+', set to '+target+')',
-              by:current.name, keyedBy:current.name, at:nowStr(), month:thisMonth(), edited:true };
-            DB.movements.push(mv); syncMovement(mv); pushMove(mv);
-          }
-        }
-      }
-      toast('Product updated');
-    }
+    if(p){ Object.assign(p,obj); toast('Product updated'); pushProduct(p); }
     else {
       obj.id='p'+Date.now(); DB.products.push(obj); pushProduct(obj);
       const openQty = Number(document.getElementById('fOpen') ? document.getElementById('fOpen').value : 0) || 0;
@@ -817,17 +819,21 @@ function generateReport(){
   const m=document.getElementById('repMonth').value || thisMonth();
   let inCost=0,outVal=0,balVal=0;
   DB.movements.forEach(x=>{ if(x.month===m && x.type==='in'){ const pp=DB.products.find(d=>d.id===x.productId); inCost += (x.batchCost && x.batchCost>0) ? x.batchCost : (pp?(pp.cost||0):0)*x.qty; } });
-  DB.products.forEach(p=>{ balVal+=(p.cost||0)*balanceOf(p.id); });
+  // balance VALUE at the END of the selected month (monthly closing, not up-to-date)
+  DB.products.forEach(p=>{ balVal+=(p.cost||0)*balanceAsOfMonth(p.id, m); });
   DB.movements.forEach(x=>{ if(x.month===m && x.type==='out'){ const p=DB.products.find(pp=>pp.id===x.productId); outVal+=(p?(p.cost||0):0)*x.qty; } });
   let rows='';
   CATEGORIES.forEach(cat=>{
     const items=DB.products.filter(p=>p.category===cat); if(!items.length) return;
-    rows+='<tr><th colspan="5" style="background:#eee">'+cat+'</th></tr>';
+    rows+='<tr><th colspan="6" style="background:#eee">'+cat+'</th></tr>';
     items.forEach(p=>{
-      const bal=balanceOf(p.id);
+      const open=balanceBeforeMonth(p.id, m);          // opening = end of prev month
       const inM=DB.movements.filter(x=>x.productId===p.id&&x.month===m&&x.type==='in').reduce((s,x)=>s+x.qty,0);
       const outM=DB.movements.filter(x=>x.productId===p.id&&x.month===m&&x.type==='out').reduce((s,x)=>s+x.qty,0);
-      rows+='<tr><td>'+p.name+'</td><td style="text-align:center">'+inM+'</td><td style="text-align:center">'+outM+'</td><td style="text-align:center">'+bal+'</td><td style="text-align:right">RM '+fmt((p.cost||0)*bal)+'</td></tr>';
+      const close=balanceAsOfMonth(p.id, m);           // closing = end of THIS month
+      // only show products that had activity or a balance in/by this month
+      if(open===0 && inM===0 && outM===0 && close===0) return;
+      rows+='<tr><td>'+p.name+'</td><td style="text-align:center">'+open+'</td><td style="text-align:center">'+inM+'</td><td style="text-align:center">'+outM+'</td><td style="text-align:center">'+close+'</td><td style="text-align:right">RM '+fmt((p.cost||0)*close)+'</td></tr>';
     });
   });
   const w=window.open('','_blank');
@@ -842,8 +848,8 @@ function generateReport(){
     '<h1>GRANDLAB — Stock Report</h1><div class="sub">Period: '+m+' · Generated '+nowStr()+' · By '+current.name+'</div>'+
     '<div class="sum"><div class="box"><b>RM '+fmt(inCost)+'</b><span>Stock In (month)</span></div>'+
     '<div class="box"><b>RM '+fmt(outVal)+'</b><span>Stock Out value</span></div>'+
-    '<div class="box"><b>RM '+fmt(balVal)+'</b><span>Balance value (end)</span></div></div>'+
-    '<table><thead><tr><th>Product</th><th>In</th><th>Out</th><th>Balance</th><th>Value</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div class="box"><b>RM '+fmt(balVal)+'</b><span>Closing balance value ('+m+')</span></div></div>'+
+    '<table><thead><tr><th>Product</th><th>Opening</th><th>In</th><th>Out</th><th>Closing</th><th>Value</th></tr></thead><tbody>'+rows+'</tbody></table>'+
     '<div class="noprint"><button style="background:#c9a24b" onclick="window.print()">Print / Save as PDF</button>'+
     '<button style="background:#333;color:#fff" onclick="window.close(); setTimeout(function(){ history.length>1?history.back():(location.href=\'stock-report.html\'); },150)">← Exit</button></div>'+
     '</body></html>');
