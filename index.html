@@ -452,6 +452,7 @@
 /* The apps shown in the circular menu. Add/remove here as you build them. */
 /* Each app: svg = line icon now; logo = optional image URL you can add later (overrides svg) */
 const ICONS = {
+  marketing:'<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
   attendance:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   joborder:'<svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M9 7V5h6v2"/><path d="M4 12h16"/></svg>',
   academy:'<svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M7 10v5c0 1 2.5 2 5 2s5-1 5-2v-5"/><path d="M21 8v5"/></svg>',
@@ -479,6 +480,7 @@ const APPS = [
   { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules', section:'Tools' },
   { id:'reminders',  label:'Reminders',  svg:ICONS.reminders,  logo:'', cat:'modules', section:'Tools' },
   { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'daily-task-log.html' },
+  { id:'marketing',  label:'Marketing', svg:ICONS.marketing, logo:'', cat:'modules', section:'Tools', link:'gp-marketing.html' },
   { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'staff-manager.html', adminOnly:true },
   { id:'minigames',  label:'Minigames', svg:ICONS.minigames, logo:'', cat:'modules', section:'Minigames', link:'gp-minigames.html' },
   { id:'joborder',   label:'Job Order',  svg:ICONS.joborder,   logo:'', cat:'grandlab', link:'grandlab_jobcard.html' },
