@@ -1717,7 +1717,7 @@ function recomputeDay(username, rec){
       am = asgStart;
     }
     if(pm==null){ rec.otMins=0; rec.workMins=0; rec.status='Working'; return rec; }
-    let span = pm - am; if(span<0) span += 24*60;
+    let span = pm - am; if(span<0 || rec.overnight) span += 24*60;
     let lunch = (lo!=null && li!=null) ? (li-lo<0?(li-lo+24*60):(li-lo)) : Math.round(cfg.lunchHours*60);
     let worked = Math.max(0, span - lunch);
     rec.workMins = worked;
@@ -1730,7 +1730,7 @@ function recomputeDay(username, rec){
     const wh=(worked/60).toFixed(1), oth=(ot/60).toFixed(1);
     let st = dow===0 ? ('Sunday OT '+wh+'h') : (ot>0 ? (wh+'h ('+oth+'h OT)') : (wh+'h'));
     if(rec.lateMins>0) st += ' · Late '+rec.lateMins+'m';
-    if(pm < am) st += ' · Overnight';   // clocked out next day
+    if(pm < am || rec.overnight) st += ' · Overnight';   // clocked out next day
     rec.status = st;
     return rec;
   }
@@ -1741,8 +1741,20 @@ function recomputeDay(username, rec){
   if(am!=null) late += morningLate(am);
   late += lunchLate(lo, li);
   const entitled = !!(DB.otStaff && DB.otStaff[username]);
-  const overnight = (pm!=null && am!=null && pm < am);
-  const ot = overnight ? 0 : otMinutes(pm, entitled);
+  const overnight = !!rec.overnight || (pm!=null && am!=null && pm < am);
+  // for an overnight shift, compute OT from total hours worked across midnight,
+  // not from the clock-out time of day (which would look tiny/early otherwise)
+  let ot;
+  if(overnight && pm!=null && am!=null){
+    let span = pm - am; if(span<0 || rec.overnight) span += 24*60;
+    const lunch = (lo!=null && li!=null) ? Math.max(0, (li-lo<0?li-lo+24*60:li-lo)) : 0;
+    const worked = Math.max(0, span - lunch);
+    // standard day ~9h (8h + 1h lunch already removed) → OT beyond 8h worked
+    ot = Math.max(0, worked - 8*60);
+    rec.workMins = worked;
+  } else {
+    ot = otMinutes(pm, entitled);
+  }
   // early = clocked out before 6:30pm (only when they HAVE clocked out) — never for overnight
   const early = overnight ? 0 : earlyMinutes(pm);
   rec.lateMins = late;
@@ -1758,7 +1770,7 @@ function recomputeDay(username, rec){
   if(late>0) parts.push(late>=60 ? ('Late '+(late/60)+' hr'+(late>60?'s':'')) : ('Late '+late+' min'));
   if(early>0) parts.push(early>=60 ? ('Early '+(early/60)+' hr'+(early>60?'s':'')) : ('Early '+early+' min'));
   if(ot>0) parts.push('OT '+fmtLate(ot));
-  if(pm!=null && am!=null && pm < am) parts.push('Overnight');   // clocked out next day
+  if(overnight) parts.push('Overnight');   // clocked out next day
   rec.status = parts.length ? parts.join(' · ') : 'On Time';
   return rec;
 }
@@ -2022,7 +2034,13 @@ function finishPunch(photo, loc){
   if(!rec.amIn){ rec.amIn=now; punch='Morning In'; toast('Clocked in — '+now); }
   else if(!rec.lunchOut){ rec.lunchOut=now; punch='Lunch Out'; toast('Lunch out — '+now); }
   else if(!rec.lunchIn){ rec.lunchIn=now; punch='Lunch In'; toast('Welcome back — '+now); }
-  else if(!rec.pmOut){ rec.pmOut=now; punch='Evening Out'; toast('Clocked out — '+now); }
+  else if(!rec.pmOut){
+    rec.pmOut=now; punch='Evening Out'; toast('Clocked out — '+now);
+    // If we're clocking out on a LATER calendar date than the shift's date,
+    // this shift crossed midnight — flag it so hours/OT compute correctly
+    // regardless of whether the clock-time looks earlier or later.
+    if(k !== todayKey()) rec.overnight = true;
+  }
   if(photo){ rec.offsite[punch]={photo, lat:loc&&loc.lat, lng:loc&&loc.lng, dist:loc?Math.round(loc.dist):null, address:loc&&loc.address, time:now}; }
   recomputeDay(current.username, rec);
   // Notify the people this staff reports to — all punches
@@ -3100,7 +3118,7 @@ async function syncAttendance(username, dateKey, rec, ev){
         body: JSON.stringify({
           type:'punch', sheet: name, username, name, date:dateKey, periodMonth: payrollMonth(dateKey, username),
           punch: ev&&ev.punch ? ev.punch : '', punchTime: ev&&ev.time ? ev.time : '',
-          amIn:rec.amIn||'', lunchOut:rec.lunchOut||'', lunchIn:rec.lunchIn||'', pmOut:rec.pmOut||'',
+          amIn:rec.amIn||'', lunchOut:rec.lunchOut||'', lunchIn:rec.lunchIn||'', pmOut:(rec.pmOut||'')+(rec.overnight&&rec.pmOut?' (+1)':''),
           status:rec.status||'', lateMins:rec.lateMins||0, otMins:rec.otMins||0, earlyMins:rec.earlyMins||0, leave:rec.leave||'',
           // chauffeur extras (blank for normal staff)
           isChauffeur: chauffeur ? 'Yes' : '',
