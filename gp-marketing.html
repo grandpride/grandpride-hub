@@ -260,7 +260,9 @@
 <script>
 const SUPABASE_URL="https://iefevjkeckysdluzazeq.supabase.co";
 const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'gp_mkt_auth'}});
+// Use the SAME storage key as the Hub (default) so the Marketing tool inherits
+// the Hub login — no separate sign-in when opened from inside the Hub.
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true}});
 const $=id=>document.getElementById(id);
 const esc=s=>(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function toast(t,err){const e=$('toast');e.textContent=t;e.className='toast show'+(err?' err':'');setTimeout(()=>e.className='toast',1900);}
@@ -275,8 +277,15 @@ let MODE='combined';// 'combined' | 'split'
 
 /* ---------- login ---------- */
 async function boot(){
-  const {data}=await sb.auth.getSession();
-  if(data&&data.session){ $('gate').classList.add('hidden'); ME=(data.session.user&&data.session.user.email)||''; init(); }
+  // Wait briefly for the Hub's shared session to restore from storage, so opening
+  // from inside the Hub doesn't flash a login screen.
+  let session=null;
+  for(let i=0;i<10;i++){
+    const {data}=await sb.auth.getSession();
+    if(data&&data.session){ session=data.session; break; }
+    await new Promise(r=>setTimeout(r,200));
+  }
+  if(session){ $('gate').classList.add('hidden'); ME=(session.user&&session.user.email)||''; init(); }
   else $('gate').classList.remove('hidden');
 }
 async function doLogin(){
