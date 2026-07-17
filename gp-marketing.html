@@ -133,7 +133,7 @@
 
 <div id="gate">
   <div class="box">
-    <div class="logo">GRAND<span>LAB</span></div>
+    <div class="logo">GRAND<span>PRIDE</span></div>
     <div class="tag">Marketing Analysis — staff sign in</div>
     <label>Email</label>
     <input id="email" type="email" autocomplete="username" placeholder="reception@grandpride.com">
@@ -146,7 +146,7 @@
 
 <div class="wrap">
   <div class="head">
-    <div class="brand">GRAND<b>LAB</b></div>
+    <div class="brand">GRAND<b>PRIDE</b></div>
     <small>Marketing Analysis</small>
   </div>
 
@@ -169,7 +169,7 @@
         <label>View mode</label>
         <select id="modeSel" onchange="onModeChange()">
           <option value="combined">Combined (all ads)</option>
-          <option value="split">Split: PPF / Tinted</option>
+          <option value="split">Split by ad set</option>
         </select>
       </div>
     </div>
@@ -238,9 +238,9 @@
   <div id="viewCamp" class="hidden">
     <div class="card">
       <div class="card-t">Register a GrandPride campaign</div>
-      <div class="hint" style="margin-bottom:10px">Use the <b>exact</b> Meta campaign (or ad set) name so imported spend matches. e.g. <span style="color:var(--gold)">GRANDLAB - PPF // COAT // WRAPP 2K25</span></div>
-      <div class="field"><label>Meta name (exact)</label><input id="c_name" placeholder="GRANDLAB - PPF // COAT // WRAPP 2K25"></div>
-      <div class="field"><label>Short label</label><input id="c_label" placeholder="e.g. PPF Promo"></div>
+      <div class="hint" style="margin-bottom:10px">Use the <b>exact</b> Meta campaign (or ad set) name so imported spend matches. e.g. <span style="color:var(--gold)">GRANDPRIDE - ADSET NAME 2K26</span></div>
+      <div class="field"><label>Meta name (exact)</label><input id="c_name" placeholder="GRANDPRIDE - ADSET NAME 2K26"></div>
+      <div class="field"><label>Short label</label><input id="c_label" placeholder="e.g. Rental Promo"></div>
       <div class="field"><label>Channel</label>
         <div class="seg" id="c_channel">
           <div class="opt on" data-ch="facebook" onclick="pickCChannel('facebook')"><i class="ti ti-brand-facebook"></i> Facebook</div>
@@ -345,7 +345,12 @@ async function loadJobSources(){
   JOB_SOURCES={};
 }
 
-function bucketsForMode(){ return MODE==='split' ? ['ppf','tint'] : ['combined']; }
+let SPLIT_ADSET=''; // in split mode, which registered ad set we're entering counts for
+function bucketsForMode(){
+  if(MODE!=='split') return ['combined'];
+  // split by ad set: the "bucket" is the chosen campaign/ad set name
+  return SPLIT_ADSET ? [SPLIT_ADSET] : [];
+}
 function getCount(ym,bucket){ return COUNTS.find(c=>c.ym===ym && c.bucket===bucket) || {success:0,ghost:0,ongoing:0,existing:0,referral:0,walkin:0,appbook:0}; }
 function monthOtherSources(ym){
   // fully manual: read the figures typed into Monthly counts for this month
@@ -363,21 +368,40 @@ function monthOtherSources(ym){
 /* ---------- MONTHLY COUNTS form ---------- */
 function renderCountsForm(){
   $('countsMonthLbl').textContent=ymLabel(YM);
+  // In split mode, show a picker of registered ad sets and enter counts for the chosen one.
+  let pickerHtml='';
+  if(MODE==='split'){
+    if(!CAMPAIGNS.length){
+      $('bucketForms').innerHTML='<div class="bucketwrap"><h4><i class="ti ti-alert-triangle"></i> No ad sets registered</h4><div class="hint">Add your ad sets in the <b>Campaigns</b> tab first, then pick one here to enter its counts.</div></div>';
+      renderOtherSources();
+      return;
+    }
+    if(!SPLIT_ADSET || !CAMPAIGNS.some(c=>c.name===SPLIT_ADSET)) SPLIT_ADSET=CAMPAIGNS[0].name;
+    pickerHtml='<div class="bucketwrap" style="background:var(--card)"><h4><i class="ti ti-target"></i> Which ad set</h4>'+
+      '<select id="splitAdsetSel" onchange="onSplitAdset()" style="width:100%">'+
+      CAMPAIGNS.map(c=>`<option value="${esc(c.name)}" ${c.name===SPLIT_ADSET?'selected':''}>${esc(c.short_label||c.name)}</option>`).join('')+
+      '</select></div>';
+  }
   const buckets=bucketsForMode();
-  const meta={ combined:['ti-speakerphone','From Ads (all)'], ppf:['ti-shield','PPF ads'], tint:['ti-car','Tinted ads'] };
-  $('bucketForms').innerHTML=buckets.map(b=>{
-    const c=getCount(YM,b); const [ic,ttl]=meta[b];
+  $('bucketForms').innerHTML = pickerHtml + buckets.map(b=>{
+    const c=getCount(YM,b);
+    const ttl = (MODE==='split') ? (CAMPAIGNS.find(x=>x.name===b)||{}).short_label || b : 'From Ads (all)';
     return `<div class="bucketwrap">
-      <h4><i class="ti ${ic}"></i> ${ttl}</h4>
+      <h4><i class="ti ti-speakerphone"></i> ${esc(ttl)}</h4>
       <div class="cgrid">
-        <div class="ci"><label>Success</label><input id="in_${b}_success" type="number" inputmode="numeric" min="0" value="${c.success||''}" placeholder="0"></div>
-        <div class="ci"><label>Ghost</label><input id="in_${b}_ghost" type="number" inputmode="numeric" min="0" value="${c.ghost||''}" placeholder="0"></div>
-        <div class="ci"><label>Ongoing</label><input id="in_${b}_ongoing" type="number" inputmode="numeric" min="0" value="${c.ongoing||''}" placeholder="0"></div>
+        <div class="ci"><label>Success</label><input id="in_b_success" type="number" inputmode="numeric" min="0" value="${c.success||''}" placeholder="0"></div>
+        <div class="ci"><label>Ghost</label><input id="in_b_ghost" type="number" inputmode="numeric" min="0" value="${c.ghost||''}" placeholder="0"></div>
+        <div class="ci"><label>Ongoing</label><input id="in_b_ongoing" type="number" inputmode="numeric" min="0" value="${c.ongoing||''}" placeholder="0"></div>
       </div>
     </div>`;
   }).join('');
+  renderOtherSources();
+}
+function onSplitAdset(){ SPLIT_ADSET=document.getElementById('splitAdsetSel').value; renderCountsForm(); }
+function renderOtherSources(){
   const os=monthOtherSources(YM);
-  $('in_existing').value=os.existing||''; $('in_referral').value=os.referral||'';
+  if($('in_existing')) $('in_existing').value=os.existing||'';
+  if($('in_referral')) $('in_referral').value=os.referral||'';
   if($('in_walkin')) $('in_walkin').value=os.walkin||'';
   if($('in_appbook')) $('in_appbook').value=os.appbook||'';
   // all manual now (no jobs DB link)
@@ -387,16 +411,18 @@ function renderCountsForm(){
 }
 async function saveCounts(){
   const buckets=bucketsForMode();
+  if(!buckets.length){ $('countsMsg').className='msg err'; $('countsMsg').textContent='Pick an ad set first (or add one in Campaigns).'; return; }
   const existing=parseInt($('in_existing').value)||0;
   const referral=parseInt($('in_referral').value)||0;
   const walkin=parseInt($('in_walkin')?$('in_walkin').value:0)||0;
   const appbook=parseInt($('in_appbook')?$('in_appbook').value:0)||0;
   $('countsMsg').className='msg'; $('countsMsg').textContent='Saving…';
+  // inputs use fixed IDs (in_b_*) since ad-set names aren't ID-safe
   const rows=buckets.map(b=>({
     ym:YM, bucket:b,
-    success:parseInt($('in_'+b+'_success').value)||0,
-    ghost:parseInt($('in_'+b+'_ghost').value)||0,
-    ongoing:parseInt($('in_'+b+'_ongoing').value)||0,
+    success:parseInt($('in_b_success').value)||0,
+    ghost:parseInt($('in_b_ghost').value)||0,
+    ongoing:parseInt($('in_b_ongoing').value)||0,
     existing, referral, walkin, appbook, updated_at:new Date().toISOString()
   }));
   const {error}=await sb.from('gp_mkt_counts').upsert(rows,{onConflict:'ym,bucket'});
@@ -423,9 +449,10 @@ function spendForMonth(ym){
   return {spend,clicks,messaged};
 }
 function renderDash(){
-  const buckets=bucketsForMode();
+  // dashboard always shows the WHOLE month: combined bucket, or ALL ad sets summed
+  const dashBuckets = (MODE==='split') ? CAMPAIGNS.map(c=>c.name) : ['combined'];
   let S=0,G=0,O=0;
-  buckets.forEach(b=>{ const c=getCount(YM,b); S+=c.success||0; G+=c.ghost||0; O+=c.ongoing||0; });
+  dashBuckets.forEach(b=>{ const c=getCount(YM,b); S+=c.success||0; G+=c.ghost||0; O+=c.ongoing||0; });
   const os=monthOtherSources(YM);
   const adsTotal=S+G+O;
   const sp=spendForMonth(YM);
@@ -605,8 +632,7 @@ function genReport(period){
   const div = est ? 4.345 : 1; // avg weeks per month for the estimate
   const periodLbl = est ? 'Weekly (estimated — month ÷ 4.3)' : 'Monthly';
   const sp=spendForMonth(YM);
-  const buckets = bucketsForMode();
-  const meta={ combined:'From Ads (all)', ppf:'PPF ads', tint:'Tinted ads' };
+  const buckets = (MODE==='split') ? CAMPAIGNS.map(c=>c.name) : ['combined'];
 
   // per-bucket detail
   let totS=0,totG=0,totO=0;
@@ -614,18 +640,14 @@ function genReport(period){
     const c=getCount(YM,b);
     const s=c.success||0,g=c.ghost||0,o=c.ongoing||0,t=s+g+o;
     totS+=s;totG+=g;totO+=o;
-    // per-bucket spend if we have a matching import (by short label match to ppf/tint)
+    const label = (b==='combined') ? 'From Ads (all)' : ((CAMPAIGNS.find(cp=>cp.name===b)||{}).short_label || b);
+    // per-ad-set spend: match imports to THIS ad set's exact name
     let bSpend=null,bClicks=null,bMsg=null;
     if(b!=='combined'){
-      // find imports whose campaign short_label maps to this bucket
-      const matchNames=CAMPAIGNS.filter(cp=>{
-        const lab=(cp.short_label||'').toLowerCase(), nm=cp.name.toLowerCase();
-        return b==='ppf' ? (lab.includes('ppf')||nm.includes('ppf')) : (lab.includes('tint')||nm.includes('tint'));
-      }).map(cp=>cp.name.toLowerCase());
-      const imps=IMPORTS.filter(r=>matchNames.includes(String(r.campaign_name).toLowerCase()) && overlapsMonth(r,YM));
+      const imps=IMPORTS.filter(r=>String(r.campaign_name).toLowerCase()===b.toLowerCase() && overlapsMonth(r,YM));
       if(imps.length){ bSpend=imps.reduce((a,r)=>a+ (+r.spend||0),0); bClicks=imps.reduce((a,r)=>a+(+r.clicks||0),0); bMsg=imps.reduce((a,r)=>a+(+r.results||0),0); }
     }
-    return {b,label:meta[b],s,g,o,t,bSpend,bClicks,bMsg};
+    return {b,label,s,g,o,t,bSpend,bClicks,bMsg};
   });
   const os=monthOtherSources(YM);
   const adsTotal=totS+totG+totO;
@@ -663,7 +685,7 @@ function genReport(period){
   $('reportOut').innerHTML=`
   <div class="rep">
     <h2>GrandPride Marketing Report</h2>
-    <div class="sub">${periodLbl} · ${ymLabel(YM)} · mode: ${MODE==='split'?'PPF / Tinted split':'Combined'} · generated ${new Date().toLocaleDateString('en-GB')}</div>
+    <div class="sub">${periodLbl} · ${ymLabel(YM)} · mode: ${MODE==='split'?'Split by ad set':'Combined'} · generated ${new Date().toLocaleDateString('en-GB')}</div>
 
     <h3>Headline</h3>
     <table class="rt">
