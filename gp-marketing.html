@@ -345,11 +345,11 @@ async function loadJobSources(){
   JOB_SOURCES={};
 }
 
-let SPLIT_ADSET=''; // in split mode, which registered ad set we're entering counts for
+let SPLIT_ADSET=''; // (legacy, unused now)
+let FORM_BUCKETS=[]; // the bucket list currently rendered in the counts form
 function bucketsForMode(){
   if(MODE!=='split') return ['combined'];
-  // split by ad set: the "bucket" is the chosen campaign/ad set name
-  return SPLIT_ADSET ? [SPLIT_ADSET] : [];
+  return CAMPAIGNS.map(c=>c.name);
 }
 function getCount(ym,bucket){ return COUNTS.find(c=>c.ym===ym && c.bucket===bucket) || {success:0,ghost:0,ongoing:0,existing:0,referral:0,walkin:0,appbook:0}; }
 function monthOtherSources(ym){
@@ -368,36 +368,34 @@ function monthOtherSources(ym){
 /* ---------- MONTHLY COUNTS form ---------- */
 function renderCountsForm(){
   $('countsMonthLbl').textContent=ymLabel(YM);
-  // In split mode, show a picker of registered ad sets and enter counts for the chosen one.
-  let pickerHtml='';
+  // buckets: combined = one block; split = one block PER registered ad set, all shown at once
+  let buckets;
   if(MODE==='split'){
     if(!CAMPAIGNS.length){
-      $('bucketForms').innerHTML='<div class="bucketwrap"><h4><i class="ti ti-alert-triangle"></i> No ad sets registered</h4><div class="hint">Add your ad sets in the <b>Campaigns</b> tab first, then pick one here to enter its counts.</div></div>';
+      $('bucketForms').innerHTML='<div class="bucketwrap"><h4><i class="ti ti-alert-triangle"></i> No ad sets registered</h4><div class="hint">Add your ad sets in the <b>Campaigns</b> tab first — each one will show here to enter its counts.</div></div>';
       renderOtherSources();
       return;
     }
-    if(!SPLIT_ADSET || !CAMPAIGNS.some(c=>c.name===SPLIT_ADSET)) SPLIT_ADSET=CAMPAIGNS[0].name;
-    pickerHtml='<div class="bucketwrap" style="background:var(--card)"><h4><i class="ti ti-target"></i> Which ad set</h4>'+
-      '<select id="splitAdsetSel" onchange="onSplitAdset()" style="width:100%">'+
-      CAMPAIGNS.map(c=>`<option value="${esc(c.name)}" ${c.name===SPLIT_ADSET?'selected':''}>${esc(c.short_label||c.name)}</option>`).join('')+
-      '</select></div>';
+    buckets=CAMPAIGNS.map(c=>c.name);
+  } else {
+    buckets=['combined'];
   }
-  const buckets=bucketsForMode();
-  $('bucketForms').innerHTML = pickerHtml + buckets.map(b=>{
+  // remember the bucket list so saveCounts reads the matching inputs by index
+  FORM_BUCKETS=buckets;
+  $('bucketForms').innerHTML = buckets.map((b,i)=>{
     const c=getCount(YM,b);
-    const ttl = (MODE==='split') ? (CAMPAIGNS.find(x=>x.name===b)||{}).short_label || b : 'From Ads (all)';
+    const ttl = (MODE==='split') ? ((CAMPAIGNS.find(x=>x.name===b)||{}).short_label || b) : 'From Ads (all)';
     return `<div class="bucketwrap">
       <h4><i class="ti ti-speakerphone"></i> ${esc(ttl)}</h4>
       <div class="cgrid">
-        <div class="ci"><label>Success</label><input id="in_b_success" type="number" inputmode="numeric" min="0" value="${c.success||''}" placeholder="0"></div>
-        <div class="ci"><label>Ghost</label><input id="in_b_ghost" type="number" inputmode="numeric" min="0" value="${c.ghost||''}" placeholder="0"></div>
-        <div class="ci"><label>Ongoing</label><input id="in_b_ongoing" type="number" inputmode="numeric" min="0" value="${c.ongoing||''}" placeholder="0"></div>
+        <div class="ci"><label>Success</label><input id="in_${i}_success" type="number" inputmode="numeric" min="0" value="${c.success||''}" placeholder="0"></div>
+        <div class="ci"><label>Ghost</label><input id="in_${i}_ghost" type="number" inputmode="numeric" min="0" value="${c.ghost||''}" placeholder="0"></div>
+        <div class="ci"><label>Ongoing</label><input id="in_${i}_ongoing" type="number" inputmode="numeric" min="0" value="${c.ongoing||''}" placeholder="0"></div>
       </div>
     </div>`;
   }).join('');
   renderOtherSources();
 }
-function onSplitAdset(){ SPLIT_ADSET=document.getElementById('splitAdsetSel').value; renderCountsForm(); }
 function renderOtherSources(){
   const os=monthOtherSources(YM);
   if($('in_existing')) $('in_existing').value=os.existing||'';
@@ -410,19 +408,19 @@ function renderOtherSources(){
   if(note) note.textContent='Enter each source count manually from your records.';
 }
 async function saveCounts(){
-  const buckets=bucketsForMode();
-  if(!buckets.length){ $('countsMsg').className='msg err'; $('countsMsg').textContent='Pick an ad set first (or add one in Campaigns).'; return; }
+  const buckets=FORM_BUCKETS.length?FORM_BUCKETS:bucketsForMode();
+  if(!buckets.length){ $('countsMsg').className='msg err'; $('countsMsg').textContent='Add an ad set in Campaigns first.'; return; }
   const existing=parseInt($('in_existing').value)||0;
   const referral=parseInt($('in_referral').value)||0;
   const walkin=parseInt($('in_walkin')?$('in_walkin').value:0)||0;
   const appbook=parseInt($('in_appbook')?$('in_appbook').value:0)||0;
   $('countsMsg').className='msg'; $('countsMsg').textContent='Saving…';
-  // inputs use fixed IDs (in_b_*) since ad-set names aren't ID-safe
-  const rows=buckets.map(b=>({
+  // each ad-set block uses index-based ids (in_0_*, in_1_* ...)
+  const rows=buckets.map((b,i)=>({
     ym:YM, bucket:b,
-    success:parseInt($('in_b_success').value)||0,
-    ghost:parseInt($('in_b_ghost').value)||0,
-    ongoing:parseInt($('in_b_ongoing').value)||0,
+    success:parseInt($('in_'+i+'_success').value)||0,
+    ghost:parseInt($('in_'+i+'_ghost').value)||0,
+    ongoing:parseInt($('in_'+i+'_ongoing').value)||0,
     existing, referral, walkin, appbook, updated_at:new Date().toISOString()
   }));
   const {error}=await sb.from('gp_mkt_counts').upsert(rows,{onConflict:'ym,bucket'});
