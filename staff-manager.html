@@ -90,7 +90,7 @@
    form, and sends Supabase Auth email invites so staff set their own passwords.
    Working copy is kept in localStorage so you don't lose edits on refresh. */
 
-const OPT_IN_APPS = ['mia','jobboard','gpbooking','gpagreement','gpchecklist','gpdaily','gpfleet','gpuse','gpappt','gprecord','gpdeposit','gpchauffeur']; // apps that are NOT given by default — assigned per-staff
+const OPT_IN_APPS = ['mia','jobboard','gpbooking','gpagreement','gpchecklist','gpdaily','gpfleet','gpuse','gpappt','gprecord','gpdeposit','gpchauffeur','marketing']; // apps that are NOT given by default — assigned per-staff
 
 /* ===== Staff photo upload (ImgBB) ===== */
 const IMGBB_KEY = 'e8dbe75e3933b7bf63be0253e1b122d6';
@@ -141,6 +141,7 @@ const APP_LIST = [
   {key:'gprecord',    label:'GP Record Summary'},
   {key:'gpdeposit',   label:'GP Deposit Return'},
   {key:'gpchauffeur', label:'GP Chauffeur'},
+  {key:'marketing',   label:'Marketing Analysis'},
 ];
 const ROLES = ['Admin','Manager','HOD','Receptionist','Finance','Staff'];
 const COMPANIES = ['Grandlab','Grandpride'];
