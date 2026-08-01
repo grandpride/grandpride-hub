@@ -90,7 +90,8 @@
    form, and sends Supabase Auth email invites so staff set their own passwords.
    Working copy is kept in localStorage so you don't lose edits on refresh. */
 
-const OPT_IN_APPS = ['mia','jobboard','gpbooking','gpagreement','gpchecklist','gpdaily','gpfleet','gpuse','gpappt','gprecord','gpdeposit','gpchauffeur','marketing']; // apps that are NOT given by default — assigned per-staff
+const OPT_IN_APPS = ['mia','jobboard','gpbooking','gpagreement','gpchecklist','gpdaily','gpfleet','gpuse','gpappt','gprecord','gpdeposit','gpchauffeur','marketing',
+  'platescan','inspect','qc','pos','statement','commission','daily','ladder']; // apps that are NOT given by default — assigned per-staff
 
 /* ===== Staff photo upload (ImgBB) ===== */
 const IMGBB_KEY = 'e8dbe75e3933b7bf63be0253e1b122d6';
@@ -142,6 +143,14 @@ const APP_LIST = [
   {key:'gpdeposit',   label:'GP Deposit Return'},
   {key:'gpchauffeur', label:'GP Chauffeur'},
   {key:'marketing',   label:'Marketing Analysis'},
+  {key:'platescan',  label:'GL Plate Scanner'},
+  {key:'inspect',    label:'GL Vehicle Inspection'},
+  {key:'qc',         label:'GL QC Check'},
+  {key:'pos',        label:'GL POS System'},
+  {key:'statement',  label:'GL Statements'},
+  {key:'commission', label:'GL Film Commission'},
+  {key:'daily',      label:'GL Daily & Payroll'},
+  {key:'ladder',     label:'GL Skill Ladder'},
 ];
 const ROLES = ['Admin','Manager','HOD','Receptionist','Finance','Staff'];
 const COMPANIES = ['Grandlab','Grandpride'];
