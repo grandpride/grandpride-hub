@@ -131,7 +131,7 @@ const SUPABASE_URL="https://iefevjkeckysdluzazeq.supabase.co";
 const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true}});
 
-let JOBS=[], CUSTOMERS=[], FLEET=[], DRIVERS=[], FILTER='active', ME='';
+let JOBS=[], CUSTOMERS=[], FLEET=[], DRIVERS=[], CHECKLISTS=[], FILTER='active', ME='';
 
 const SERVICES=[
   {v:'chauffeur',label:'Chauffeur service'},
@@ -181,13 +181,14 @@ async function boot(){
   await loadAll();
 }
 async function loadAll(){
-  const [j,c,f,d]=await Promise.all([
+  const [j,c,f,d,cl]=await Promise.all([
     sb.from('gp_jobs').select('*').order('start_date',{ascending:false}),
     sb.from('gp_customers').select('*').order('name',{ascending:true}),
     sb.from('gp_fleet').select('id,plate,model,status').order('plate',{ascending:true}),
-    sb.from('gp_staff').select('username,name,is_chauffeur,can_drive').order('name',{ascending:true})
+    sb.from('gp_staff').select('username,name,is_chauffeur,can_drive').order('name',{ascending:true}),
+    sb.from('gp_checklists').select('id,job_id,out_sig_inspector,out_sig_customer,customer_signed_at')
   ]);
-  JOBS=j.data||[]; CUSTOMERS=c.data||[]; FLEET=f.data||[];
+  JOBS=j.data||[]; CUSTOMERS=c.data||[]; FLEET=f.data||[]; CHECKLISTS=cl.data||[];
   DRIVERS=(d.data||[]).filter(s=>s.is_chauffeur||s.can_drive);
   render();
 }
@@ -463,6 +464,7 @@ function openJob(id){
     <div class="card">
       <h3>Progress</h3>${steps}
     </div>
+    ${signStatusHtml(j)}
     ${nextBtn}
     <button class="btn sec" style="margin-top:8px" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit details</button>
     <button class="btn sec" style="margin-top:8px" onclick="waSummary('${j.id}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp summary</button>
@@ -528,6 +530,32 @@ function openChecklist(id,mode){
 function jobTotal(j){ return num(j.price)+num(j.deposit_amount); }
 function jobPaid(j){ return num(j.paid_amount); }
 function jobBalance(j){ return Math.max(0, jobTotal(j)-jobPaid(j)); }
+
+/* find the delivery checklist linked to this job (most recent that has a customer-sign step) */
+function checklistFor(j){
+  const list=(CHECKLISTS||[]).filter(c=>c.job_id===j.id);
+  if(!list.length) return null;
+  // prefer one that's been sent to customer / signed
+  return list.find(c=>c.customer_signed_at) || list.find(c=>c.out_sig_inspector) || list[0];
+}
+/* status card shown in job detail once a checklist exists */
+function signStatusHtml(j){
+  const c=checklistFor(j);
+  if(!c) return '';
+  if(c.customer_signed_at){
+    return `<div class="card" style="padding:11px;margin-bottom:8px;border-left:3px solid var(--green)">
+      <div class="rowline"><span class="muted">Customer signature</span><b style="color:var(--green)">Signed ✓</b></div>
+      <div class="rowline"><span class="muted">Signed on</span><span>${fmtDate(c.customer_signed_at)}</span></div>
+    </div>`;
+  }
+  if(c.out_sig_inspector){
+    return `<div class="card" style="padding:11px;margin-bottom:8px;border-left:3px solid var(--amber)">
+      <div class="rowline"><span class="muted">Customer signature</span><b style="color:var(--amber)">Waiting for customer…</b></div>
+      <div class="hint" style="margin-top:4px">Sent for remote signing. Refresh to check.</div>
+    </div>`;
+  }
+  return '';
+}
 function paymentHistoryHtml(j){
   let h=Array.isArray(j.payments)?j.payments:[];
   // fallback: old job paid before history existed — show the lump sum as one dated line
@@ -617,7 +645,10 @@ async function doMarkPaid(id){
 
 async function markDelivered(id){
   const j=JOBS.find(x=>x.id===id);
-  if(!confirm('Mark as delivered? This marks the car as rented.')) return;
+  const c=checklistFor(j);
+  if(c && !c.customer_signed_at){
+    if(!confirm('⚠️ Customer has NOT signed the checklist yet.\n\nDeliver anyway?')) return;
+  } else if(!confirm('Mark as delivered? This marks the car as rented.')) return;
   await sb.from('gp_jobs').update({stage:'delivered',updated_at:new Date().toISOString()}).eq('id',id);
   if(j.fleet_id){ await sb.from('gp_fleet').update({status:'rented'}).eq('id',j.fleet_id); }
   toast('Delivered ✓ — car marked rented'); await loadAll(); openJob(id);

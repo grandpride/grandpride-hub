@@ -675,7 +675,7 @@ function showForm(){
 
   <div class="panel">
     <h3>Photos (4 rims + 4 sides + mileage + petrol)</h3>
-    <p class="hint" style="margin-bottom:8px">Bulk upload a group, or tap a slot to add/replace one. All 10 required.</p>
+    <p class="hint" style="margin-bottom:8px">Use the 3 buttons below to add the 4 rim, 4 side, and mileage+petrol photos. All 10 required.</p>
     <div class="bulk-row">
       <label class="btn sec mini bulk-btn">📷 Add 4 Rim photos
         <input type="file" accept="image/*" multiple onchange="onBulkPhotos(this,0,4)">
@@ -687,9 +687,7 @@ function showForm(){
         <input type="file" accept="image/*" multiple onchange="onBulkPhotos(this,8,10)">
       </label>
     </div>
-    <div class="photo-grid" id="photoGrid">
-      ${PHOTO_SLOTS.map((lbl,i)=>photoSlot(lbl,i)).join('')}
-    </div>
+    <div class="photo-grid" id="photoGrid"></div>
 
     <h3 style="margin-top:18px">Defect Photos <span style="font-weight:400;color:var(--grey);font-size:12px">(close-ups of damage — add as many as needed)</span></h3>
     <label class="btn sec mini bulk-btn">📷 Add defect photos
@@ -967,21 +965,8 @@ function clearDefects(){ STATE.current[P()+'_defects']=[]; renderMarkers(); }
 
 /* ====== PHOTOS ====== */
 const PHOTO_SLOTS=['Rim — Front Left','Rim — Front Right','Rim — Rear Left','Rim — Rear Right','Side — Front','Side — Rear','Side — Left','Side — Right','Current Mileage','Current Petrol Bar'];
-function photoSlot(lbl,i){
-  return `<label class="photo-slot" id="slot${i}" for="file${i}">
-      <div class="ico">📷</div><div class="lbl">${esc(lbl)}</div>
-      <input type="file" id="file${i}" accept="image/*" onchange="onPhoto(${i},this)">
-    </label>`;
-}
-function onPhoto(i,input){
-  const file=input.files&&input.files[0]; if(!file) return;
-  downscalePhoto(file,data=>{
-    const arr=(f('photos')||[]).slice();
-    arr[i]={label:PHOTO_SLOTS[i],data:data};
-    STATE.current[P()+'_photos']=arr;
-    refreshPhotoSlots();
-  });
-}
+/* Individual empty photo slots removed — photos are added only via the 3 bulk buttons
+   (Add 4 Rim / Add 4 Side / Mileage+Petrol). Filled thumbnails still show via refreshPhotoSlots(). */
 /* ===== EXTRA DEFECT PHOTOS (free-form, add as many as needed) ===== */
 function onDefectPhotos(input){
   const files=[...(input.files||[])];
@@ -1063,20 +1048,21 @@ function onBulkPhotos(input,start,end){
   input.value=''; // allow re-selecting same files later
 }
 function refreshPhotoSlots(){
+  const grid=$('photoGrid'); if(!grid) return;
   const arr=f('photos')||[];
+  let html='';
   PHOTO_SLOTS.forEach((lbl,i)=>{
-    const slot=$('slot'+i); if(!slot) return;
     const p=arr[i];
     if(p&&p.data){
-      slot.classList.add('filled');
-      slot.innerHTML=`<span class="rm" onclick="rmPhoto(event,${i})">✕</span><img src="${p.data}"><input type="file" id="file${i}" accept="image/*" onchange="onPhoto(${i},this)">`;
+      html+=`<div class="photo-slot filled"><span class="rm" onclick="rmPhoto(event,${i})">✕</span><img src="${p.data}"><div class="lbl">${esc(lbl)}</div></div>`;
     }
   });
+  grid.innerHTML=html;
 }
 function rmPhoto(ev,i){
   ev.preventDefault(); ev.stopPropagation();
   const arr=(f('photos')||[]).slice(); arr[i]=null; STATE.current[P()+'_photos']=arr;
-  const slot=$('slot'+i); if(slot){ slot.classList.remove('filled'); slot.innerHTML=`<div class="ico">📷</div><div class="lbl">${esc(PHOTO_SLOTS[i])}</div><input type="file" id="file${i}" accept="image/*" onchange="onPhoto(${i},this)">`; }
+  refreshPhotoSlots();
 }
 function photoCount(){ return (f('photos')||[]).filter(p=>p&&p.data).length; }
 
@@ -1129,7 +1115,7 @@ function readForm(){
 function rowFor(a){
   // store everything; jsonb columns take objects directly via REST
   return {
-    id:a.id, plan:a.plan, status:a.status,
+    id:a.id, plan:a.plan, status:a.status, job_id:a.job_id||null,
     customer_name:a.customer_name, customer_contact:a.customer_contact,
     car_model:a.car_model, car_plate:a.car_plate,
     out_date:a.out_date, out_time:a.out_time, out_mileage:a.out_mileage, out_petrol:a.out_petrol||0,
