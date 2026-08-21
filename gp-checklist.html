@@ -1473,8 +1473,34 @@ document.addEventListener('input', function(e){
   }
 }, true);
 
+
+/* ====== PREFILL FROM GP JOBS (job spine link) ====== */
+function jobParam(k){ try{ return new URLSearchParams(location.search).get(k)||''; }catch(e){ return ''; } }
+function prefillFromJob(){
+  const job=jobParam('job'); if(!job) return false;
+  const mode=jobParam('mode')||'delivery';
+  const name=jobParam('name'), contact=jobParam('contact'), model=jobParam('model'), plate=jobParam('plate');
+  if(mode==='delivery' || mode==='out'){
+    STATE.current=blankChecklist(); STATE.stage='out';
+    STATE.current.job_id=job;
+    STATE.current.customer_name=name; STATE.current.customer_contact=contact;
+    STATE.current.car_model=model; STATE.current.car_plate=plate;
+    showForm();
+    return true;
+  }
+  if(mode==='return' || mode==='in'){
+    // return: open the pending-returns list and pre-fill the plate search
+    if(typeof showPending==='function'){
+      showPending();
+      setTimeout(function(){ var sp=document.getElementById('searchPlate'); if(sp && plate){ sp.value=plate; if(typeof filterPending==='function') filterPending(); } }, 150);
+      return true;
+    }
+  }
+  return false;
+}
+
 /* ====== INIT ====== */
-showChooser();
+if(!prefillFromJob()){ showChooser(); }
 setTimeout(bindUpper, 200);
 
 </script>
