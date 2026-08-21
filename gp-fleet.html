@@ -103,9 +103,10 @@
       <div class="tab" data-f="service" onclick="setFilter('service')">In service</div>
       <div class="tab" data-f="due" onclick="setFilter('due')">⚠ Due soon</div>
     </div>
+    <div class="tabs" id="typeTabs"></div>
     <div class="search">
       <i class="ti ti-search"></i>
-      <input id="searchBox" placeholder="Search model or plate…" oninput="renderList()">
+      <input id="searchBox" placeholder="Search model, plate or type…" oninput="renderList()">
     </div>
     <div id="listGrid" class="grid"></div>
     <div id="listEmpty" class="muted hidden" style="text-align:center;padding:40px 0">No cars yet. Tap + to add one.</div>
@@ -125,7 +126,8 @@ const SUPABASE_ANON="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const IMGBB_KEY="e8dbe75e3933b7bf63be0253e1b122d6";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON,{auth:{persistSession:true,autoRefreshToken:true}});
 
-let FLEET=[], FILTER='all', CURRENT=null;
+let FLEET=[], FILTER='all', CURRENT=null, TYPE_FILTER='';
+const CAR_TYPES=['Sedan','SUV','MPV','Van / Bus','Super Car'];
 
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -215,13 +217,23 @@ async function sendPush(title,body){
 }
 
 /* ---------- list ---------- */
-function setFilter(f){ FILTER=f; document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.f===f)); renderList(); }
+function setFilter(f){ FILTER=f; document.querySelectorAll('#statusTabs .tab').forEach(t=>t.classList.toggle('on',t.dataset.f===f)); renderList(); }
+function setType(t){ TYPE_FILTER = (TYPE_FILTER===t?'':t); renderList(); }
+function renderTypeChips(){
+  const types=[...new Set(FLEET.map(c=>c.car_type).filter(Boolean))];
+  const host=$('typeTabs');
+  if(!types.length){ host.innerHTML=''; return; }
+  host.innerHTML=`<div class="tab ${TYPE_FILTER===''?'on':''}" onclick="setType('')">All types</div>`+
+    types.map(t=>`<div class="tab ${TYPE_FILTER===t?'on':''}" onclick="setType('${esc(t)}')">${esc(t)}</div>`).join('');
+}
 function renderList(){
+  renderTypeChips();
   const q=($('searchBox').value||'').toLowerCase().trim();
   let list=FLEET.slice();
   if(FILTER==='due') list=list.filter(carHasDue);
   else if(FILTER!=='all') list=list.filter(c=>(c.status||'available')===FILTER);
-  if(q) list=list.filter(c=>((c.model||'')+' '+(c.plate||'')).toLowerCase().includes(q));
+  if(TYPE_FILTER) list=list.filter(c=>(c.car_type||'')===TYPE_FILTER);
+  if(q) list=list.filter(c=>((c.model||'')+' '+(c.plate||'')+' '+(c.car_type||'')).toLowerCase().includes(q));
   const grid=$('listGrid');
   $('listEmpty').classList.toggle('hidden', list.length>0);
   grid.innerHTML=list.map(c=>{
@@ -235,7 +247,7 @@ function renderList(){
       <div class="ph" ${ph}>${c.photo_url?'':'<i class="ti ti-car"></i>'}</div>
       <div class="body">
         <div class="nm">${esc(c.model||'—')}</div>
-        <div class="sub">${esc(c.plate||'')}${c.colour?' · '+esc(c.colour):''}</div>
+        <div class="sub">${esc(c.plate||'')}${c.car_type?' · '+esc(c.car_type):''}${c.colour?' · '+esc(c.colour):''}</div>
         <div class="mt"><span class="pill ${stCls}">${stLabel}</span>${dueBadge}</div>
       </div>
     </div>`;
@@ -261,7 +273,7 @@ function openDetail(id){
   showModal(`
     <button class="x" onclick="closeModal()">×</button>
     <h3 style="margin-bottom:2px">${esc(c.model||'—')}</h3>
-    <div class="muted" style="margin-bottom:12px">${esc(c.plate||'')}${c.colour?' · '+esc(c.colour):''}${c.year?' · '+esc(c.year):''}</div>
+    <div class="muted" style="margin-bottom:12px">${esc(c.plate||'')}${c.car_type?' · '+esc(c.car_type):''}${c.colour?' · '+esc(c.colour):''}${c.year?' · '+esc(c.year):''}</div>
     ${ph}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin:12px 0">
       <span class="pill ${stCls}">${stLabel}</span>${own}
@@ -308,6 +320,12 @@ function openEdit(id){
       <div><label>Model</label><input id="f_model" value="${v('model')}" placeholder="Toyota Alphard"></div>
       <div><label>Plate</label><input id="f_plate" value="${v('plate')}" placeholder="BQK31" oninput="this.value=this.value.toUpperCase()"></div>
     </div>
+    <label>Car type</label>
+    <select id="f_car_type_sel" onchange="carTypeToggle()">
+      ${CAR_TYPES.map(t=>`<option value="${t}" ${c.car_type===t?'selected':''}>${t}</option>`).join('')}
+      <option value="__other" ${c.car_type&&!CAR_TYPES.includes(c.car_type)?'selected':''}>Other…</option>
+    </select>
+    <input id="f_car_type_other" placeholder="Type car category" value="${c.car_type&&!CAR_TYPES.includes(c.car_type)?v('car_type'):''}" class="${c.car_type&&!CAR_TYPES.includes(c.car_type)?'':'hidden'}" style="margin-top:8px">
     <div class="row2">
       <div><label>Colour</label><input id="f_colour" value="${v('colour')}" placeholder="White"></div>
       <div><label>Year</label><input id="f_year" value="${v('year')}" placeholder="2022" inputmode="numeric"></div>
@@ -355,6 +373,7 @@ function openEdit(id){
   `);
 }
 function togglePartner(){ $('partnerBox').classList.toggle('hidden', $('f_owner_type').value!=='partner'); }
+function carTypeToggle(){ $('f_car_type_other').classList.toggle('hidden', $('f_car_type_sel').value!=='__other'); }
 
 async function uploadCarPhoto(inp){
   const file=inp.files[0]; if(!file) return;
@@ -379,6 +398,7 @@ async function saveCar(id){
   const row={
     model, plate,
     photo_url:g('photo_url')||null, colour:g('colour')||null, year:g('year')||null,
+    car_type: (g('car_type_sel')==='__other' ? (g('car_type_other')||null) : g('car_type_sel')),
     current_mileage:num(g('current_mileage')),
     owner_type:g('owner_type'), partner_name:g('partner_name')||null, partner_contact:g('partner_contact')||null,
     status:g('status'),
