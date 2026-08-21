@@ -457,6 +457,7 @@ function openJob(id){
       <div class="rowline"><span class="muted">Total to collect</span><b>RM ${jobTotal(j).toLocaleString()}</b></div>
       <div class="rowline"><span class="muted">Paid</span><span>RM ${jobPaid(j).toLocaleString()}</span></div>
       ${jobBalance(j)>0?`<div class="rowline"><span class="muted">Balance</span><b style="color:var(--amber)">RM ${jobBalance(j).toLocaleString()}</b></div>`:`<div class="rowline"><span class="muted">Payment</span><b style="color:var(--green)">Fully paid ✓</b></div>`}
+      ${paymentHistoryHtml(j)}
       ${j.remark?`<div class="rowline"><span class="muted">Remark</span><span style="text-align:right;max-width:60%">${esc(j.remark)}</span></div>`:''}
     </div>
     <div class="card">
@@ -523,6 +524,18 @@ function openChecklist(id,mode){
 function jobTotal(j){ return num(j.price)+num(j.deposit_amount); }
 function jobPaid(j){ return num(j.paid_amount); }
 function jobBalance(j){ return Math.max(0, jobTotal(j)-jobPaid(j)); }
+function paymentHistoryHtml(j){
+  const h=Array.isArray(j.payments)?j.payments:[];
+  if(!h.length) return '';
+  const rows=h.map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border)">
+    <span class="muted">${fmtDate(p.date)} · ${esc(p.note||'payment')}${p.slip?' <a href="'+esc(p.slip)+'" target="_blank" style="color:var(--gold)">slip</a>':''}</span>
+    <span>RM ${num(p.amount).toLocaleString()}${(p.balance_after!=null)?` <span class="muted">(bal ${num(p.balance_after).toLocaleString()})</span>`:''}</span>
+  </div>`).join('');
+  return `<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+    <div class="muted" style="font-size:12px;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">Payment history</div>
+    ${rows}
+  </div>`;
+}
 
 async function markPaid(id){
   const j=JOBS.find(x=>x.id===id);
@@ -568,8 +581,19 @@ async function doMarkPaid(id){
   const newPaid=jobPaid(j)+add;
   const total=jobTotal(j);
   const fullyPaid = newPaid>=total;
+  // append this installment to the payment history
+  const hist = Array.isArray(j.payments)?j.payments.slice():[];
+  const isFirst = hist.length===0;
+  hist.push({
+    amount:add,
+    date:$('p_date').value||new Date().toISOString().slice(0,10),
+    slip:$('p_slip_url').value||null,
+    note: isFirst ? 'Deposit / first payment' : (fullyPaid?'Final payment':'Part payment'),
+    balance_after: Math.max(0,total-newPaid)
+  });
   const upd={
     paid_amount:newPaid,
+    payments:hist,
     payment_status: fullyPaid?'paid':'partial',
     paid_date:$('p_date').value||null,
     payment_slip:$('p_slip_url').value||j.payment_slip||null,
