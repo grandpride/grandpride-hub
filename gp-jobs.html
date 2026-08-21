@@ -525,7 +525,11 @@ function jobTotal(j){ return num(j.price)+num(j.deposit_amount); }
 function jobPaid(j){ return num(j.paid_amount); }
 function jobBalance(j){ return Math.max(0, jobTotal(j)-jobPaid(j)); }
 function paymentHistoryHtml(j){
-  const h=Array.isArray(j.payments)?j.payments:[];
+  let h=Array.isArray(j.payments)?j.payments:[];
+  // fallback: old job paid before history existed — show the lump sum as one dated line
+  if(!h.length && jobPaid(j)>0){
+    h=[{amount:jobPaid(j), date:j.paid_date, note:'Recorded (before history)', balance_after:jobBalance(j)}];
+  }
   if(!h.length) return '';
   const rows=h.map((p,i)=>`<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px solid var(--border)">
     <span class="muted">${fmtDate(p.date)} · ${esc(p.note||'payment')}${p.slip?' <a href="'+esc(p.slip)+'" target="_blank" style="color:var(--gold)">slip</a>':''}</span>
