@@ -707,12 +707,14 @@ function showForm(){
 
   <div class="panel">
     <h3>Signatures</h3>
-    <label>Grandlab / GP Operation signature</label>
+    <label>GP Operation signature</label>
     <div class="sigwrap"><canvas class="sigpad" id="padInspector"></canvas>
       <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padInspector')">Clear</button></div></div>
-    ${st==='intake' ? '' : `<label style="margin-top:12px">Customer signature</label>
+    ${st==='intake' ? '' : `<label style="margin-top:12px">Customer signature <span style="color:var(--grey);text-transform:none">(optional — can sign remotely)</span></label>
     <div class="sigwrap"><canvas class="sigpad" id="padCustomer"></canvas>
-      <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padCustomer')">Clear</button></div></div>`}
+      <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padCustomer')">Clear</button></div></div>
+    <button class="btn sec" style="margin-top:10px;width:100%" onclick="sendSignLink()"><span style="text-transform:none">📲 Send to customer to sign (WhatsApp)</span></button>
+    <div class="hint" style="margin-top:6px">If the customer isn't here, save first, then send them the link to sign on their phone.</div>`}
   </div>
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
@@ -1147,6 +1149,26 @@ async function saveChecklist(silent){
   return ok;
 }
 
+async function sendSignLink(){
+  // save first so the checklist exists in the cloud
+  readForm();
+  if(!STATE.current.out_sig_inspector){ toast('GP Operation must sign first'); return; }
+  toast('Saving…');
+  const ok=await saveChecklist(true);
+  if(!ok){ toast('Save failed — try again'); return; }
+  const id=STATE.current.id;
+  const base=location.origin+location.pathname.replace(/[^/]*$/,'');
+  const url=base+'gp-sign.html?id='+encodeURIComponent(id);
+  const cust=STATE.current.customer_name||'Customer';
+  const car=(STATE.current.car_model||'')+' '+(STATE.current.car_plate||'');
+  const msg='Hi '+cust+', please review and sign the delivery checklist for '+car.trim()+':\n'+url+'\n\nOnce signed, we can proceed. Thank you — GrandPride.';
+  const contact=(STATE.current.customer_contact||'').replace(/[^0-9]/g,'');
+  const wa = contact ? ('https://wa.me/6'+contact.replace(/^6/,'')+'?text='+encodeURIComponent(msg))
+                     : ('https://wa.me/?text='+encodeURIComponent(msg));
+  window.open(wa,'_blank');
+  toast('Link ready — send it to the customer');
+}
+
 function validate(){
   const a=STATE.current, st=STATE.stage;
   if(st==='out'){
@@ -1480,16 +1502,28 @@ function prefillFromJob(){
   const job=jobParam('job'); if(!job) return false;
   const mode=jobParam('mode')||'delivery';
   const name=jobParam('name'), contact=jobParam('contact'), model=jobParam('model'), plate=jobParam('plate');
+  const leaseFrom=jobParam('lease_from'), leaseTo=jobParam('lease_to');
+  const deposit=jobParam('deposit'), price=jobParam('price'), paid=jobParam('paid');
   if(mode==='delivery' || mode==='out'){
     STATE.current=blankChecklist(); STATE.stage='out';
     STATE.current.job_id=job;
     STATE.current.customer_name=name; STATE.current.customer_contact=contact;
     STATE.current.car_model=model; STATE.current.car_plate=plate;
+    STATE.current.lease_from=leaseFrom||''; STATE.current.lease_to=leaseTo||'';
+    STATE.current.deposit=deposit||''; STATE.current.leasing_price=price||'';
+    STATE.current.out_date=leaseFrom||STATE.current.out_date;
+    STATE.current.job_paid=(paid==='1');
+    // auto duration in days from lease_from -> lease_to
+    if(leaseFrom && leaseTo){
+      try{ const d1=new Date(leaseFrom), d2=new Date(leaseTo);
+        const days=Math.max(1,Math.round((d2-d1)/(1000*60*60*24)));
+        STATE.current.duration_days=days+' DAYS';
+      }catch(e){}
+    }
     showForm();
     return true;
   }
   if(mode==='return' || mode==='in'){
-    // return: open the pending-returns list and pre-fill the plate search
     if(typeof showPending==='function'){
       showPending();
       setTimeout(function(){ var sp=document.getElementById('searchPlate'); if(sp && plate){ sp.value=plate; if(typeof filterPending==='function') filterPending(); } }, 150);

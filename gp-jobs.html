@@ -513,10 +513,14 @@ async function cancelDeal(id){
 
 function openChecklist(id,mode){
   const j=JOBS.find(x=>x.id===id); if(!j) return;
+  const fullyPaid = jobBalance(j)<=0;
   const p=new URLSearchParams({
     job:j.id, mode:mode,
     name:j.customer_name||'', contact:j.customer_contact||'',
-    model:j.car_model||'', plate:j.car_plate||''
+    model:j.car_model||'', plate:j.car_plate||'',
+    lease_from:j.start_date||'', lease_to:j.end_date||'',
+    deposit:num(j.deposit_amount)||'', price:num(j.price)||'',
+    paid: fullyPaid?'1':'0'
   });
   location.href='gp-checklist.html?'+p.toString();
 }
