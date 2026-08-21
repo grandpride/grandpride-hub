@@ -149,6 +149,26 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
 function num(v){const n=parseFloat(v);return isNaN(n)?0:n;}
 function fmtDate(d){if(!d)return '—';const t=new Date(d);if(isNaN(t))return '—';return t.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+// convert "9:00 AM" (or "09:00") -> "09:00" for the native time picker
+function to24(s){
+  if(!s) return '';
+  s=String(s).trim();
+  let m=s.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if(!m) return /^\d{1,2}:\d{2}$/.test(s)?s:'';
+  let h=parseInt(m[1],10), min=m[2], ap=(m[3]||'').toUpperCase();
+  if(ap==='PM'&&h<12) h+=12;
+  if(ap==='AM'&&h===12) h=0;
+  return String(h).padStart(2,'0')+':'+min;
+}
+// convert "09:00" -> "9:00 AM" for saving/display
+function to12(s){
+  if(!s) return '';
+  let m=String(s).match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return s;
+  let h=parseInt(m[1],10), min=m[2], ap=h>=12?'PM':'AM';
+  h=h%12; if(h===0) h=12;
+  return h+':'+min+' '+ap;
+}
 function svcLabel(v){const s=SERVICES.find(x=>x.v===v);return s?s.label:(v||'—');}
 
 async function boot(){
@@ -364,11 +384,11 @@ function jobForm(){
     <select id="j_fleet">${carOpts}</select>
     <div class="row2">
       <div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div>
-      <div><label>Start time</label><input id="j_start_time" value="${esc(j.start_time||'')}" placeholder="9:00 AM"></div>
+      <div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div>
     </div>
     <div class="row2">
       <div><label>End date</label><input type="date" id="j_end_date" value="${esc(j.end_date||'')}"></div>
-      <div><label>End time</label><input id="j_end_time" value="${esc(j.end_time||'')}" placeholder="6:00 PM"></div>
+      <div><label>End time</label><input type="time" id="j_end_time" value="${esc(to24(j.end_time)||'')}"></div>
     </div>
     <label>Assigned driver (optional)</label>
     <select id="j_driver">${drvOpts}</select>
@@ -393,8 +413,8 @@ async function saveJob(){
     customer_id:j.customer_id, customer_name:j.customer_name, customer_contact:j.customer_contact||null,
     fleet_id:fleetId, car_model:car?car.model:null, car_plate:car?car.plate:null,
     service_type:$('j_service').value, service_desc:svcLabel($('j_service').value),
-    start_date:$('j_start_date').value||null, start_time:$('j_start_time').value||null,
-    end_date:$('j_end_date').value||null, end_time:$('j_end_time').value||null,
+    start_date:$('j_start_date').value||null, start_time:to12($('j_start_time').value)||null,
+    end_date:$('j_end_date').value||null, end_time:to12($('j_end_time').value)||null,
     driver_username:drvUser, driver_name:drv?drv.name:null,
     price:num($('j_price').value), deposit_amount:num($('j_deposit').value),
     remark:($('j_remark').value||'').toUpperCase()||null, updated_at:new Date().toISOString()
