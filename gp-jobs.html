@@ -179,6 +179,11 @@ async function boot(){
   if(!session){ $('gate').classList.remove('hidden'); return; }
   ME=(session.user&&session.user.email)||'';
   await loadAll();
+  // if we returned from the checklist with ?open=<jobid>, jump straight into that job
+  try{
+    const openId=new URLSearchParams(location.search).get('open');
+    if(openId && JOBS.find(x=>x.id===openId)){ openJob(openId); }
+  }catch(e){}
 }
 async function loadAll(){
   const [j,c,f,d,cl]=await Promise.all([

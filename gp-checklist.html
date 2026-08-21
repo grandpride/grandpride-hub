@@ -717,9 +717,10 @@ function showForm(){
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
     <button class="btn" onclick="saveChecklist(false)">Save</button>
+    ${(typeof jobParam==='function' && jobParam('job')) ? `<button class="btn ok" onclick="saveAndBack()"><i class="ti ti-check"></i> Save &amp; back to GP Jobs</button>` : ''}
     <button class="btn ok" id="genBtn" onclick="generateChecklist()">Generate PDF</button>
     <button class="btn sec" onclick="testGeneratePdf()">🧪 Test PDF</button>
-    <button class="btn sec" onclick="showChooser()">Exit</button>
+    <button class="btn sec" onclick="${(typeof jobParam==='function' && jobParam('job')) ? 'backToJob()' : 'showChooser()'}">Exit</button>
   </div>`;
 
   // restore state into pads + render markers + photos
@@ -1152,7 +1153,23 @@ async function sendSignLink(){
   const wa = contact ? ('https://wa.me/6'+contact.replace(/^6/,'')+'?text='+encodeURIComponent(msg))
                      : ('https://wa.me/?text='+encodeURIComponent(msg));
   window.open(wa,'_blank');
-  toast('Link ready — send it to the customer');
+  toast('Link sent — returning to GP Jobs…');
+  // customer has been sent the link; this is the "done" signal → go back to the job
+  setTimeout(function(){ backToJob(); }, 1200);
+}
+
+/* Return to GP Jobs if this checklist was opened from a job, else to the Hub */
+function backToJob(){
+  var job = (typeof jobParam==='function') ? jobParam('job') : '';
+  if(job){ location.href='gp-jobs.html?open='+encodeURIComponent(job); }
+  else { location.href='gp-jobs.html'; }
+}
+async function saveAndBack(){
+  toast('Saving…');
+  const ok=await saveChecklist(true);
+  if(!ok){ toast('Save failed — try again'); return; }
+  toast('Saved ✓ — returning to GP Jobs…');
+  setTimeout(function(){ backToJob(); }, 900);
 }
 
 function validate(){
