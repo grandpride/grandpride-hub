@@ -42,6 +42,17 @@
   input{width:100%;font-family:inherit;font-size:15px;color:var(--paper);background:#0f0d0a;border:1px solid var(--line);border-radius:9px;padding:11px;margin-top:6px}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1c1810;border:1px solid var(--gold);color:var(--gold-soft);padding:10px 18px;border-radius:10px;font-size:13px;z-index:80;opacity:0;transition:.2s;pointer-events:none}
   .toast.show{opacity:1}
+
+/* ==== GRANDPRIDE UPPERCASE (visual) ==== */
+body, input, select, textarea, button, .tile, .card, h1,h2,h3,h4,label{ text-transform:uppercase; }
+/* keep these lowercase-sensitive: email, password, url, phone, links, code */
+input[type="email"], input[type="password"], input[type="url"], input[type="tel"],
+input[type="number"], input[type="date"], input[type="time"], input[type="file"],
+input[inputmode="email"], input[inputmode="tel"], input[inputmode="url"],
+a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
+/* placeholders read nicer in normal case */
+::placeholder{ text-transform:none; }
+
 </style>
 </head>
 <body>

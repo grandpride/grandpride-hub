@@ -68,6 +68,17 @@
   .jc-name{font-weight:700;font-size:15px}
   .jc-sub{font-size:12px;color:var(--muted);margin-top:1px}
   .chip{display:inline-block;font-size:11px;padding:2px 7px;border-radius:6px;background:var(--card2);color:var(--muted);margin-right:5px}
+
+/* ==== GRANDPRIDE UPPERCASE (visual) ==== */
+body, input, select, textarea, button, .tile, .card, h1,h2,h3,h4,label{ text-transform:uppercase; }
+/* keep these lowercase-sensitive: email, password, url, phone, links, code */
+input[type="email"], input[type="password"], input[type="url"], input[type="tel"],
+input[type="number"], input[type="date"], input[type="time"], input[type="file"],
+input[inputmode="email"], input[inputmode="tel"], input[inputmode="url"],
+a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
+/* placeholders read nicer in normal case */
+::placeholder{ text-transform:none; }
+
 </style>
 </head>
 <body>
@@ -154,7 +165,7 @@ async function loadAll(){
     sb.from('gp_jobs').select('*').order('start_date',{ascending:false}),
     sb.from('gp_customers').select('*').order('name',{ascending:true}),
     sb.from('gp_fleet').select('id,plate,model,status').order('plate',{ascending:true}),
-    sb.from('gp_staff').select('id,name,is_chauffeur,can_drive').order('name',{ascending:true})
+    sb.from('gp_staff').select('username,name,is_chauffeur,can_drive').order('name',{ascending:true})
   ]);
   JOBS=j.data||[]; CUSTOMERS=c.data||[]; FLEET=f.data||[];
   DRIVERS=(d.data||[]).filter(s=>s.is_chauffeur||s.can_drive);
@@ -263,12 +274,12 @@ function custTypeToggle(){
 }
 async function saveCustomer(id){
   const co=$('c_type').value==='company';
-  const name=$('c_name').value.trim();
+  const name=$('c_name').value.trim().toUpperCase();
   if(!name){ toast('Name required'); return; }
   const row={
     cust_type:$('c_type').value, name, contact:$('c_contact').value||null, email:$('c_email').value||null,
-    nric: co?null:($('c_idno').value||null), company_reg: co?($('c_idno').value||null):null,
-    address:$('c_address').value||null, is_returning:$('c_returning').checked, updated_at:new Date().toISOString()
+    nric: co?null:(($('c_idno').value||'').toUpperCase()||null), company_reg: co?(($('c_idno').value||'').toUpperCase()||null):null,
+    address:($('c_address').value||'').toUpperCase()||null, is_returning:$('c_returning').checked, updated_at:new Date().toISOString()
   };
   let res;
   if(id){ res=await sb.from('gp_customers').update(row).eq('id',id); }
@@ -322,7 +333,7 @@ function quickAddCustomer(){
   `);
 }
 async function saveQuickCustomer(){
-  const name=$('qc_name').value.trim(); if(!name){ toast('Name required'); return; }
+  const name=$('qc_name').value.trim().toUpperCase(); if(!name){ toast('Name required'); return; }
   const row={cust_type:$('qc_type').value,name,contact:$('qc_contact').value||null};
   const res=await sb.from('gp_customers').insert(row).select().single();
   if(res.error){ toast('Failed: '+res.error.message); return; }
@@ -340,7 +351,7 @@ function jobForm(){
     ? `<div class="pickrow" onclick="pickCustomer()"><b>${esc(j.customer_name)}</b><div class="muted" style="font-size:13px">${esc(j.customer_contact||'')} · tap to change</div></div>`
     : `<button class="btn sec" onclick="pickCustomer()"><i class="ti ti-user-plus"></i> Choose customer</button>`;
   const carOpts=`<option value="">— choose car —</option>`+FLEET.map(f=>`<option value="${f.id}" ${j.fleet_id===f.id?'selected':''}>${esc(f.plate)} · ${esc(f.model)}</option>`).join('');
-  const drvOpts=`<option value="">— none —</option>`+DRIVERS.map(d=>`<option value="${d.id}" ${j.driver_id===d.id?'selected':''}>${esc(d.name)}</option>`).join('');
+  const drvOpts=`<option value="">— none —</option>`+DRIVERS.map(d=>`<option value="${esc(d.username)}" ${j.driver_username===d.username?'selected':''}>${esc(d.name)}</option>`).join('');
   const svcOpts=SERVICES.map(s=>`<option value="${s.v}" ${j.service_type===s.v?'selected':''}>${s.label}</option>`).join('');
   showModal(`
     <button class="x" onclick="closeModal()">×</button>
@@ -376,17 +387,17 @@ async function saveJob(){
   if(!j.customer_id){ toast('Choose a customer first'); return; }
   const fleetId=$('j_fleet').value||null;
   const car=FLEET.find(f=>f.id===fleetId);
-  const drvId=$('j_driver').value||null;
-  const drv=DRIVERS.find(d=>d.id===drvId);
+  const drvUser=$('j_driver').value||null;
+  const drv=DRIVERS.find(d=>d.username===drvUser);
   const row={
     customer_id:j.customer_id, customer_name:j.customer_name, customer_contact:j.customer_contact||null,
     fleet_id:fleetId, car_model:car?car.model:null, car_plate:car?car.plate:null,
     service_type:$('j_service').value, service_desc:svcLabel($('j_service').value),
     start_date:$('j_start_date').value||null, start_time:$('j_start_time').value||null,
     end_date:$('j_end_date').value||null, end_time:$('j_end_time').value||null,
-    driver_id:drvId, driver_name:drv?drv.name:null,
+    driver_username:drvUser, driver_name:drv?drv.name:null,
     price:num($('j_price').value), deposit_amount:num($('j_deposit').value),
-    remark:$('j_remark').value||null, updated_at:new Date().toISOString()
+    remark:($('j_remark').value||'').toUpperCase()||null, updated_at:new Date().toISOString()
   };
   let res, jobId=j.id;
   if(j.id){ res=await sb.from('gp_jobs').update(row).eq('id',j.id); }

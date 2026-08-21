@@ -73,6 +73,17 @@
   .gate .box{max-width:340px;width:100%;text-align:center}
   .gate img{height:54px;margin-bottom:20px}
   .itemrow{display:grid;grid-template-columns:1fr 90px 34px;gap:8px;align-items:center;margin-bottom:8px}
+
+/* ==== GRANDPRIDE UPPERCASE (visual) ==== */
+body, input, select, textarea, button, .tile, .card, h1,h2,h3,h4,label{ text-transform:uppercase; }
+/* keep these lowercase-sensitive: email, password, url, phone, links, code */
+input[type="email"], input[type="password"], input[type="url"], input[type="tel"],
+input[type="number"], input[type="date"], input[type="time"], input[type="file"],
+input[inputmode="email"], input[inputmode="tel"], input[inputmode="url"],
+a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
+/* placeholders read nicer in normal case */
+::placeholder{ text-transform:none; }
+
 </style>
 </head>
 <body>
@@ -393,20 +404,21 @@ async function uploadCarPhoto(inp){
 
 async function saveCar(id){
   const g=k=>{const e=$('f_'+k);return e?e.value:'';};
-  const model=g('model').trim(), plate=g('plate').trim().toUpperCase();
+  const up=v=>v?String(v).toUpperCase():v;
+  const model=up(g('model').trim()), plate=g('plate').trim().toUpperCase();
   if(!model||!plate){ toast('Model and plate required'); return; }
   const row={
     model, plate,
-    photo_url:g('photo_url')||null, colour:g('colour')||null, year:g('year')||null,
+    photo_url:g('photo_url')||null, colour:up(g('colour'))||null, year:g('year')||null,
     car_type: (g('car_type_sel')==='__other' ? (g('car_type_other')||null) : g('car_type_sel')),
     current_mileage:num(g('current_mileage')),
-    owner_type:g('owner_type'), partner_name:g('partner_name')||null, partner_contact:g('partner_contact')||null,
+    owner_type:g('owner_type'), partner_name:up(g('partner_name'))||null, partner_contact:g('partner_contact')||null,
     status:g('status'),
     roadtax_expiry:g('roadtax_expiry')||null, insurance_expiry:g('insurance_expiry')||null,
     engine_oil_next_date:g('engine_oil_next_date')||null, engine_oil_next_km:g('engine_oil_next_km')?num(g('engine_oil_next_km')):null,
     atf_next_date:g('atf_next_date')||null, atf_next_km:g('atf_next_km')?num(g('atf_next_km')):null,
     alignment_last_date:g('alignment_last_date')||null,
-    remark:g('remark')||null, updated_at:new Date().toISOString()
+    remark:up(g('remark'))||null, updated_at:new Date().toISOString()
   };
   let res;
   if(id){ res=await sb.from('gp_fleet').update(row).eq('id',id); }

@@ -129,6 +129,17 @@ input:focus,textarea:focus,select:focus{border-color:var(--gold)}
   @page{size:A4 portrait;margin:0}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+/* ==== GRANDPRIDE UPPERCASE (visual) ==== */
+body, input, select, textarea, button, .tile, .card, h1,h2,h3,h4,label{ text-transform:uppercase; }
+/* keep these lowercase-sensitive: email, password, url, phone, links, code */
+input[type="email"], input[type="password"], input[type="url"], input[type="tel"],
+input[type="number"], input[type="date"], input[type="time"], input[type="file"],
+input[inputmode="email"], input[inputmode="tel"], input[inputmode="url"],
+a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
+/* placeholders read nicer in normal case */
+::placeholder{ text-transform:none; }
+
 </style>
 </head>
 <body>
