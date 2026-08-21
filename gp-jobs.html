@@ -216,7 +216,7 @@ function jobCard(j){
   const stageIdx=STAGES.indexOf(j.stage);
   const bar=STAGES.slice(0,5).map((s,i)=>`<div class="s ${stageIdx>=i?'done':''}"></div>`).join('');
   const pay = j.payment_status==='paid'?'<span class="chip" style="color:#7fe0a0">paid</span>'
-    : j.payment_status==='partial'?'<span class="chip" style="color:#e0b060">partial</span>'
+    : num(j.paid_amount)>0?`<span class="chip" style="color:#e0b060">bal RM ${jobBalance(j).toLocaleString()}</span>`
     : '<span class="chip" style="color:#ffb3a6">unpaid</span>';
   const depDue = (j.stage==='returned' && num(j.deposit_amount)>0 && num(j.deposit_returned)===0)?'<span class="chip" style="color:#e0b060">deposit due</span>':'';
   return `<div class="card" onclick="openJob('${j.id}')">
@@ -454,7 +454,9 @@ function openJob(id){
       <div class="rowline"><span class="muted">Driver</span><span>${esc(j.driver_name||'—')}</span></div>
       <div class="rowline"><span class="muted">Price</span><span>RM ${num(j.price).toLocaleString()}</span></div>
       <div class="rowline"><span class="muted">Deposit</span><span>RM ${num(j.deposit_amount).toLocaleString()}</span></div>
-      <div class="rowline"><span class="muted">Payment</span><span>${esc(j.payment_status)}${num(j.paid_amount)>0?' · RM '+num(j.paid_amount).toLocaleString():''}</span></div>
+      <div class="rowline"><span class="muted">Total to collect</span><b>RM ${jobTotal(j).toLocaleString()}</b></div>
+      <div class="rowline"><span class="muted">Paid</span><span>RM ${jobPaid(j).toLocaleString()}</span></div>
+      ${jobBalance(j)>0?`<div class="rowline"><span class="muted">Balance</span><b style="color:var(--amber)">RM ${jobBalance(j).toLocaleString()}</b></div>`:`<div class="rowline"><span class="muted">Payment</span><b style="color:var(--green)">Fully paid ✓</b></div>`}
       ${j.remark?`<div class="rowline"><span class="muted">Remark</span><span style="text-align:right;max-width:60%">${esc(j.remark)}</span></div>`:''}
     </div>
     <div class="card">
@@ -468,16 +470,35 @@ function openJob(id){
 function editJob(id){ const j=JOBS.find(x=>x.id===id); JOB_DRAFT=Object.assign({},j); jobForm(); }
 
 function lifecycleButton(j){
-  if(j.stage==='booked') return `<button class="btn" onclick="markPaid('${j.id}')"><i class="ti ti-cash"></i> Record payment</button>`;
+  if(j.stage==='booked'){
+    const bal=jobBalance(j), paid=jobPaid(j);
+    const balNote = paid>0
+      ? `<div class="card" style="padding:11px;margin-bottom:8px"><div class="rowline"><span class="muted">Paid</span><span>RM ${paid.toLocaleString()}</span></div><div class="rowline"><span class="muted">Balance to collect</span><b style="color:var(--amber)">RM ${bal.toLocaleString()}</b></div></div>`
+      : '';
+    return balNote+
+      `<button class="btn" onclick="markPaid('${j.id}')"><i class="ti ti-cash"></i> ${paid>0?'Record balance payment':'Record payment'}</button>
+       <div class="hint" style="text-align:center;margin-top:8px">Deliver unlocks once fully paid (price + deposit)</div>
+       <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
+  }
   if(j.stage==='paid') return `
     <button class="btn sec" onclick="openChecklist('${j.id}','delivery')"><i class="ti ti-clipboard-check"></i> 1. QC checklist (delivery)</button>
-    <button class="btn" style="margin-top:8px" onclick="markDelivered('${j.id}')"><i class="ti ti-car"></i> 2. Mark delivered (car out)</button>`;
+    <button class="btn" style="margin-top:8px" onclick="markDelivered('${j.id}')"><i class="ti ti-car"></i> 2. Mark delivered (car out)</button>
+    <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
   if(j.stage==='delivered') return `<button class="btn" onclick="markReturned('${j.id}')"><i class="ti ti-arrow-back-up"></i> Mark returned</button>`;
   if(j.stage==='returned') return `
     <button class="btn sec" onclick="openChecklist('${j.id}','return')"><i class="ti ti-clipboard-check"></i> 1. QC checklist (return)</button>
     <button class="btn" style="margin-top:8px" onclick="settleDeposit('${j.id}')"><i class="ti ti-receipt"></i> 2. Settle deposit</button>`;
   if(j.stage==='deposit_settled') return `<button class="btn" onclick="markDone('${j.id}')"><i class="ti ti-check"></i> Mark done</button>`;
   return '';
+}
+
+async function cancelDeal(id){
+  if(!confirm('Customer cancelled the deal? This marks the job cancelled.')) return;
+  const j=JOBS.find(x=>x.id===id);
+  await sb.from('gp_jobs').update({stage:'cancelled',updated_at:new Date().toISOString()}).eq('id',id);
+  // free the car if it was tied up
+  if(j.fleet_id){ await sb.from('gp_fleet').update({status:'available'}).eq('id',j.fleet_id).then(()=>{}); }
+  toast('Deal cancelled'); await loadAll(); closeModal();
 }
 
 function openChecklist(id,mode){
@@ -490,15 +511,26 @@ function openChecklist(id,mode){
   location.href='gp-checklist.html?'+p.toString();
 }
 
+function jobTotal(j){ return num(j.price)+num(j.deposit_amount); }
+function jobPaid(j){ return num(j.paid_amount); }
+function jobBalance(j){ return Math.max(0, jobTotal(j)-jobPaid(j)); }
+
 async function markPaid(id){
   const j=JOBS.find(x=>x.id===id);
+  const total=jobTotal(j), paid=jobPaid(j), bal=jobBalance(j);
   showModal(`
     <button class="x" onclick="openJob('${id}')">×</button>
     <h3>Record payment</h3>
-    <label>Status</label>
-    <select id="p_status"><option value="paid">Paid (full)</option><option value="partial">Partial / deposit only</option></select>
-    <label>Amount received (RM)</label>
-    <input id="p_amount" inputmode="decimal" value="${num(j.price)||''}">
+    <div class="card" style="padding:11px;margin-bottom:6px">
+      <div class="rowline"><span class="muted">Rental price</span><span>RM ${num(j.price).toLocaleString()}</span></div>
+      <div class="rowline"><span class="muted">Deposit</span><span>RM ${num(j.deposit_amount).toLocaleString()}</span></div>
+      <div class="rowline"><span class="muted">Total to collect</span><b>RM ${total.toLocaleString()}</b></div>
+      <div class="rowline"><span class="muted">Paid so far</span><span>RM ${paid.toLocaleString()}</span></div>
+      <div class="rowline"><span class="muted">Balance remaining</span><b style="color:${bal>0?'var(--amber)':'var(--green)'}">RM ${bal.toLocaleString()}</b></div>
+    </div>
+    <label>Amount received now (RM)</label>
+    <input id="p_amount" inputmode="decimal" value="${bal||''}" placeholder="e.g. deposit or balance">
+    <div class="hint">Tip: enter the deposit first, then the balance later. It adds up.</div>
     <label>Payment date</label>
     <input type="date" id="p_date" value="${new Date().toISOString().slice(0,10)}">
     <label>Slip (photo/screenshot)</label>
@@ -517,12 +549,25 @@ async function uploadSlip(inp){
   }catch(e){ $('slipHint').textContent='Upload failed'; }
 }
 async function doMarkPaid(id){
-  const st=$('p_status').value;
-  const upd={ payment_status:st, paid_amount:num($('p_amount').value), paid_date:$('p_date').value||null,
-    payment_slip:$('p_slip_url').value||null, stage: st==='paid'?'paid':'booked', updated_at:new Date().toISOString() };
+  const j=JOBS.find(x=>x.id===id);
+  const add=num($('p_amount').value);
+  if(add<=0){ toast('Enter an amount'); return; }
+  const newPaid=jobPaid(j)+add;
+  const total=jobTotal(j);
+  const fullyPaid = newPaid>=total;
+  const upd={
+    paid_amount:newPaid,
+    payment_status: fullyPaid?'paid':'partial',
+    paid_date:$('p_date').value||null,
+    payment_slip:$('p_slip_url').value||j.payment_slip||null,
+    stage: fullyPaid?'paid':'booked',
+    updated_at:new Date().toISOString()
+  };
   const res=await sb.from('gp_jobs').update(upd).eq('id',id);
   if(res.error){ toast('Failed: '+res.error.message); return; }
-  toast('Payment recorded ✓'); await loadAll(); openJob(id);
+  const bal=Math.max(0,total-newPaid);
+  toast(fullyPaid?'Fully paid ✓':('Recorded ✓ — balance RM '+bal.toLocaleString()));
+  await loadAll(); openJob(id);
 }
 
 async function markDelivered(id){
