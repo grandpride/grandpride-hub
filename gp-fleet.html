@@ -231,7 +231,7 @@ function renderList(){
     const due=dueItems(c).filter(d=>d.level==='urgent'||d.level==='soon');
     const dueBadge=due.length?`<span class="pill" style="background:#331a1a;color:#ffb3a6">⚠ ${due.length}</span>`:'';
     const ph=c.photo_url?`style="background-image:url('${esc(c.photo_url)}')"`:'';
-    return `<div class="fcard" onclick="openDetail(${c.id})">
+    return `<div class="fcard" onclick="openDetail('${c.id}')">
       <div class="ph" ${ph}>${c.photo_url?'':'<i class="ti ti-car"></i>'}</div>
       <div class="body">
         <div class="nm">${esc(c.model||'—')}</div>
@@ -274,15 +274,15 @@ function openDetail(id){
       <div class="rowline"><span class="muted">Alignment / balancing</span><span>${fmtDate(c.alignment_last_date)}</span></div>
     </div>
     <div class="row2" style="margin-bottom:10px">
-      <button class="btn sec sm" style="width:100%" onclick="openService(${c.id})"><i class="ti ti-tool"></i> Service log</button>
-      <button class="btn sec sm" style="width:100%" onclick="openAccident(${c.id})"><i class="ti ti-alert-triangle"></i> Accident</button>
+      <button class="btn sec sm" style="width:100%" onclick="openService('${c.id}')"><i class="ti ti-tool"></i> Service log</button>
+      <button class="btn sec sm" style="width:100%" onclick="openAccident('${c.id}')"><i class="ti ti-alert-triangle"></i> Accident</button>
     </div>
     <div class="row2" style="margin-bottom:10px">
-      <button class="btn sec sm" style="width:100%" onclick="quickRenew(${c.id})"><i class="ti ti-refresh"></i> Renew tax/ins</button>
-      <button class="btn sec sm" style="width:100%" onclick="setMileage(${c.id})"><i class="ti ti-gauge"></i> Update mileage</button>
+      <button class="btn sec sm" style="width:100%" onclick="quickRenew('${c.id}')"><i class="ti ti-refresh"></i> Renew tax/ins</button>
+      <button class="btn sec sm" style="width:100%" onclick="setMileage('${c.id}')"><i class="ti ti-gauge"></i> Update mileage</button>
     </div>
-    <button class="btn" onclick="openEdit(${c.id})"><i class="ti ti-edit"></i> Edit car</button>
-    ${c.owner_type==='partner'?`<button class="btn sec" style="margin-top:8px" onclick="markReturnedOwner(${c.id})">↩ Returned to owner</button>`:''}
+    <button class="btn" onclick="openEdit('${c.id}')"><i class="ti ti-edit"></i> Edit car</button>
+    ${c.owner_type==='partner'?`<button class="btn sec" style="margin-top:8px" onclick="markReturnedOwner('${c.id}')">↩ Returned to owner</button>`:''}
   `);
 }
 
@@ -350,8 +350,8 @@ function openEdit(id){
     <label>Remark</label>
     <textarea id="f_remark" placeholder="Any notes…">${v('remark')}</textarea>
 
-    <button class="btn" style="margin-top:16px" onclick="saveCar(${id||'null'})">Save car</button>
-    ${id?`<button class="btn danger" style="margin-top:8px" onclick="deleteCar(${id})">Delete car</button>`:''}
+    <button class="btn" style="margin-top:16px" onclick="saveCar(${id?("'"+id+"'"):'null'})">Save car</button>
+    ${id?`<button class="btn danger" style="margin-top:8px" onclick="deleteCar('${id}')">Delete car</button>`:''}
   `);
 }
 function togglePartner(){ $('partnerBox').classList.toggle('hidden', $('f_owner_type').value!=='partner'); }
@@ -455,19 +455,19 @@ async function openService(fleetId){
         <span class="muted" style="font-size:13px">${esc(s.workshop||'')}</span>
         <span>RM ${num(s.total_cost).toLocaleString()} · <span class="muted">${s.paid_by==='customer'?'charged customer':'company paid'}</span></span>
       </div>
-      <button class="btn danger sm" style="margin-top:8px;width:100%" onclick="delService(${s.id},${fleetId})">Delete</button>
+      <button class="btn danger sm" style="margin-top:8px;width:100%" onclick="delService('${s.id}','${fleetId}')">Delete</button>
     </div>`).join('');
   showModal(`
-    <button class="x" onclick="openDetail(${fleetId})">×</button>
+    <button class="x" onclick="openDetail('${fleetId}')">×</button>
     <h3><i class="ti ti-tool"></i> Service log — ${esc(c.plate)}</h3>
-    <button class="btn" onclick="addServiceForm(${fleetId})"><i class="ti ti-plus"></i> Add service record</button>
+    <button class="btn" onclick="addServiceForm('${fleetId}')"><i class="ti ti-plus"></i> Add service record</button>
     <div style="margin-top:14px">${rows||'<div class="muted" style="text-align:center;padding:20px 0">No service records yet.</div>'}</div>
   `);
 }
 function addServiceForm(fleetId){
   const c=FLEET.find(x=>x.id===fleetId);
   showModal(`
-    <button class="x" onclick="openService(${fleetId})">×</button>
+    <button class="x" onclick="openService('${fleetId}')">×</button>
     <h3>Add service — ${esc(c.plate)}</h3>
     <div class="row2">
       <div><label>Date</label><input type="date" id="s_date" value="${new Date().toISOString().slice(0,10)}"></div>
@@ -483,7 +483,7 @@ function addServiceForm(fleetId){
       <div><label>Total cost (RM)</label><input id="s_cost" inputmode="decimal" placeholder="0"></div>
       <div><label>Paid by</label><select id="s_paidby"><option value="company">Company</option><option value="customer">Customer</option></select></div>
     </div>
-    <button class="btn" style="margin-top:14px" onclick="saveService(${fleetId})">Save record</button>
+    <button class="btn" style="margin-top:14px" onclick="saveService('${fleetId}')">Save record</button>
   `);
 }
 async function saveService(fleetId){
@@ -524,13 +524,13 @@ async function openAccident(fleetId){
       <div class="photostrip">${phs}</div>
       <div style="margin-top:6px">${price}${a.bear_by!=='company'?` <span class="muted">(cost RM ${num(a.total_cost).toLocaleString()} + ${num(a.markup_pct)}%)</span>`:''}</div>
       ${a.claim_status?`<div class="muted" style="font-size:13px">Claim: ${esc(a.claim_status)}</div>`:''}
-      <button class="btn danger sm" style="margin-top:8px;width:100%" onclick="delAccident(${a.id},${fleetId})">Delete</button>
+      <button class="btn danger sm" style="margin-top:8px;width:100%" onclick="delAccident('${a.id}','${fleetId}')">Delete</button>
     </div>`;
   }).join('');
   showModal(`
-    <button class="x" onclick="openDetail(${fleetId})">×</button>
+    <button class="x" onclick="openDetail('${fleetId}')">×</button>
     <h3><i class="ti ti-alert-triangle"></i> Accidents — ${esc(c.plate)}</h3>
-    <button class="btn" onclick="addAccidentForm(${fleetId})"><i class="ti ti-plus"></i> New accident record</button>
+    <button class="btn" onclick="addAccidentForm('${fleetId}')"><i class="ti ti-plus"></i> New accident record</button>
     <div class="hint" style="margin-top:8px">Insurance hotline + claim steps are in your remark / notes — add them per partner.</div>
     <div style="margin-top:14px">${rows||'<div class="muted" style="text-align:center;padding:20px 0">No accident records.</div>'}</div>
   `);
@@ -545,20 +545,20 @@ function renderAccForm(fleetId,c){
     <div class="itemrow">
       <input placeholder="Repair item" value="${esc(it.item)}" oninput="ACC_ITEMS[${i}].item=this.value">
       <input placeholder="Cost" inputmode="decimal" value="${esc(it.cost)}" oninput="ACC_ITEMS[${i}].cost=this.value;accTotals()">
-      <button class="btn sec sm" style="width:34px;padding:8px 0" onclick="ACC_ITEMS.splice(${i},1);renderAccForm(${fleetId},FLEET.find(x=>x.id===${fleetId}))">×</button>
+      <button class="btn sec sm" style="width:34px;padding:8px 0" onclick="ACC_ITEMS.splice(${i},1);renderAccForm('${fleetId}',FLEET.find(x=>x.id==='${fleetId}'))">×</button>
     </div>`).join('');
   const phs=ACC_PHOTOS.map(u=>`<img src="${esc(u)}">`).join('');
   showModal(`
-    <button class="x" onclick="openAccident(${fleetId})">×</button>
+    <button class="x" onclick="openAccident('${fleetId}')">×</button>
     <h3>New accident — ${esc(c.plate)}</h3>
     <label>Date</label><input type="date" id="a_date" value="${new Date().toISOString().slice(0,10)}">
     <label>Description</label><textarea id="a_desc" placeholder="What happened…"></textarea>
     <label>Damage photos</label>
-    <input type="file" accept="image/*" multiple onchange="uploadAccPhotos(this,${fleetId})">
+    <input type="file" accept="image/*" multiple onchange="uploadAccPhotos(this,'${fleetId}')">
     <div class="photostrip" id="accPhotoStrip">${phs}</div>
     <label style="margin-top:14px">Repair items + cost</label>
     <div id="accItems">${items}</div>
-    <button class="btn sec sm" style="width:100%;margin-bottom:8px" onclick="ACC_ITEMS.push({item:'',cost:''});renderAccForm(${fleetId},FLEET.find(x=>x.id===${fleetId}))"><i class="ti ti-plus"></i> Add item</button>
+    <button class="btn sec sm" style="width:100%;margin-bottom:8px" onclick="ACC_ITEMS.push({item:'',cost:''});renderAccForm('${fleetId}',FLEET.find(x=>x.id==='${fleetId}'))"><i class="ti ti-plus"></i> Add item</button>
     <div class="rowline"><span class="muted">Total cost</span><b id="accTotalCost">RM 0</b></div>
     <label>Who bears the cost</label>
     <select id="a_bearby" onchange="accTotals()">
@@ -575,7 +575,7 @@ function renderAccForm(fleetId,c){
     </div>
     <label>Claim status (optional)</label>
     <input id="a_claim" placeholder="e.g. submitted / approved / n/a">
-    <button class="btn" style="margin-top:14px" onclick="saveAccident(${fleetId})">Save accident record</button>
+    <button class="btn" style="margin-top:14px" onclick="saveAccident('${fleetId}')">Save accident record</button>
   `);
   accTotals();
 }
