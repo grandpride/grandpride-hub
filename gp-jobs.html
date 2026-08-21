@@ -480,10 +480,19 @@ function lifecycleButton(j){
        <div class="hint" style="text-align:center;margin-top:8px">Deliver unlocks once fully paid (price + deposit)</div>
        <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
   }
-  if(j.stage==='paid') return `
+  if(j.stage==='paid'){
+    // safety: even if stage says paid, if there's still a balance, block delivery
+    if(jobBalance(j)>0){
+      return `<div class="card" style="padding:11px;margin-bottom:8px"><div class="rowline"><span class="muted">Paid</span><span>RM ${jobPaid(j).toLocaleString()}</span></div><div class="rowline"><span class="muted">Balance to collect</span><b style="color:var(--amber)">RM ${jobBalance(j).toLocaleString()}</b></div></div>
+      <button class="btn" onclick="markPaid('${j.id}')"><i class="ti ti-cash"></i> Pay balance</button>
+      <div class="hint" style="text-align:center;margin-top:8px">Deliver unlocks once fully paid</div>
+      <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
+    }
+    return `
     <button class="btn sec" onclick="openChecklist('${j.id}','delivery')"><i class="ti ti-clipboard-check"></i> 1. QC checklist (delivery)</button>
     <button class="btn" style="margin-top:8px" onclick="markDelivered('${j.id}')"><i class="ti ti-car"></i> 2. Mark delivered (car out)</button>
     <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
+  }
   if(j.stage==='delivered') return `<button class="btn" onclick="markReturned('${j.id}')"><i class="ti ti-arrow-back-up"></i> Mark returned</button>`;
   if(j.stage==='returned') return `
     <button class="btn sec" onclick="openChecklist('${j.id}','return')"><i class="ti ti-clipboard-check"></i> 1. QC checklist (return)</button>
@@ -530,7 +539,11 @@ async function markPaid(id){
     </div>
     <label>Amount received now (RM)</label>
     <input id="p_amount" inputmode="decimal" value="${bal||''}" placeholder="e.g. deposit or balance">
-    <div class="hint">Tip: enter the deposit first, then the balance later. It adds up.</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn sec sm" style="flex:1" onclick="$('p_amount').value=${bal}">Full balance (${bal.toLocaleString()})</button>
+      <button class="btn sec sm" style="flex:1" onclick="$('p_amount').value=''">Clear</button>
+    </div>
+    <div class="hint">Customer can pay in parts — enter any amount. It adds to what's already paid.</div>
     <label>Payment date</label>
     <input type="date" id="p_date" value="${new Date().toISOString().slice(0,10)}">
     <label>Slip (photo/screenshot)</label>
