@@ -164,6 +164,10 @@
     font-size:13px;letter-spacing:1px;color:var(--gold-soft);text-transform:uppercase}
   .sec-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(201,162,75,.4),transparent)}
   .sec-head:first-child{margin-top:0}
+  /* workflow step badge on tiles that are part of a sequence */
+  .tile .flowstep{position:absolute;top:6px;left:6px;background:var(--gold);color:#1c1810;font-size:11px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:2}
+  .tile .flowarr{position:absolute;bottom:6px;right:8px;color:var(--gold-soft);font-size:15px;opacity:.7;z-index:2}
+  .flow-hint{grid-column:1/-1;font-size:12px;color:var(--muted);margin:2px 2px 8px;display:flex;align-items:center;gap:6px}
 
   /* ============ INNER APP VIEW ============ */
   .app-view-head{
@@ -309,9 +313,14 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
+<div id="bootSplash" style="position:fixed;inset:0;z-index:9999;background:#0b0b0b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px">
+  <div id="bootCrest" style="width:72px;height:72px"></div>
+  <div style="width:26px;height:26px;border:3px solid rgba(201,162,75,.25);border-top-color:#c9a94e;border-radius:50%;animation:bootspin .8s linear infinite"></div>
+</div>
+<style>@keyframes bootspin{to{transform:rotate(360deg)}}</style>
 
 <!-- ============ LOGIN ============ -->
-<div id="loginScreen" class="screen active">
+<div id="loginScreen" class="screen">
   <div class="login-card">
     <div class="crest" id="loginCrest"></div>
     <div class="brand-name display">Grandpride</div>
@@ -489,12 +498,12 @@ const APPS = [
   { id:'stock',      label:'Stock Report', svg:ICONS.stock,    logo:'', cat:'grandlab', link:'stock-report.html' },
   { id:'mia',        label:'MIA - Sales Assistant', svg:ICONS.mia,        logo:'', cat:'grandlab', extUrl:'https://grandlab-mia.vercel.app' },
   { id:'jobboard',   label:'Job Board',  svg:ICONS.jobboard,   logo:'', cat:'grandlab', extUrl:'https://grandlab-board.jimmykuek94.workers.dev' },
-  { id:'gpjobs',      label:'GP Jobs',               svg:ICONS.gpbooking,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-jobs.html' },
-  { id:'gpbooking',   label:'GP Booking',            svg:ICONS.gpbooking,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-booking.html' },
+  { id:'gpjobs',      label:'GP Jobs',               svg:ICONS.gpbooking,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-jobs.html', flow:1 },
+  { id:'gpagreement', label:'GP Agreement',          svg:ICONS.gpagreement, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-agreement.html', flow:2 },
+  { id:'gpchecklist', label:'GP Checklist',          svg:ICONS.gpchecklist, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-checklist.html', flow:3 },
+  { id:'gpdeposit',   label:'GP Deposit Return',     svg:ICONS.gpdeposit,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-deposit-return.html', flow:4 },
+  { id:'gpbooking',   label:'GP Booking (old)',      svg:ICONS.gpbooking,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-booking.html' },
   { id:'gpappt',      label:'GP Appointment',        svg:ICONS.gpappt,      logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-appointment.html' },
-  { id:'gpagreement', label:'GP Agreement',          svg:ICONS.gpagreement, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-agreement.html' },
-  { id:'gpchecklist', label:'GP Checklist',          svg:ICONS.gpchecklist, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-checklist.html' },
-  { id:'gpdeposit',   label:'GP Deposit Return',     svg:ICONS.gpdeposit,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-deposit-return.html' },
   { id:'gprecord',    label:'GP Record Summary',     svg:ICONS.gprecord,    logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-record-summary.html' },
   { id:'gpdaily',     label:'GP Daily Update',       svg:ICONS.gpdaily,     logo:'', cat:'grandpride', section:'GP Vehicle Status', link:'gp-daily-update.html' },
   { id:'gpfleet',     label:'GP Vehicle Fleet',      svg:ICONS.gpfleet,     logo:'', cat:'grandpride', section:'GP Vehicle Status', link:'gp-fleet.html' },
@@ -876,10 +885,12 @@ async function tryAutoLogin(){
     try{ await pullHubDataFromCloud(); }catch(e){ console.warn('pullHubData failed', e); }
     renderHub();
     show('hubScreen');
+    hideBootSplash();
     maybeShowPushBanner();
     return true;
   }catch(e){ return false; }
 }
+function hideBootSplash(){ const s=document.getElementById('bootSplash'); if(s){ s.style.opacity='0'; s.style.transition='opacity .25s'; setTimeout(()=>{ s.style.display='none'; },260); } }
 
 
 /* ================= NAV ================= */
@@ -960,6 +971,13 @@ function renderTiles(cat){
       head.textContent = app.section;
       grid.appendChild(head);
       lastSection = app.section;
+      // if this section has a numbered workflow, show a hint line
+      if(APPS.some(a=>a.cat===cat && a.section===app.section && a.flow)){
+        const hint=document.createElement('div');
+        hint.className='flow-hint';
+        hint.innerHTML='<span style="color:var(--gold)">➊→➍</span> Follow the steps in order';
+        grid.appendChild(hint);
+      }
     }
     const allowed = current.apps.includes(app.id) || current.role==='Admin' || app.id==='reminders' || app.id==='minigames';
     if(!allowed) lockedCount++;
@@ -968,8 +986,12 @@ function renderTiles(cat){
     const iconHtml = app.logo
       ? `<img src="${app.logo}" alt="" style="width:40px;height:40px;object-fit:contain">`
       : app.svg;
+    const flowBadge = app.flow ? `<div class="flowstep">${app.flow}</div>` : '';
+    const maxFlow = Math.max(0,...APPS.filter(a=>a.cat===cat && a.section===app.section && a.flow).map(a=>a.flow));
+    const flowArr = (app.flow && app.flow<maxFlow) ? `<div class="flowarr">→</div>` : '';
     tile.innerHTML = `
       ${allowed?'':'<div class="lock">🔒</div>'}
+      ${flowBadge}${flowArr}
       <div class="ic">${iconHtml}</div>
       <div class="lb">${app.label}</div>`;
     if(allowed){ tile.addEventListener('click',()=>openApp(app)); }
@@ -3259,6 +3281,8 @@ function toast(msg){
 
 /* ================= INIT ================= */
 async function init(){
+  // show logo in the boot splash immediately (LOGO const is defined up top)
+  try{ const bc0=document.getElementById('bootCrest'); if(bc0 && typeof LOGO!=='undefined') bc0.innerHTML='<img src="'+LOGO+'" alt="" style="width:72px;height:72px;object-fit:contain">'; }catch(e){}
   // connect to Supabase (shared helper). Google Sheets sync still runs separately.
   try{
     useCloud = await SUPA.init();
@@ -3297,6 +3321,7 @@ async function init(){
 
   // ---- bind all buttons here (preview sandboxes strip inline onclick) ----
   const lc=document.getElementById('loginCrest'); if(lc) lc.innerHTML = `<img src="${LOGO}" alt="Grandpride">`;
+  const bc=document.getElementById('bootCrest'); if(bc) bc.innerHTML = `<img src="${LOGO}" alt="" style="width:72px;height:72px;object-fit:contain">`;
   const bind=(id,fn)=>{ const e=document.getElementById(id); if(e) e.addEventListener('click',fn); };
   bind('btnEnter', doLogin);
   bind('btnLogout', logout);
@@ -3325,10 +3350,15 @@ async function init(){
 
   // Invite / password-recovery links must set a password FIRST (before auto-login)
   const landed = await handleInviteLanding();
-  if(landed) return; // stop here — show set-password screen, don't auto-login
+  if(landed){ hideBootSplash(); return; } // stop here — show set-password screen, don't auto-login
 
   // Remembered device: restore Supabase Auth session if still valid
-  await tryAutoLogin();
+  const loggedIn = await tryAutoLogin();
+  if(!loggedIn){
+    // not logged in — now reveal the login screen and hide the splash
+    show('loginScreen');
+    hideBootSplash();
+  }
 }
 init();
 </script><script>
