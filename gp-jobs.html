@@ -739,6 +739,7 @@ function openJob(id){
       ${j.location?`<div class="rowline"><span class="muted">Location</span><span style="text-align:right;max-width:60%">${esc(j.location)}</span></div>`:''}
       ${j.referral?`<div class="rowline"><span class="muted">Referral</span><span style="text-align:right;max-width:60%">${esc(j.referral)}</span></div>`:''}
       ${paymentHistoryHtml(j)}
+      ${extHistoryHtml(j)}
       ${j.remark?`<div class="rowline"><span class="muted">Remark</span><span style="text-align:right;max-width:60%">${esc(j.remark)}</span></div>`:''}
     </div>
     <div class="card">
@@ -746,11 +747,76 @@ function openJob(id){
     </div>
     ${signStatusHtml(j)}
     ${nextBtn}
+    ${['booked','paid','delivered'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="extendJob('${j.id}')"><i class="ti ti-clock-plus"></i> ⏱ Extend booking</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit details</button>
     <button class="btn sec" style="margin-top:8px" onclick="waSummary('${j.id}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp summary</button>
   `);
 }
 function editJob(id){ const j=JOBS.find(x=>x.id===id); JOB_DRAFT=Object.assign({},j); jobForm(); }
+
+/* ---------- Extend booking ---------- */
+function extHistoryHtml(j){
+  const h=Array.isArray(j.extensions)?j.extensions:[];
+  if(!h.length) return '';
+  return `<div class="rowline" style="margin-top:6px"><span class="muted" style="font-size:12px">Extensions</span></div>`+
+    h.map(e=>`<div class="hint" style="text-align:left">${fmtDate(e.date)} · to ${fmtDate(e.new_end)}${e.days?(' ('+e.days+'d)'):''} — +RM ${num(e.charge).toLocaleString()}</div>`).join('');
+}
+function extendJob(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  const curEnd=j.end_date||'';
+  showModal(`
+    <button class="x" onclick="openJob('${id}')">×</button>
+    <h3>Extend booking</h3>
+    <div class="muted" style="font-size:13px;margin-bottom:10px">${esc(j.customer_name||'')} · ${esc(j.car_model||'')} ${esc(j.car_plate||'')}</div>
+    <div class="card" style="padding:11px;margin-bottom:10px">
+      <div class="rowline"><span class="muted">Current end</span><span>${fmtDate(curEnd)}${j.end_time?' '+esc(j.end_time):''}</span></div>
+      <div class="rowline"><span class="muted">Current total</span><span>RM ${jobTotal(j).toLocaleString()}</span></div>
+      <div class="rowline"><span class="muted">Paid</span><span>RM ${jobPaid(j).toLocaleString()}</span></div>
+    </div>
+    <label>New end date</label>
+    <input type="date" id="ext_end" value="${esc(curEnd)}">
+    <label>New end time (optional)</label>
+    <input type="time" id="ext_time" value="${esc(to24(j.end_time)||'')}">
+    <label>Extra charge (RM)</label>
+    <input id="ext_charge" inputmode="decimal" placeholder="e.g. 2000">
+    <div class="hint" style="margin-top:4px">This is added to what the customer owes. Balance goes up; if already paid, delivery re-locks until the extension is paid.</div>
+    <label>Note (optional)</label>
+    <input id="ext_note" placeholder="e.g. extended 2 more days">
+    <button class="btn" style="margin-top:14px" onclick="doExtend('${id}')"><i class="ti ti-check"></i> Confirm extension</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openJob('${id}')">Cancel</button>
+  `);
+}
+async function doExtend(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  const newEnd=$('ext_end').value||null;
+  const newTime=to12($('ext_time').value)||j.end_time||null;
+  const charge=num($('ext_charge').value);
+  const note=($('ext_note').value||'').trim();
+  if(!newEnd){ toast('Pick the new end date'); return; }
+  if(newEnd < (j.start_date||'')){ toast('End date is before start date'); return; }
+  // days difference vs current end (for the log)
+  let days=null;
+  if(j.end_date){ const d=Math.round((new Date(newEnd)-new Date(j.end_date))/86400000); if(!isNaN(d)) days=d; }
+  const hist=Array.isArray(j.extensions)?j.extensions.slice():[];
+  hist.push({date:new Date().toISOString().slice(0,10), prev_end:j.end_date||null, new_end:newEnd, days:days, charge:charge, note:note||null});
+  // extra charge adds to price → raises total & balance; if it was paid, re-flag as partial
+  const newPrice=num(j.price)+charge;
+  const newTotal=newPrice+num(j.deposit_amount);
+  const paid=jobPaid(j);
+  const upd={
+    end_date:newEnd, end_time:newTime,
+    price:newPrice,
+    extensions:hist,
+    payment_status: (paid>=newTotal?'paid':(paid>0?'partial':'unpaid')),
+    updated_at:new Date().toISOString()
+  };
+  // if the job had advanced to 'paid' but now owes the extension, send it back to 'booked' so delivery re-locks
+  if(charge>0 && j.stage==='paid' && paid<newTotal){ upd.stage='booked'; }
+  const res=await sb.from('gp_jobs').update(upd).eq('id',id);
+  if(res.error){ toast('Failed: '+res.error.message); return; }
+  toast(charge>0?('Extended ✓ — +RM '+charge.toLocaleString()+' added to balance'):'Extended ✓');
+  await loadAll(); openJob(id);
+}
 
 function lifecycleButton(j){
   if(j.stage==='booked'){
