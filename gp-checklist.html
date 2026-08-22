@@ -141,7 +141,33 @@ var SB_URL = (typeof SUPABASE_URL!=='undefined' && SUPABASE_URL) || '';
 var SB_KEY = (typeof SUPABASE_ANON_KEY!=='undefined' && SUPABASE_ANON_KEY) ||
              (typeof SUPABASE_KEY!=='undefined' && SUPABASE_KEY) || '';
 function sbBase(){ return (SB_URL||'').replace(/\/rest\/v1\/?$/,''); }
-function sbHeaders(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
+/* Read the Hub's logged-in Supabase session token so RLS (authenticated-only) allows writes.
+   Falls back to the anon key if no session is found. */
+function sbUserToken(){
+  try{
+    var ref='';
+    var m=(SB_URL||'').match(/https?:\/\/([a-z0-9]+)\.supabase\.co/i);
+    if(m) ref=m[1];
+    var keys=[];
+    if(ref) keys.push('sb-'+ref+'-auth-token');
+    for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(/^sb-.*-auth-token$/.test(k) && keys.indexOf(k)<0) keys.push(k); }
+    for(var j=0;j<keys.length;j++){
+      var raw=localStorage.getItem(keys[j]); if(!raw) continue;
+      // supabase-js v2 may store the value base64-encoded with a "base64-" prefix
+      if(raw.indexOf('base64-')===0){
+        try{ raw=decodeURIComponent(escape(atob(raw.slice(7)))); }catch(e){ try{ raw=atob(raw.slice(7)); }catch(e2){} }
+      }
+      var o; try{ o=JSON.parse(raw); }catch(e){ continue; }
+      var tok=(o&&o.access_token) || (o&&o.currentSession&&o.currentSession.access_token) || (o&&o.session&&o.session.access_token);
+      if(tok) return tok;
+    }
+  }catch(e){}
+  return '';
+}
+function sbHeaders(extra){
+  var tok=sbUserToken()||SB_KEY;
+  return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+tok}, extra||{});
+}
 var CLOUD = !!(SB_URL && SB_KEY);
 
 var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwcGj9D1K4UHrlBVcQAC-xf1_BIYEANq62ldCzVtr2WQ_GnGq6eq5Up5Uqfpl2RIFU/exec';
@@ -1142,7 +1168,7 @@ async function sendSignLink(){
   if(!STATE.current.out_sig_inspector){ toast('GP Operation must sign first'); return; }
   toast('Saving…');
   const ok=await saveChecklist(true);
-  if(!ok){ toast('Save failed — try again'); return; }
+  if(!ok){ toast('Save failed: '+(window.__lastSbError||'no response')); return; }
   const id=STATE.current.id;
   const base=location.origin+location.pathname.replace(/[^/]*$/,'');
   const url=base+'gp-sign.html?id='+encodeURIComponent(id);
@@ -1167,7 +1193,7 @@ function backToJob(){
 async function saveAndBack(){
   toast('Saving…');
   const ok=await saveChecklist(true);
-  if(!ok){ toast('Save failed — try again'); return; }
+  if(!ok){ toast('Save failed: '+(window.__lastSbError||'no response')); return; }
   toast('Saved ✓ — returning to GP Jobs…');
   setTimeout(function(){ backToJob(); }, 900);
 }
