@@ -761,6 +761,7 @@ function openJob(id){
     </div>
     ${signStatusHtml(j)}
     ${j.stage==='returned'?damageEditor(j):''}
+    ${j.stage==='deposit_settled'?settledSummary(j):''}
     ${nextBtn}
     ${['booked','paid','delivered'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="extendJob('${j.id}')"><i class="ti ti-clock-plus"></i> ⏱ Extend booking</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit details</button>
@@ -1312,6 +1313,11 @@ function sendDamageToCustomer(id){
 function settleDeposit(id){
   const j=JOBS.find(x=>x.id===id);
   const s=settlement(j);
+  const isCollect = s.extra>0;                 // customer pays extra vs we refund
+  const methodLabel = isCollect?'Payment method (customer paid)':'Refund method';
+  const slipLabel   = isCollect?'Payment slip (customer\u2019s proof)':'Refund slip (your proof)';
+  const methods=['Cash','Online bank transfer','Touch \u2019n Go','USDT','International transfer','Other'];
+  const methodOpts=methods.map(m=>`<option value="${m}">${m}</option>`).join('');
   showModal(`
     <button class="x" onclick="openJob('${id}')">×</button>
     <h3>Settle deposit</h3>
@@ -1319,31 +1325,67 @@ function settleDeposit(id){
       <div class="rowline"><span class="muted">Total charges</span><b>RM ${s.charges.toLocaleString()}</b></div>
       <div class="rowline"><span class="muted">Deposit held</span><span>RM ${s.dep.toLocaleString()}</span></div>
       <div class="rowline"><span class="muted">Deducted from deposit</span><span>RM ${s.deducted.toLocaleString()}</span></div>
-      ${s.extra>0
+      ${isCollect
         ? `<div class="rowline"><span class="muted">Extra to collect</span><b style="color:var(--amber)">RM ${s.extra.toLocaleString()}</b></div>`
         : `<div class="rowline"><span class="muted">Refund to customer</span><b style="color:var(--green)">RM ${s.refund.toLocaleString()}</b></div>`}
     </div>
-    ${s.extra>0?`<div class="hint" style="margin-bottom:8px">Collect the extra RM ${s.extra.toLocaleString()} from the customer (deposit fully used).</div>`:''}
-    <label>Refund method / note</label>
-    <input id="d_note" placeholder="e.g. bank transfer, cash">
+    ${isCollect
+      ? `<div class="hint" style="margin-bottom:8px">Deposit fully used. Collect the extra RM ${s.extra.toLocaleString()} from the customer, then attach their payment slip.</div>`
+      : `<div class="hint" style="margin-bottom:8px">Refund RM ${s.refund.toLocaleString()} to the customer, then attach the refund slip.</div>`}
+    <label>${methodLabel}</label>
+    <select id="d_method"><option value="">— select —</option>${methodOpts}</select>
+    <label>Note (optional)</label>
+    <input id="d_note" placeholder="e.g. Maybank ref 1234, TnG phone no.">
+    <label>${slipLabel}</label>
+    <input type="file" accept="image/*" id="d_slip" onchange="uploadSettleSlip(this)">
+    <input type="hidden" id="d_slip_url">
+    <div class="hint" id="settleSlipHint"></div>
     <label>Settle date</label>
     <input type="date" id="d_date" value="${new Date().toISOString().slice(0,10)}">
-    <button class="btn" style="margin-top:14px" onclick="doSettleDeposit('${id}')"><i class="ti ti-check"></i> Confirm settlement</button>
+    <button class="btn" style="margin-top:14px" onclick="doSettleDeposit('${id}',${isCollect?1:0})"><i class="ti ti-check"></i> Confirm settlement</button>
     <button class="btn sec" style="margin-top:8px" onclick="openJob('${id}')">Cancel</button>
   `);
 }
-async function doSettleDeposit(id){
+async function uploadSettleSlip(inp){
+  const f=inp.files[0]; if(!f) return; $('settleSlipHint').textContent='Uploading…';
+  try{ const fd=new FormData(); fd.append('image',f);
+    const r=await fetch('https://api.imgbb.com/1/upload?key=e8dbe75e3933b7bf63be0253e1b122d6',{method:'POST',body:fd});
+    const j=await r.json(); if(j&&j.data&&j.data.url){ $('d_slip_url').value=j.data.url; $('settleSlipHint').textContent='Slip attached ✓'; }
+    else $('settleSlipHint').textContent='Upload failed';
+  }catch(e){ $('settleSlipHint').textContent='Upload failed'; }
+}
+async function doSettleDeposit(id,isCollect){
   const j=JOBS.find(x=>x.id===id);
   const s=settlement(j);
+  const method=$('d_method').value||'';
+  if(!method){ toast('Choose a '+(isCollect?'payment':'refund')+' method'); return; }
+  const slip=$('d_slip_url').value||null;
+  const note=$('d_note').value||'';
+  const dir = isCollect?'collect':'refund';
+  const label = isCollect?('Collected extra via '+method):('Refunded via '+method);
   const upd={ stage:'deposit_settled',
     total_charges:s.charges, deposit_deducted:s.deducted, extra_to_collect:s.extra,
     deposit_refunded:s.refund, deposit_returned:s.refund, damage_deduct:s.deducted,
+    settle_method:method, settle_slip:slip, settle_direction:dir,
     deposit_return_date:$('d_date').value||null, settled_at:new Date().toISOString(),
-    remark: (j.remark? j.remark+'\n':'') + ('Settlement note: '+($('d_note').value||'')),
+    remark: (j.remark? j.remark+'\n':'') + (label+(note?(' — '+note):'')),
     updated_at:new Date().toISOString() };
   const res=await sb.from('gp_jobs').update(upd).eq('id',id);
   if(res.error){ toast('Failed: '+res.error.message); return; }
   toast('Deposit settled ✓'); await loadAll(); openJob(id);
+}
+function settledSummary(j){
+  const isCollect = j.settle_direction==='collect';
+  const dirLabel = isCollect?'Extra collected':'Refunded to customer';
+  const amt = isCollect?num(j.extra_to_collect):num(j.deposit_refunded);
+  return `
+    <div class="card" style="margin-top:12px">
+      <h3>Deposit settled</h3>
+      <div class="rowline"><span class="muted">${dirLabel}</span><b style="color:${isCollect?'var(--amber)':'var(--green)'}">RM ${amt.toLocaleString()}</b></div>
+      ${j.settle_method?`<div class="rowline"><span class="muted">Method</span><span>${esc(j.settle_method)}</span></div>`:''}
+      ${j.deposit_return_date?`<div class="rowline"><span class="muted">Date</span><span>${fmtDate(j.deposit_return_date)}</span></div>`:''}
+      ${j.settle_slip?`<a href="${esc(j.settle_slip)}" target="_blank" class="btn sec" style="margin-top:8px;display:block;text-align:center"><i class="ti ti-photo"></i> View slip</a>`:'<div class="hint" style="margin-top:6px">No slip attached</div>'}
+    </div>`;
 }
 async function markDone(id){
   await sb.from('gp_jobs').update({stage:'done',updated_at:new Date().toISOString()}).eq('id',id);
