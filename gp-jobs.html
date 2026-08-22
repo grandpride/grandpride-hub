@@ -771,9 +771,18 @@ function lifecycleButton(j){
       <div class="hint" style="text-align:center;margin-top:8px">Deliver unlocks once fully paid</div>
       <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
     }
+    // once the delivery checklist is done (customer signed, or at least inspector signed),
+    // the QC-checklist button is redundant — show only Mark delivered.
+    const signed = jobSigned(j);
+    const done = jobChecklistDone(j);
+    const qcBtn = done
+      ? '' // checklist already done → hide the QC button
+      : `<button class="btn sec" onclick="openChecklist('${j.id}','delivery')"><i class="ti ti-clipboard-check"></i> 1. QC checklist (delivery)</button>`;
+    const deliverLabel = done ? `<i class="ti ti-car"></i> Mark delivered (car out)` : `<i class="ti ti-car"></i> 2. Mark delivered (car out)`;
+    const deliverTop = done ? '' : 'style="margin-top:8px"';
     return `
-    <button class="btn sec" onclick="openChecklist('${j.id}','delivery')"><i class="ti ti-clipboard-check"></i> 1. QC checklist (delivery)</button>
-    <button class="btn" style="margin-top:8px" onclick="markDelivered('${j.id}')"><i class="ti ti-car"></i> 2. Mark delivered (car out)</button>
+    ${qcBtn}
+    <button class="btn" ${deliverTop} onclick="markDelivered('${j.id}')">${deliverLabel}</button>
     <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
   }
   if(j.stage==='delivered') return `<button class="btn" onclick="markReturned('${j.id}')"><i class="ti ti-arrow-back-up"></i> Mark returned</button>`;
@@ -818,6 +827,10 @@ function checklistFor(j){
   // prefer one that's been sent to customer / signed
   return list.find(c=>c.customer_signed_at) || list.find(c=>c.out_sig_inspector) || list[0];
 }
+/* true once the customer has signed the delivery checklist for this job */
+function jobSigned(j){ const c=checklistFor(j); return !!(c && c.customer_signed_at); }
+/* true once a delivery checklist has at least been done (inspector signed) */
+function jobChecklistDone(j){ const c=checklistFor(j); return !!(c && (c.customer_signed_at || c.out_sig_inspector)); }
 /* status card shown in job detail once a checklist exists */
 function signStatusHtml(j){
   const c=checklistFor(j);
