@@ -337,7 +337,7 @@ async function loadAll(){
     sb.from('gp_customers').select('*').order('name',{ascending:true}),
     sb.from('gp_fleet').select('id,plate,model,status').order('plate',{ascending:true}),
     sb.from('gp_staff').select('username,name,is_chauffeur,can_drive').order('name',{ascending:true}),
-    sb.from('gp_checklists').select('id,job_id,car_type,diagram_w,diagram_h,out_sig_inspector,out_sig_customer,in_sig_inspector,intake_sig_inspector,in_sig_customer,in_defects,customer_signed_at')
+    sb.from('gp_checklists').select('id,job_id,car_type,diagram_w,diagram_h,out_sig_inspector,out_sig_customer,in_sig_inspector,in_sig_customer,in_defects,customer_signed_at')
   ]);
   JOBS=j.data||[]; CUSTOMERS=c.data||[]; FLEET=f.data||[]; CHECKLISTS=cl.data||[];
   DRIVERS=(d.data||[]).filter(s=>s.is_chauffeur||s.can_drive);
@@ -868,7 +868,7 @@ function lifecycleButton(j){
 /* true once the return checklist has been done (inspector signed the return stage) */
 function jobReturnChecklistDone(j){
   const list=(CHECKLISTS||[]).filter(c=>c.job_id===j.id);
-  return list.some(c=>c.in_sig_inspector||c.intake_sig_inspector);
+  return list.some(c=>c.in_sig_inspector);
 }
 
 async function cancelDeal(id){
@@ -1035,7 +1035,7 @@ async function markReturned(id){
 const DEFECTS={ D:{name:'Dent',color:'#e0322f'}, S:{name:'Scratch',color:'#2f6fe0'}, PG:{name:'Paint Gone',color:'#e08a2f'}, SC:{name:'Stonechip',color:'#7d3fe0'}, C:{name:'Cracked',color:'#2fae5a'}, ND:{name:'New Damage',color:'#e0322f'} };
 function returnChecklistFor(j){
   const list=(CHECKLISTS||[]).filter(c=>c.job_id===j.id);
-  return list.find(c=>Array.isArray(c.in_defects)&&c.in_defects.length) || list.find(c=>c.in_sig_inspector||c.intake_sig_inspector) || null;
+  return list.find(c=>Array.isArray(c.in_defects)&&c.in_defects.length) || list.find(c=>c.in_sig_inspector) || null;
 }
 function returnMarks(j){ const c=returnChecklistFor(j); return (c&&Array.isArray(c.in_defects))?c.in_defects:[]; }
 /* customer signed the RETURN checklist (condition acknowledged) */
