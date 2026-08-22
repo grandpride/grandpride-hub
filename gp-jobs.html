@@ -139,7 +139,9 @@ const SERVICES=[
   {v:'airport',label:'Airport transfer'},
   {v:'rental',label:'Car rental / leasing'},
   {v:'subscription',label:'Subscription'},
-  {v:'lto',label:'Lease to own (LTO)'}
+  {v:'lto',label:'Lease to own (LTO)'},
+  {v:'bodyguard',label:'Bodyguard / security'},
+  {v:'hire_driver',label:'Hire driver'}
 ];
 const STAGES=['booked','paid','delivered','returned','deposit_settled','done'];
 const STAGE_LABEL={booked:'Booked',paid:'Paid',delivered:'Out now',returned:'Returned',deposit_settled:'Deposit settled',done:'Done',cancelled:'Cancelled'};
@@ -170,6 +172,149 @@ function to12(s){
   return h+':'+min+' '+ap;
 }
 function svcLabel(v){const s=SERVICES.find(x=>x.v===v);return s?s.label:(v||'—');}
+
+/* =====================================================================
+   WhatsApp booking parser — reads a pasted booking message and returns
+   a partial job draft. Handles: car rental / leasing / subscription /
+   LTO, chauffeur, bodyguard, hire driver. Best-effort: fills what it can
+   confidently read; leaves the rest for manual review.
+   ===================================================================== */
+function wpNum(s){ if(s==null) return null; const m=String(s).replace(/,/g,'').match(/-?\d+(\.\d+)?/); return m?parseFloat(m[0]):null; }
+function wpClean(s){ return String(s==null?'':s).replace(/\u202a|\u202c|\u2066|\u2069/g,'').trim(); }
+// grab the value after a label on the same line, e.g. "Customer: Ali" -> "Ali"
+function wpField(text, labels){
+  const lines=text.split(/\r?\n/);
+  for(const lab of labels){
+    const re=new RegExp('^\\s*'+lab+'\\s*[:：]\\s*(.+)$','i');
+    for(const ln of lines){ const m=ln.match(re); if(m && wpClean(m[1])) return wpClean(m[1]); }
+  }
+  return '';
+}
+// detect service type from the header / keywords
+function wpDetectType(text){
+  const t=text.toLowerCase();
+  if(/\bhire\s*driver\b|\bhire\s*a?\s*driver\b/.test(t)) return 'hire_driver';
+  if(/\bbody\s*guard\b|\bunarmed\s*bg\b|\barmed\s*bg\b|\b\d+\s*bg\b/.test(t)) return 'bodyguard';
+  if(/\bsubscription\b/.test(t)) return 'subscription';
+  if(/\blease\s*to\s*own\b|\blto\b/.test(t)) return 'lto';
+  if(/\bchauffeur\b|\bchauffuer\b/.test(t)) return 'chauffeur';
+  if(/\bcar\s*rental\b|\bcar\s*leasing\b|\bcar\s*rental\s*\/\s*car\s*leasing\b/.test(t)) return 'rental';
+  if(/\bairport\b/.test(t)) return 'airport';
+  if(/\bpick\s*up\b|\bdrop\s*off\b/.test(t)) return 'pickup_dropoff';
+  if(/\bcar\s*model\b/.test(t)) return 'rental';
+  return 'rental';
+}
+// parse a date token like 23/8/26 or 13/8/26 or "11 August 2026" -> YYYY-MM-DD
+function wpDate(tok){
+  if(!tok) return '';
+  tok=wpClean(tok);
+  let m=tok.match(/(\d{1,2})\s*\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/);
+  if(m){
+    let d=+m[1], mo=+m[2], y=+m[3]; if(y<100) y+=2000;
+    if(d>0&&d<32&&mo>0&&mo<13) return y+'-'+String(mo).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+  }
+  const months={january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,jan:1,feb:2,mar:3,apr:4,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+  m=tok.match(/(\d{1,2})\s+([a-z]+)\s+(\d{4})/i);
+  if(m && months[m[2].toLowerCase()]){ return m[3]+'-'+String(months[m[2].toLowerCase()]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0'); }
+  return '';
+}
+// parse a time token like 12pm, 11am, 1130pm, 12:30am, 8:30 AM -> "9:00 AM"
+function wpTime(tok){
+  if(!tok) return '';
+  tok=wpClean(tok).toLowerCase();
+  // prefer an explicit H:MM form first
+  let m=tok.match(/(\d{1,2})\s*[:.]\s*(\d{2})\s*(am|pm)?/);
+  if(m){
+    let h=+m[1], min=+m[2], ap=(m[3]||'').toUpperCase();
+    if(!ap){ ap=h>=12?'PM':'AM'; }
+    h=h%12; if(h===0) h=12;
+    return h+':'+String(min).padStart(2,'0')+' '+ap;
+  }
+  // compact form: 12pm, 11am, 830pm, 1130pm (digits then am/pm, no colon)
+  m=tok.match(/(\d{1,4})\s*(am|pm)/);
+  if(m){
+    let digits=m[1], ap=m[2].toUpperCase(), h, min=0;
+    if(digits.length<=2){ h=+digits; }                    // 12pm, 8pm
+    else if(digits.length===3){ h=+digits.slice(0,1); min=+digits.slice(1); } // 830 -> 8:30
+    else { h=+digits.slice(0,2); min=+digits.slice(2); }  // 1130 -> 11:30
+    if(min>59) min=0;
+    h=h%12; if(h===0) h=12;
+    return h+':'+String(min).padStart(2,'0')+' '+ap;
+  }
+  return '';
+}
+
+function parseWhatsApp(raw){
+  const text=wpClean(raw).replace(/\u00a0/g,' ');
+  const d={ _matched:[], source_text:raw };
+  d.service_type=wpDetectType(text);
+
+  // customer + contact
+  d.customer_name = wpField(text,['customer','name','pic','client']) || '';
+  if(/^name$/i.test(d.customer_name)) d.customer_name='';
+  let contact = wpField(text,['contact','cell phone','phone','tel','hp']) || '';
+  // contact line sometimes has a handle + number: pull the number-ish part but keep +/spaces
+  const cm=contact.match(/(\+?\d[\d\s\-]{6,}\d)/); if(cm) contact=wpClean(cm[1]);
+  d.customer_contact = contact;
+
+  // invoice-to / company
+  d.invoice_to = wpField(text,['inv to','inv','invoice to','invoice','bill to']) || '';
+  // referral
+  d.referral = wpField(text,['referral','referred by','ref']) || '';
+  // location
+  d.location = wpField(text,['location','pick up location','pickup','pick-up','pick up']) || '';
+
+  // car model (+ try to split a plate off the end)
+  let carModel = wpField(text,['car model','model','vehicle']) || '';
+  d.car_model_text = carModel;
+  if(carModel){
+    // plate heuristic: a trailing token with letters+digits (e.g. VFA421, PRP169, WXX1234, AGH30)
+    const pm=carModel.match(/\b([A-Z]{2,3}\s?\d{1,4}[A-Z]?)\b\s*$/);
+    if(pm){ d.car_plate_text=wpClean(pm[1]).replace(/\s+/g,''); d.car_model_text=wpClean(carModel.slice(0,pm.index)); }
+  }
+
+  // ----- dates -----
+  // a "Date:" line may hold a range "23/8/26 12pm - 24/8/26 12:30am"
+  const dateLine = wpField(text,['date','start date','duration','period']) || '';
+  // also a Start date line for subscriptions "13/8/26 - 13/9/26"
+  const startLine = wpField(text,['start date']) || dateLine;
+  // split range on dash variants
+  const parts=(startLine||dateLine).split(/\s*[-–—]\s*/);
+  if(parts[0]){ d.start_date=wpDate(parts[0]); const t=wpTime(parts[0]); if(t) d.start_time=t; }
+  if(parts[1]){ d.end_date=wpDate(parts[1]); const t=wpTime(parts[1]); if(t) d.end_time=t; }
+  // separate Time: line (BG/driver)
+  const tLine=wpField(text,['time','pick up time','pickup time']);
+  if(tLine && !d.start_time){ const t=wpTime(tLine); if(t) d.start_time=t; }
+
+  // ----- money -----
+  const rate  = wpNum(wpField(text,['rate','rental','leasing price','price']));
+  const dep   = wpNum(wpField(text,['deposit']));
+  const total = wpNum(wpField(text,['grand total','total','grand'])); 
+  if(rate!=null) d.price=rate;
+  if(dep!=null) d.deposit_amount=dep;
+  if(total!=null) d.grand_total=total;
+  // if no explicit rate but total exists, use total as price
+  if(d.price==null && total!=null) d.price=total;
+
+  // ----- mileage / per-km -----
+  const mil = wpNum(wpField(text,['mileage given','mileage','km given']));
+  if(mil!=null) d.mileage_given=mil;
+  const pk  = wpNum(wpField(text,['per km exceed','per km','per-km','exceed']));
+  if(pk!=null) d.per_km_exceed=pk;
+
+  // ----- OT + hours (BG / driver / chauffeur) -----
+  const ot = wpField(text,['ot','overtime']);
+  const otn = wpNum(ot); if(otn!=null && /hour|hr|\/\s*hour/i.test(ot+text)) d.ot_rate=otn;
+  const hrsM = text.match(/(\d+(?:\.\d+)?)\s*hours?\b/i); if(hrsM) d.duration_hours=parseFloat(hrsM[1]);
+
+  // ----- remark: keep the whole original message so nothing is lost -----
+  // pull an explicit Remark: block if present
+  const remIdx=text.search(/^\s*remark\s*[:：]/im);
+  if(remIdx>=0){ d.remark_extra=wpClean(text.slice(remIdx).replace(/^\s*remark\s*[:：]?/i,'')); }
+
+  return d;
+}
+
 
 async function boot(){
   const logo=window.__LOGO__||'';
@@ -370,6 +515,97 @@ async function saveQuickCustomer(){
 
 /* ---------- new / edit job ---------- */
 function newJob(){ JOB_DRAFT={stage:'booked',payment_status:'unpaid'}; jobForm(); }
+
+/* ---------- Paste from WhatsApp ---------- */
+function openPasteBox(){
+  showModal(`
+    <button class="x" onclick="jobForm()">×</button>
+    <h3>Paste from WhatsApp</h3>
+    <p class="muted" style="font-size:13px;margin:0 0 10px">Paste the booking message. I'll read the details and fill the form for you to review.</p>
+    <textarea id="wp_paste" style="min-height:200px" placeholder="Paste the whole WhatsApp booking message here…"></textarea>
+    <button class="btn" style="margin-top:12px" onclick="applyPaste()"><i class="ti ti-wand"></i> Read details</button>
+    <button class="btn sec" style="margin-top:8px" onclick="jobForm()">Cancel</button>
+  `);
+  setTimeout(()=>{ const t=$('wp_paste'); if(t) t.focus(); },50);
+}
+function applyPaste(){
+  const raw=($('wp_paste')&&$('wp_paste').value||'').trim();
+  if(!raw){ toast('Paste a message first'); return; }
+  const d=parseWhatsApp(raw);
+  // merge into draft (keep any existing customer already chosen)
+  JOB_DRAFT.service_type = d.service_type || JOB_DRAFT.service_type || 'rental';
+  if(d.car_model_text) JOB_DRAFT.car_model_text = d.car_model_text;
+  if(d.car_plate_text) JOB_DRAFT.car_plate_text = d.car_plate_text;
+  // try to auto-match a fleet car by plate (strongest) then loose model match
+  (function(){
+    const plate=(d.car_plate_text||'').replace(/\s+/g,'').toLowerCase();
+    let car=null;
+    if(plate) car=FLEET.find(f=>(f.plate||'').replace(/\s+/g,'').toLowerCase()===plate);
+    if(!car && d.car_model_text){
+      const mt=d.car_model_text.toLowerCase();
+      car=FLEET.find(f=>{ const fm=(f.model||'').toLowerCase(); return fm && (fm.includes(mt)||mt.includes(fm)); });
+    }
+    if(car) JOB_DRAFT.fleet_id=car.id;
+  })();
+  if(d.start_date) JOB_DRAFT.start_date=d.start_date;
+  if(d.start_time) JOB_DRAFT.start_time=d.start_time;
+  if(d.end_date) JOB_DRAFT.end_date=d.end_date;
+  if(d.end_time) JOB_DRAFT.end_time=d.end_time;
+  if(d.price!=null) JOB_DRAFT.price=d.price;
+  if(d.deposit_amount!=null) JOB_DRAFT.deposit_amount=d.deposit_amount;
+  if(d.grand_total!=null) JOB_DRAFT.grand_total=d.grand_total;
+  if(d.mileage_given!=null) JOB_DRAFT.mileage_given=d.mileage_given;
+  if(d.per_km_exceed!=null) JOB_DRAFT.per_km_exceed=d.per_km_exceed;
+  if(d.ot_rate!=null) JOB_DRAFT.ot_rate=d.ot_rate;
+  if(d.duration_hours!=null) JOB_DRAFT.duration_hours=d.duration_hours;
+  if(d.invoice_to) JOB_DRAFT.invoice_to=d.invoice_to;
+  if(d.referral) JOB_DRAFT.referral=d.referral;
+  if(d.location) JOB_DRAFT.location=d.location;
+  JOB_DRAFT.source_text=raw;
+  // remark: keep whole original message so nothing is lost
+  JOB_DRAFT.remark = raw;
+  // try to match an existing customer by name/contact; else stash for quick-add
+  const nm=(d.customer_name||'').toLowerCase().trim();
+  const ct=(d.customer_contact||'').replace(/[^0-9]/g,'');
+  let match=null;
+  if(nm) match=CUSTOMERS.find(c=>(c.name||'').toLowerCase().trim()===nm);
+  if(!match && ct) match=CUSTOMERS.find(c=>((c.contact||'').replace(/[^0-9]/g,''))===ct && ct.length>=7);
+  if(match){
+    JOB_DRAFT.customer_id=match.id; JOB_DRAFT.customer_name=match.name; JOB_DRAFT.customer_contact=match.contact||'';
+    toast('Matched customer: '+match.name);
+    jobForm();
+  } else if(d.customer_name){
+    // no match — offer to create this customer
+    JOB_DRAFT._pendingCust={name:d.customer_name, contact:d.customer_contact||''};
+    confirmNewCustomer();
+  } else {
+    toast('Details read — choose a customer');
+    jobForm();
+  }
+}
+function confirmNewCustomer(){
+  const p=JOB_DRAFT._pendingCust||{};
+  showModal(`
+    <button class="x" onclick="jobForm()">×</button>
+    <h3>New customer from message</h3>
+    <p class="muted" style="font-size:13px;margin:0 0 10px">Not found in your list. Add as a new customer?</p>
+    <label>Name</label><input id="pc_name" value="${esc(p.name||'')}">
+    <label>Contact</label><input id="pc_contact" value="${esc(p.contact||'')}">
+    <button class="btn" style="margin-top:12px" onclick="savePastedCustomer()"><i class="ti ti-user-plus"></i> Add + use</button>
+    <button class="btn sec" style="margin-top:8px" onclick="jobForm()">Skip — I'll choose</button>
+  `);
+}
+async function savePastedCustomer(){
+  const name=($('pc_name').value||'').trim().toUpperCase(); if(!name){ toast('Name required'); return; }
+  const contact=($('pc_contact').value||'').trim()||null;
+  const row={cust_type:'individual',name,contact};
+  const res=await sb.from('gp_customers').insert(row).select().single();
+  if(res.error){ toast('Failed: '+res.error.message); return; }
+  CUSTOMERS.push(res.data);
+  JOB_DRAFT.customer_id=res.data.id; JOB_DRAFT.customer_name=res.data.name; JOB_DRAFT.customer_contact=res.data.contact||'';
+  delete JOB_DRAFT._pendingCust;
+  toast('Customer added ✓'); jobForm();
+}
 function reopenJobForm(){ jobForm(); }
 function jobForm(){
   const j=JOB_DRAFT;
@@ -377,17 +613,23 @@ function jobForm(){
     ? `<div class="pickrow" onclick="pickCustomer()"><b>${esc(j.customer_name)}</b><div class="muted" style="font-size:13px">${esc(j.customer_contact||'')} · tap to change</div></div>`
     : `<button class="btn sec" onclick="pickCustomer()"><i class="ti ti-user-plus"></i> Choose customer</button>`;
   const carOpts=`<option value="">— choose car —</option>`+FLEET.map(f=>`<option value="${f.id}" ${j.fleet_id===f.id?'selected':''}>${esc(f.plate)} · ${esc(f.model)}</option>`).join('');
+  // if pasted car text didn't match fleet, show it as a hint
+  const parsedCarHint = (!j.fleet_id && (j.car_model_text||j.car_plate_text))
+    ? `<div class="muted" style="font-size:12px;margin-top:4px">From message: <b>${esc(j.car_model_text||'')}${j.car_plate_text?(' · '+esc(j.car_plate_text)):''}</b> — pick the matching fleet car above, or leave blank if not in fleet.</div>`
+    : '';
   const drvOpts=`<option value="">— none —</option>`+DRIVERS.map(d=>`<option value="${esc(d.username)}" ${j.driver_username===d.username?'selected':''}>${esc(d.name)}</option>`).join('');
   const svcOpts=SERVICES.map(s=>`<option value="${s.v}" ${j.service_type===s.v?'selected':''}>${s.label}</option>`).join('');
   showModal(`
     <button class="x" onclick="closeModal()">×</button>
     <h3>${j.id?'Edit job':'New job'}</h3>
+    ${j.id?'':`<button class="btn sec" style="margin-bottom:12px;width:100%" onclick="openPasteBox()"><i class="ti ti-clipboard-text"></i> 📋 Paste from WhatsApp</button>`}
     <label>Customer</label>
     ${custBtn}
     <label>Service</label>
     <select id="j_service">${svcOpts}</select>
     <label>Car (from fleet)</label>
     <select id="j_fleet">${carOpts}</select>
+    ${parsedCarHint}
     <div class="row2">
       <div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div>
       <div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div>
@@ -401,6 +643,23 @@ function jobForm(){
     <div class="row2">
       <div><label>Price (RM)</label><input id="j_price" inputmode="decimal" value="${esc(j.price||'')}"></div>
       <div><label>Deposit (RM)</label><input id="j_deposit" inputmode="decimal" value="${esc(j.deposit_amount||'')}"></div>
+    </div>
+    <div class="row2">
+      <div><label>Grand total (RM)</label><input id="j_total" inputmode="decimal" value="${esc(j.grand_total||'')}"></div>
+      <div><label>Invoice to</label><input id="j_invoice" value="${esc(j.invoice_to||'')}"></div>
+    </div>
+    <div class="row2">
+      <div><label>Mileage given (km)</label><input id="j_mileage" inputmode="decimal" value="${esc(j.mileage_given||'')}"></div>
+      <div><label>Per km exceed (RM)</label><input id="j_perkm" inputmode="decimal" value="${esc(j.per_km_exceed||'')}"></div>
+    </div>
+    <div class="row2">
+      <div><label>OT rate (RM/hr)</label><input id="j_ot" inputmode="decimal" value="${esc(j.ot_rate||'')}"></div>
+      <div><label>Duration (hours)</label><input id="j_hours" inputmode="decimal" value="${esc(j.duration_hours||'')}"></div>
+    </div>
+    <label>Location / referral</label>
+    <div class="row2">
+      <div><input id="j_location" placeholder="location" value="${esc(j.location||'')}"></div>
+      <div><input id="j_referral" placeholder="referral" value="${esc(j.referral||'')}"></div>
     </div>
     <label>Remark</label>
     <textarea id="j_remark" placeholder="e.g. pickup at St Regis, go to Desaru">${esc(j.remark||'')}</textarea>
@@ -423,6 +682,15 @@ async function saveJob(){
     end_date:$('j_end_date').value||null, end_time:to12($('j_end_time').value)||null,
     driver_username:drvUser, driver_name:drv?drv.name:null,
     price:num($('j_price').value), deposit_amount:num($('j_deposit').value),
+    grand_total:num($('j_total').value)||null,
+    invoice_to:($('j_invoice').value||'').toUpperCase()||null,
+    mileage_given:num($('j_mileage').value)||null,
+    per_km_exceed:num($('j_perkm').value)||null,
+    ot_rate:num($('j_ot').value)||null,
+    duration_hours:num($('j_hours').value)||null,
+    location:($('j_location').value||'')||null,
+    referral:($('j_referral').value||'')||null,
+    source_text:JOB_DRAFT.source_text||null,
     remark:($('j_remark').value||'').toUpperCase()||null, updated_at:new Date().toISOString()
   };
   let res, jobId=j.id;
@@ -463,6 +731,13 @@ function openJob(id){
       <div class="rowline"><span class="muted">Total to collect</span><b>RM ${jobTotal(j).toLocaleString()}</b></div>
       <div class="rowline"><span class="muted">Paid</span><span>RM ${jobPaid(j).toLocaleString()}</span></div>
       ${jobBalance(j)>0?`<div class="rowline"><span class="muted">Balance</span><b style="color:var(--amber)">RM ${jobBalance(j).toLocaleString()}</b></div>`:`<div class="rowline"><span class="muted">Payment</span><b style="color:var(--green)">Fully paid ✓</b></div>`}
+      ${j.invoice_to?`<div class="rowline"><span class="muted">Invoice to</span><span>${esc(j.invoice_to)}</span></div>`:''}
+      ${j.mileage_given?`<div class="rowline"><span class="muted">Mileage given</span><span>${num(j.mileage_given).toLocaleString()} km</span></div>`:''}
+      ${j.per_km_exceed?`<div class="rowline"><span class="muted">Per km exceed</span><span>RM ${esc(j.per_km_exceed)}</span></div>`:''}
+      ${j.ot_rate?`<div class="rowline"><span class="muted">OT rate</span><span>RM ${esc(j.ot_rate)}/hr</span></div>`:''}
+      ${j.duration_hours?`<div class="rowline"><span class="muted">Hours</span><span>${esc(j.duration_hours)}</span></div>`:''}
+      ${j.location?`<div class="rowline"><span class="muted">Location</span><span style="text-align:right;max-width:60%">${esc(j.location)}</span></div>`:''}
+      ${j.referral?`<div class="rowline"><span class="muted">Referral</span><span style="text-align:right;max-width:60%">${esc(j.referral)}</span></div>`:''}
       ${paymentHistoryHtml(j)}
       ${j.remark?`<div class="rowline"><span class="muted">Remark</span><span style="text-align:right;max-width:60%">${esc(j.remark)}</span></div>`:''}
     </div>
