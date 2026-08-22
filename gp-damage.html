@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Repair Charges — GrandPride</title>
+<style>
+  :root{ --bg:#0b0b0b; --card:#151515; --card2:#1c1c1a; --border:#2a2a26; --text:#f5f3ee; --muted:#9a978d; --gold:#e3c887; --green:#3ba55d; --red:#d2533f; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45}
+  .wrap{max-width:560px;margin:0 auto;padding:18px 16px 60px}
+  .logo{text-align:center;margin:10px 0 18px}
+  .logo img{height:44px}
+  h2{font-size:18px;margin:0 0 4px;color:var(--gold);text-align:center}
+  .sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
+  .rowline{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px}
+  .rowline:last-child{border-bottom:none}
+  .muted{color:var(--muted)}
+  h3{font-size:14px;color:var(--gold);margin:0 0 8px}
+  .dmg{border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:10px;background:var(--card2)}
+  .dmg .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .dmg .ttl{font-weight:700;font-size:14px}
+  .dmg .loc{color:var(--muted);font-size:12px}
+  .dmg .price{font-weight:700;color:var(--gold);white-space:nowrap}
+  .dmg .note{color:var(--muted);font-size:12.5px;margin-top:5px;line-height:1.4}
+  .tot{display:flex;justify-content:space-between;padding:8px 0;font-size:15px}
+  .tot.big{font-weight:700;font-size:16px;border-top:1px solid var(--border);margin-top:4px;padding-top:12px}
+  .tot .g{color:var(--green)}
+  .sigwrap{background:#fff;border-radius:10px;overflow:hidden;margin-top:8px}
+  canvas{width:100%;height:200px;display:block;touch-action:none}
+  .btn{background:var(--gold);color:#1c1810;border:none;border-radius:10px;padding:13px 14px;font-size:16px;font-weight:700;width:100%;cursor:pointer;font-family:inherit}
+  .btn.sec{background:var(--card2);color:var(--text);border:1px solid var(--border);font-size:14px;padding:10px}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border);color:var(--text);padding:11px 18px;border-radius:22px;font-size:14px;opacity:0;transition:.3s;z-index:60;pointer-events:none}
+  .toast.show{opacity:1}
+  .done{text-align:center;padding:40px 20px}
+  .done .big{font-size:48px;margin-bottom:12px}
+  .hidden{display:none!important}
+  .agree{display:flex;gap:8px;align-items:flex-start;margin:12px 0;font-size:13px;color:var(--muted)}
+  .agree input{margin-top:3px}
+  .diagram{background:#0d0b08;border-radius:10px;margin-bottom:12px}
+  .diagram svg{display:block;width:100%;height:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo" id="logo"></div>
+  <div id="loading" style="text-align:center;padding:40px;color:var(--muted)">Loading charges…</div>
+
+  <div id="content" class="hidden">
+    <h2>Repair Charges</h2>
+    <div class="sub">Please review the damage charges and sign to agree</div>
+
+    <div class="card" id="details"></div>
+
+    <div class="card">
+      <h3>New damage</h3>
+      <div id="damages"></div>
+    </div>
+
+    <div class="card" id="totalsCard"></div>
+
+    <div class="card">
+      <h3>Your signature</h3>
+      <div class="muted" style="font-size:13px">By signing, you agree to the repair charges listed above being settled from your deposit (and any excess paid).</div>
+      <div class="sigwrap"><canvas id="pad"></canvas></div>
+      <button class="btn sec" style="margin-top:8px" onclick="clearPad()">Clear</button>
+      <div class="agree"><input type="checkbox" id="agree"><label for="agree">I have reviewed the damage and agree to the total charges shown.</label></div>
+      <button class="btn" style="margin-top:6px" onclick="submitSign()">Agree &amp; sign</button>
+    </div>
+  </div>
+
+  <div id="doneView" class="done hidden">
+    <div class="big">✓</div>
+    <h2>Thank you!</h2>
+    <div class="sub">Your agreement has been recorded. GrandPride will proceed with the settlement.</div>
+  </div>
+
+  <div id="agreedView" class="done hidden">
+    <div class="big">✓</div>
+    <h2>Already agreed</h2>
+    <div class="sub" id="agreedSub">These charges were already agreed. You may close this page.</div>
+  </div>
+
+  <div id="errorView" class="done hidden">
+    <div class="big">⚠️</div>
+    <h2 style="color:var(--red)">Link not found</h2>
+    <div class="sub">This link is invalid or has expired. Please contact GrandPride.</div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="gp-cars.js"></script>
+<script>
+var SB_URL='https://iefevjkeckysdluzazeq.supabase.co';
+var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k';
+function hdr(x){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},x||{}); }
+function $(id){return document.getElementById(id);}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2400);}
+function param(k){try{return new URLSearchParams(location.search).get(k)||'';}catch(e){return '';}}
+function num(v){var n=parseFloat(v);return isNaN(n)?0:n;}
+function money(v){return 'RM '+num(v).toLocaleString();}
+
+var DATA=null, ID=param('id');
+
+async function load(){
+  if(!ID){ fail(); return; }
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/rpc/get_damage_approval',{
+      method:'POST', headers:hdr(), body:JSON.stringify({p_job_id:ID})
+    });
+    var d=await r.json();
+    if(!d || !d.id){ throw new Error('not found'); }
+    DATA=d;
+    if(d.already_agreed){
+      $('loading').classList.add('hidden');
+      if(d.agreed_at){ try{ $('agreedSub').textContent='These charges were agreed on '+new Date(d.agreed_at).toLocaleString()+'. You may close this page.'; }catch(e){} }
+      $('agreedView').classList.remove('hidden');
+      return;
+    }
+    render();
+    $('loading').classList.add('hidden');
+    $('content').classList.remove('hidden');
+    setTimeout(initPad,100);
+  }catch(e){ fail(); }
+}
+function fail(){ $('loading').classList.add('hidden'); $('errorView').classList.remove('hidden'); }
+
+function render(){
+  var d=DATA;
+  $('details').innerHTML=
+    '<div class="rowline"><span class="muted">Customer</span><span>'+esc(d.customer_name||'')+'</span></div>'+
+    '<div class="rowline"><span class="muted">Car</span><span>'+esc((d.car_model||'')+(d.car_plate?(' ('+d.car_plate+')'):''))+'</span></div>';
+
+  var dmgs=Array.isArray(d.damages)?d.damages:[];
+  $('damages').innerHTML = dmgs.length ? dmgs.map(function(x){
+    return '<div class="dmg">'+
+      '<div class="top"><div><span class="ttl">'+(x.mark_no?('#'+esc(x.mark_no)+' · '):'')+esc(x.type||'Damage')+'</span>'+
+      (x.loc?(' <span class="loc">— '+esc(x.loc)+'</span>'):'')+'</div>'+
+      '<span class="price">'+money(x.price)+'</span></div>'+
+      (x.note?('<div class="note">'+esc(x.note)+'</div>'):'')+
+      '</div>';
+  }).join('') : '<div class="muted" style="font-size:13px">No damage charges listed.</div>';
+
+  var dmgTotal=dmgs.reduce(function(s,x){return s+num(x.price);},0);
+  var charges=dmgTotal+num(d.exceed_km_charge)+num(d.summons_charge);
+  var dep=num(d.deposit_amount);
+  var extra=Math.max(0,charges-dep);
+  var refund=Math.max(0,dep-charges);
+
+  var t='';
+  if(num(d.exceed_km_charge)>0) t+='<div class="tot"><span class="muted">Exceed mileage'+(num(d.exceed_km)>0?(' ('+num(d.exceed_km).toLocaleString()+' km)'):'')+'</span><span>'+money(d.exceed_km_charge)+'</span></div>';
+  if(num(d.summons_charge)>0) t+='<div class="tot"><span class="muted">Summons / saman</span><span>'+money(d.summons_charge)+'</span></div>';
+  t+='<div class="tot big"><span>Total charges</span><span>'+money(charges)+'</span></div>';
+  t+='<div class="tot"><span class="muted">Deposit held</span><span>'+money(dep)+'</span></div>';
+  if(extra>0) t+='<div class="tot"><span class="muted">Extra to pay</span><span>'+money(extra)+'</span></div>';
+  else t+='<div class="tot"><span class="muted">Refund to you</span><span class="g">'+money(refund)+'</span></div>';
+  $('totalsCard').innerHTML=t;
+}
+
+/* signature pad */
+var pad,ctx,drawing=false,last=null,hasInk=false;
+function initPad(){
+  pad=$('pad'); var r=pad.getBoundingClientRect();
+  pad.width=r.width*2; pad.height=r.height*2;
+  ctx=pad.getContext('2d'); ctx.scale(2,2); ctx.lineWidth=2.2; ctx.lineCap='round'; ctx.strokeStyle='#111';
+  function pos(e){var rc=pad.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return {x:t.clientX-rc.left,y:t.clientY-rc.top};}
+  function start(e){drawing=true;last=pos(e);e.preventDefault();}
+  function move(e){if(!drawing)return;var p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;hasInk=true;e.preventDefault();}
+  function end(){drawing=false;}
+  pad.addEventListener('mousedown',start);pad.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
+  pad.addEventListener('touchstart',start,{passive:false});pad.addEventListener('touchmove',move,{passive:false});pad.addEventListener('touchend',end);
+}
+function clearPad(){ if(ctx){ctx.clearRect(0,0,pad.width,pad.height);} hasInk=false; }
+
+async function submitSign(){
+  if(!hasInk){ toast('Please sign first'); return; }
+  if(!$('agree').checked){ toast('Please tick the confirmation box'); return; }
+  var dataUrl=pad.toDataURL('image/png');
+  toast('Submitting…');
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/rpc/submit_damage_approval',{
+      method:'POST', headers:hdr(), body:JSON.stringify({p_job_id:ID, p_signature:dataUrl})
+    });
+    var res=await r.json();
+    if(!r.ok || !res || res.ok!==true){
+      if(res && res.error==='already_agreed'){ $('content').classList.add('hidden'); $('agreedView').classList.remove('hidden'); window.scrollTo(0,0); return; }
+      throw new Error((res&&res.error)||'save failed');
+    }
+    $('content').classList.add('hidden');
+    $('doneView').classList.remove('hidden');
+    window.scrollTo(0,0);
+  }catch(e){ toast('Could not submit — check connection'); }
+}
+
+load();
+</script>
+</body>
+</html>

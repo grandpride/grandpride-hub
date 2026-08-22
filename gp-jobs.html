@@ -1280,7 +1280,12 @@ function sendDamageToCustomer(id){
   if(s.extra>0) lines.push('Extra to pay: RM '+s.extra.toLocaleString());
   else lines.push('Refund to you: RM '+s.refund.toLocaleString());
   lines.push('');
-  lines.push('Please confirm you agree so we can proceed. Thank you — GrandPride.');
+  var base=location.origin+location.pathname.replace(/[^/]*$/,'');
+  var signUrl=base+'gp-damage.html?id='+encodeURIComponent(j.id);
+  lines.push('Please review and sign to agree:');
+  lines.push(signUrl);
+  lines.push('');
+  lines.push('Thank you — GrandPride.');
   const contact=(j.customer_contact||'').replace(/[^0-9]/g,'');
   const msg=lines.filter(x=>x!==null).join('\n');
   const wa=contact?('https://wa.me/6'+contact.replace(/^6/,'')+'?text='+encodeURIComponent(msg)):('https://wa.me/?text='+encodeURIComponent(msg));
