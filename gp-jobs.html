@@ -336,7 +336,7 @@ async function loadAll(){
     sb.from('gp_customers').select('*').order('name',{ascending:true}),
     sb.from('gp_fleet').select('id,plate,model,status').order('plate',{ascending:true}),
     sb.from('gp_staff').select('username,name,is_chauffeur,can_drive').order('name',{ascending:true}),
-    sb.from('gp_checklists').select('id,job_id,out_sig_inspector,out_sig_customer,customer_signed_at')
+    sb.from('gp_checklists').select('id,job_id,out_sig_inspector,out_sig_customer,in_sig_inspector,intake_sig_inspector,in_sig_customer,customer_signed_at')
   ]);
   JOBS=j.data||[]; CUSTOMERS=c.data||[]; FLEET=f.data||[]; CHECKLISTS=cl.data||[];
   DRIVERS=(d.data||[]).filter(s=>s.is_chauffeur||s.can_drive);
@@ -746,6 +746,7 @@ function openJob(id){
       <h3>Progress</h3>${steps}
     </div>
     ${signStatusHtml(j)}
+    ${j.stage==='returned'?damageEditor(j):''}
     ${nextBtn}
     ${['booked','paid','delivered'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="extendJob('${j.id}')"><i class="ti ti-clock-plus"></i> ⏱ Extend booking</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit details</button>
@@ -852,11 +853,21 @@ function lifecycleButton(j){
     <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
   }
   if(j.stage==='delivered') return `<button class="btn" onclick="markReturned('${j.id}')"><i class="ti ti-arrow-back-up"></i> Mark returned</button>`;
-  if(j.stage==='returned') return `
-    <button class="btn sec" onclick="openChecklist('${j.id}','return')"><i class="ti ti-clipboard-check"></i> 1. QC checklist (return)</button>
-    <button class="btn" style="margin-top:8px" onclick="settleDeposit('${j.id}')"><i class="ti ti-receipt"></i> 2. Settle deposit</button>`;
+  if(j.stage==='returned'){
+    const returnDone = jobReturnChecklistDone(j);
+    const qcBtn = returnDone ? '' : `<button class="btn sec" onclick="openChecklist('${j.id}','return')"><i class="ti ti-clipboard-check"></i> 1. QC checklist (return)</button>`;
+    const settleBtn = j.damage_customer_agreed
+      ? `<button class="btn" style="margin-top:8px" onclick="settleDeposit('${j.id}')"><i class="ti ti-receipt"></i> Settle deposit</button>`
+      : `<button class="btn" style="margin-top:8px" disabled style="opacity:.5">Settle deposit (after customer agrees)</button>`;
+    return qcBtn+settleBtn;
+  }
   if(j.stage==='deposit_settled') return `<button class="btn" onclick="markDone('${j.id}')"><i class="ti ti-check"></i> Mark done</button>`;
   return '';
+}
+/* true once the return checklist has been done (inspector signed the return stage) */
+function jobReturnChecklistDone(j){
+  const list=(CHECKLISTS||[]).filter(c=>c.job_id===j.id);
+  return list.some(c=>c.in_sig_inspector||c.intake_sig_inspector);
 }
 
 async function cancelDeal(id){
@@ -1019,30 +1030,183 @@ async function markReturned(id){
   if(j.fleet_id){ await sb.from('gp_fleet').update({status:'available'}).eq('id',j.fleet_id); }
   toast('Returned ✓'); await loadAll(); openJob(id);
 }
+/* ===== Return damage assessment + settlement ===== */
+function damageList(j){ return Array.isArray(j.damages)?j.damages:[]; }
+function damageCustomerTotal(j){ return damageList(j).reduce((s,d)=>s+num(d.price),0); }
+function damageCostTotal(j){ return damageList(j).reduce((s,d)=>s+num(d.cost),0); }
+function chargesTotal(j){ return damageCustomerTotal(j)+num(j.exceed_km_charge)+num(j.summons_charge); }
+// settlement math: deduct from deposit first, charge only the excess
+function settlement(j){
+  const charges=chargesTotal(j);
+  const dep=num(j.deposit_amount);
+  const deducted=Math.min(charges, dep);
+  const extra=Math.max(0, charges-dep);
+  const refund=Math.max(0, dep-charges);
+  return {charges, dep, deducted, extra, refund};
+}
+const DAMAGE_TYPES=['Scratch','New scratch','Dent','New dent','Paint off','Crack','Chip','Broken part','Missing item','Tyre / rim','Interior','Other'];
+
+/* Build the damage & charges editor (shown in job detail for returned jobs) */
+function damageEditor(j){
+  const dmgs=damageList(j);
+  const rows=dmgs.map((d,i)=>`
+    <div class="card" style="padding:10px;margin-bottom:8px">
+      <div class="rowline"><b>${esc(d.type||'Damage')}</b><button class="btn sec mini" onclick="delDamage('${j.id}',${i})">Remove</button></div>
+      <div class="muted" style="font-size:12px">${esc(d.loc||'')}</div>
+      <div class="rowline" style="margin-top:4px"><span class="muted">Cost (GP)</span><span>RM ${num(d.cost).toLocaleString()}</span></div>
+      <div class="rowline"><span class="muted">Customer price</span><b>RM ${num(d.price).toLocaleString()}</b></div>
+      ${d.note?`<div class="muted" style="font-size:12px;margin-top:2px">${esc(d.note)}</div>`:''}
+    </div>`).join('');
+  const s=settlement(j);
+  const agreed=j.damage_customer_agreed;
+  return `
+    <div class="card" style="margin-top:12px">
+      <h3>Damage & charges</h3>
+      ${rows||'<div class="muted" style="font-size:13px">No damage added yet.</div>'}
+      ${agreed?'':`<button class="btn sec" style="margin-top:8px" onclick="addDamage('${j.id}')"><i class="ti ti-plus"></i> Add damage</button>`}
+      <div class="rowline" style="margin-top:10px"><span class="muted">Exceed mileage</span><span>${j.exceed_km?num(j.exceed_km).toLocaleString()+' km · ':''}RM ${num(j.exceed_km_charge).toLocaleString()}</span></div>
+      <div class="rowline"><span class="muted">Summons / saman</span><span>RM ${num(j.summons_charge).toLocaleString()}</span></div>
+      ${agreed?'':`<button class="btn sec" style="margin-top:6px" onclick="editReturnCharges('${j.id}')"><i class="ti ti-edit"></i> Edit mileage / summons</button>`}
+      <div style="border-top:1px solid var(--line);margin:10px 0"></div>
+      <div class="rowline"><span class="muted">Total charges</span><b>RM ${s.charges.toLocaleString()}</b></div>
+      <div class="rowline"><span class="muted">Deposit held</span><span>RM ${s.dep.toLocaleString()}</span></div>
+      <div class="rowline"><span class="muted">From deposit</span><span>RM ${s.deducted.toLocaleString()}</span></div>
+      ${s.extra>0
+        ? `<div class="rowline"><span class="muted">Extra to collect</span><b style="color:var(--amber)">RM ${s.extra.toLocaleString()}</b></div>`
+        : `<div class="rowline"><span class="muted">Refund to customer</span><b style="color:var(--green)">RM ${s.refund.toLocaleString()}</b></div>`}
+    </div>
+    <div class="card">
+      ${agreed
+        ? `<div class="rowline"><span class="muted">Customer</span><b style="color:var(--green)">Agreed ✓</b></div>
+           <div class="rowline"><span class="muted">Agreed on</span><span>${fmtDate(j.damage_customer_agreed_at)}</span></div>`
+        : `<button class="btn sec" onclick="sendDamageToCustomer('${j.id}')"><i class="ti ti-brand-whatsapp"></i> Send charges to customer</button>
+           <button class="btn" style="margin-top:8px" onclick="markDamageAgreed('${j.id}')"><i class="ti ti-check"></i> Customer agreed — proceed</button>
+           <div class="hint" style="text-align:center;margin-top:6px">Settle deposit unlocks after customer agrees</div>`}
+    </div>`;
+}
+function addDamage(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  const typeOpts=DAMAGE_TYPES.map(t=>`<option value="${t}">${t}</option>`).join('');
+  showModal(`
+    <button class="x" onclick="openJob('${id}')">×</button>
+    <h3>Add damage</h3>
+    <label>Type</label>
+    <select id="dm_type">${typeOpts}</select>
+    <label>Location / where</label>
+    <input id="dm_loc" placeholder="e.g. front left door, rear bumper">
+    <label>Cost price — GP internal (RM)</label>
+    <input id="dm_cost" inputmode="decimal" placeholder="what it costs GP">
+    <label>Customer price — charged (RM)</label>
+    <input id="dm_price" inputmode="decimal" placeholder="what customer pays">
+    <label>Note (optional)</label>
+    <input id="dm_note" placeholder="extra detail">
+    <button class="btn" style="margin-top:14px" onclick="saveDamage('${id}')"><i class="ti ti-check"></i> Add</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openJob('${id}')">Cancel</button>
+  `);
+}
+async function saveDamage(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  const item={type:$('dm_type').value, loc:($('dm_loc').value||'').trim(), cost:num($('dm_cost').value), price:num($('dm_price').value), note:($('dm_note').value||'').trim()||null};
+  if(!item.price && !item.cost){ toast('Enter at least a customer price'); return; }
+  const arr=damageList(j).slice(); arr.push(item);
+  const res=await sb.from('gp_jobs').update({damages:arr,updated_at:new Date().toISOString()}).eq('id',id);
+  if(res.error){ toast('Failed: '+res.error.message); return; }
+  toast('Damage added ✓'); await loadAll(); openJob(id);
+}
+async function delDamage(id,idx){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  const arr=damageList(j).slice(); arr.splice(idx,1);
+  const res=await sb.from('gp_jobs').update({damages:arr,updated_at:new Date().toISOString()}).eq('id',id);
+  if(res.error){ toast('Failed'); return; }
+  toast('Removed'); await loadAll(); openJob(id);
+}
+function editReturnCharges(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  showModal(`
+    <button class="x" onclick="openJob('${id}')">×</button>
+    <h3>Mileage & summons charges</h3>
+    ${j.mileage_given?`<div class="muted" style="font-size:12px;margin-bottom:8px">Included: ${num(j.mileage_given).toLocaleString()} km · Per km exceed: RM ${esc(j.per_km_exceed||'—')}</div>`:''}
+    <label>Exceed mileage (km)</label>
+    <input id="rc_km" inputmode="decimal" value="${esc(j.exceed_km||'')}" oninput="calcExceedCharge(${num(j.per_km_exceed)})">
+    <label>Exceed mileage charge (RM)</label>
+    <input id="rc_kmcharge" inputmode="decimal" value="${esc(j.exceed_km_charge||'')}">
+    <label>Summons / saman charge (RM)</label>
+    <input id="rc_summons" inputmode="decimal" value="${esc(j.summons_charge||'')}">
+    <button class="btn" style="margin-top:14px" onclick="saveReturnCharges('${id}')"><i class="ti ti-check"></i> Save</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openJob('${id}')">Cancel</button>
+  `);
+}
+function calcExceedCharge(perKm){ if(perKm>0){ const km=num($('rc_km').value); $('rc_kmcharge').value=Math.round(km*perKm*100)/100; } }
+async function saveReturnCharges(id){
+  const upd={ exceed_km:num($('rc_km').value)||null, exceed_km_charge:num($('rc_kmcharge').value)||null, summons_charge:num($('rc_summons').value)||null, updated_at:new Date().toISOString() };
+  const res=await sb.from('gp_jobs').update(upd).eq('id',id);
+  if(res.error){ toast('Failed'); return; }
+  toast('Saved ✓'); await loadAll(); openJob(id);
+}
+async function markDamageAgreed(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  if(!confirm('Confirm the customer has agreed to these charges?')) return;
+  const upd={ damage_customer_agreed:true, damage_customer_agreed_at:new Date().toISOString(),
+    total_charges:chargesTotal(j), updated_at:new Date().toISOString() };
+  const res=await sb.from('gp_jobs').update(upd).eq('id',id);
+  if(res.error){ toast('Failed'); return; }
+  toast('Customer agreed ✓'); await loadAll(); openJob(id);
+}
+function sendDamageToCustomer(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  const s=settlement(j);
+  const lines=['*GrandPride — return charges*','Customer: '+(j.customer_name||''),(j.car_plate?('Car: '+j.car_model+' ('+j.car_plate+')'):''),''];
+  damageList(j).forEach(d=>lines.push('• '+(d.type||'Damage')+(d.loc?(' — '+d.loc):'')+': RM '+num(d.price).toLocaleString()));
+  if(num(j.exceed_km_charge)>0) lines.push('• Exceed mileage'+(j.exceed_km?(' ('+num(j.exceed_km).toLocaleString()+' km)'):'')+': RM '+num(j.exceed_km_charge).toLocaleString());
+  if(num(j.summons_charge)>0) lines.push('• Summons / saman: RM '+num(j.summons_charge).toLocaleString());
+  lines.push('');
+  lines.push('Total charges: RM '+s.charges.toLocaleString());
+  lines.push('Deposit held: RM '+s.dep.toLocaleString());
+  if(s.extra>0) lines.push('Extra to pay: RM '+s.extra.toLocaleString());
+  else lines.push('Refund to you: RM '+s.refund.toLocaleString());
+  lines.push('');
+  lines.push('Please confirm you agree so we can proceed. Thank you — GrandPride.');
+  const contact=(j.customer_contact||'').replace(/[^0-9]/g,'');
+  const msg=lines.filter(x=>x!==null).join('\n');
+  const wa=contact?('https://wa.me/6'+contact.replace(/^6/,'')+'?text='+encodeURIComponent(msg)):('https://wa.me/?text='+encodeURIComponent(msg));
+  window.open(wa,'_blank');
+  toast('Charges sent to customer');
+}
+
 function settleDeposit(id){
   const j=JOBS.find(x=>x.id===id);
+  const s=settlement(j);
   showModal(`
     <button class="x" onclick="openJob('${id}')">×</button>
     <h3>Settle deposit</h3>
-    <div class="muted" style="margin-bottom:8px">Deposit held: RM ${num(j.deposit_amount).toLocaleString()}</div>
-    <label>Summons check</label>
-    <input id="d_summons" placeholder="e.g. none / RM150 saman">
-    <label>Damage deduction (RM)</label>
-    <input id="d_damage" inputmode="decimal" value="0" oninput="calcDepReturn(${num(j.deposit_amount)})">
-    <label>Deposit to return (RM)</label>
-    <input id="d_return" inputmode="decimal" value="${num(j.deposit_amount)}">
-    <label>Return date</label>
+    <div class="card" style="padding:11px;margin-bottom:10px">
+      <div class="rowline"><span class="muted">Total charges</span><b>RM ${s.charges.toLocaleString()}</b></div>
+      <div class="rowline"><span class="muted">Deposit held</span><span>RM ${s.dep.toLocaleString()}</span></div>
+      <div class="rowline"><span class="muted">Deducted from deposit</span><span>RM ${s.deducted.toLocaleString()}</span></div>
+      ${s.extra>0
+        ? `<div class="rowline"><span class="muted">Extra to collect</span><b style="color:var(--amber)">RM ${s.extra.toLocaleString()}</b></div>`
+        : `<div class="rowline"><span class="muted">Refund to customer</span><b style="color:var(--green)">RM ${s.refund.toLocaleString()}</b></div>`}
+    </div>
+    ${s.extra>0?`<div class="hint" style="margin-bottom:8px">Collect the extra RM ${s.extra.toLocaleString()} from the customer (deposit fully used).</div>`:''}
+    <label>Refund method / note</label>
+    <input id="d_note" placeholder="e.g. bank transfer, cash">
+    <label>Settle date</label>
     <input type="date" id="d_date" value="${new Date().toISOString().slice(0,10)}">
-    <button class="btn" style="margin-top:14px" onclick="doSettleDeposit('${id}')">Save + settle</button>
+    <button class="btn" style="margin-top:14px" onclick="doSettleDeposit('${id}')"><i class="ti ti-check"></i> Confirm settlement</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openJob('${id}')">Cancel</button>
   `);
 }
-function calcDepReturn(dep){ const dmg=num($('d_damage').value); $('d_return').value=Math.max(0,dep-dmg); }
 async function doSettleDeposit(id){
-  const upd={ stage:'deposit_settled', summons_check:$('d_summons').value||null,
-    damage_deduct:num($('d_damage').value), deposit_returned:num($('d_return').value),
-    deposit_return_date:$('d_date').value||null, updated_at:new Date().toISOString() };
+  const j=JOBS.find(x=>x.id===id);
+  const s=settlement(j);
+  const upd={ stage:'deposit_settled',
+    total_charges:s.charges, deposit_deducted:s.deducted, extra_to_collect:s.extra,
+    deposit_refunded:s.refund, deposit_returned:s.refund, damage_deduct:s.deducted,
+    deposit_return_date:$('d_date').value||null, settled_at:new Date().toISOString(),
+    remark: (j.remark? j.remark+'\n':'') + ('Settlement note: '+($('d_note').value||'')),
+    updated_at:new Date().toISOString() };
   const res=await sb.from('gp_jobs').update(upd).eq('id',id);
-  if(res.error){ toast('Failed'); return; }
+  if(res.error){ toast('Failed: '+res.error.message); return; }
   toast('Deposit settled ✓'); await loadAll(); openJob(id);
 }
 async function markDone(id){
