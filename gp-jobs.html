@@ -1093,7 +1093,7 @@ function settlement(j){
   const refund=Math.max(0, dep-charges);
   return {charges, dep, deducted, extra, refund};
 }
-const DAMAGE_TYPES=['Scratch','New scratch','Dent','New dent','Paint off','Crack','Chip','Broken part','Missing item','Tyre / rim','Interior','Other'];
+const DAMAGE_TYPES=['New scratch','New dent','Paint off','Crack','Chip','Broken part','Missing item','Tyre / rim','Interior','Other'];
 
 /* Build the damage & charges editor (shown in job detail for returned jobs) */
 function damageEditor(j){
@@ -1163,8 +1163,9 @@ function editDamage(id,idx){
     <input id="dm_cost" inputmode="decimal" value="${esc(d.cost||'')}">
     <label>Customer price — charged (RM)</label>
     <input id="dm_price" inputmode="decimal" value="${esc(d.price||'')}">
-    <label>Note (optional)</label>
-    <input id="dm_note" value="${esc(d.note||'')}">
+    <label>Note — shown to customer (optional)</label>
+    <input id="dm_note" value="${esc(d.note||'')}" placeholder="e.g. headlamp cover cracked, needs replacing">
+    <div class="hint" style="margin-top:2px">This note is included in the charges message sent to the customer.</div>
     <button class="btn" style="margin-top:14px" onclick="saveDamageEdit('${id}',${idx})"><i class="ti ti-check"></i> Save</button>
     <button class="btn danger" style="margin-top:8px" onclick="delDamage('${id}',${idx})">Remove this damage</button>
     <button class="btn sec" style="margin-top:8px" onclick="openJob('${id}')">Cancel</button>
@@ -1208,8 +1209,9 @@ function addDamage(id){
     <input id="dm_cost" inputmode="decimal" placeholder="what it costs GP">
     <label>Customer price — charged (RM)</label>
     <input id="dm_price" inputmode="decimal" placeholder="what customer pays">
-    <label>Note (optional)</label>
-    <input id="dm_note" placeholder="extra detail">
+    <label>Note — shown to customer (optional)</label>
+    <input id="dm_note" placeholder="e.g. headlamp cover cracked, needs replacing">
+    <div class="hint" style="margin-top:2px">This note is included in the charges message sent to the customer.</div>
     <button class="btn" style="margin-top:14px" onclick="saveDamage('${id}')"><i class="ti ti-check"></i> Add</button>
     <button class="btn sec" style="margin-top:8px" onclick="openJob('${id}')">Cancel</button>
   `);
@@ -1266,7 +1268,10 @@ function sendDamageToCustomer(id){
   const j=JOBS.find(x=>x.id===id); if(!j) return;
   const s=settlement(j);
   const lines=['*GrandPride — return charges*','Customer: '+(j.customer_name||''),(j.car_plate?('Car: '+j.car_model+' ('+j.car_plate+')'):''),''];
-  damageList(j).forEach(d=>lines.push('• '+(d.type||'Damage')+(d.loc?(' — '+d.loc):'')+': RM '+num(d.price).toLocaleString()));
+  damageList(j).forEach(d=>{
+    lines.push('• '+(d.type||'Damage')+(d.loc?(' — '+d.loc):'')+': RM '+num(d.price).toLocaleString());
+    if(d.note) lines.push('   '+d.note);
+  });
   if(num(j.exceed_km_charge)>0) lines.push('• Exceed mileage'+(j.exceed_km?(' ('+num(j.exceed_km).toLocaleString()+' km)'):'')+': RM '+num(j.exceed_km_charge).toLocaleString());
   if(num(j.summons_charge)>0) lines.push('• Summons / saman: RM '+num(j.summons_charge).toLocaleString());
   lines.push('');
