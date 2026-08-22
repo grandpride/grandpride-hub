@@ -1165,22 +1165,26 @@ async function saveChecklist(silent){
 async function sendSignLink(){
   // save first so the checklist exists in the cloud
   readForm();
-  if(!STATE.current.out_sig_inspector){ toast('GP Operation must sign first'); return; }
+  const st=STATE.stage;                       // 'out' = delivery, 'in' = return
+  const isReturn = (st==='in' || st==='intake');
+  // inspector signature is stored per-stage: out_sig_inspector / in_sig_inspector
+  if(!f('sig_inspector')){ toast('GP Operation must sign first'); return; }
   toast('Saving…');
   const ok=await saveChecklist(true);
   if(!ok){ toast('Save failed: '+(window.__lastSbError||'no response')); return; }
   const id=STATE.current.id;
   const base=location.origin+location.pathname.replace(/[^/]*$/,'');
-  const url=base+'gp-sign.html?id='+encodeURIComponent(id);
+  const mode=isReturn?'return':'delivery';
+  const url=base+'gp-sign.html?id='+encodeURIComponent(id)+'&mode='+mode;
   const cust=STATE.current.customer_name||'Customer';
   const car=(STATE.current.car_model||'')+' '+(STATE.current.car_plate||'');
-  const msg='Hi '+cust+', please review and sign the delivery checklist for '+car.trim()+':\n'+url+'\n\nOnce signed, we can proceed. Thank you — GrandPride.';
+  const what=isReturn?'return / handover checklist':'delivery checklist';
+  const msg='Hi '+cust+', please review and sign the '+what+' for '+car.trim()+':\n'+url+'\n\nOnce signed, we can proceed. Thank you — GrandPride.';
   const contact=(STATE.current.customer_contact||'').replace(/[^0-9]/g,'');
   const wa = contact ? ('https://wa.me/6'+contact.replace(/^6/,'')+'?text='+encodeURIComponent(msg))
                      : ('https://wa.me/?text='+encodeURIComponent(msg));
   window.open(wa,'_blank');
   toast('Link sent — returning to GP Jobs…');
-  // customer has been sent the link; this is the "done" signal → go back to the job
   setTimeout(function(){ backToJob(); }, 1200);
 }
 

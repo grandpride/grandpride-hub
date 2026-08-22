@@ -84,6 +84,9 @@ function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');setTi
 function param(k){try{return new URLSearchParams(location.search).get(k)||'';}catch(e){return '';}}
 
 var CHECK=null, ID=param('id');
+var MODE=param('mode')||'delivery';                 // 'delivery' or 'return'
+var PFX = (MODE==='return') ? 'in' : 'out';         // field prefix for this stage
+var CUST_SIG_FIELD = PFX+'_sig_customer';           // out_sig_customer / in_sig_customer
 
 async function load(){
   if(!ID){ $('loading').classList.add('hidden'); $('errorView').classList.remove('hidden'); return; }
@@ -103,26 +106,31 @@ async function load(){
 
 function renderDetails(){
   var c=CHECK;
+  var isReturn = (MODE==='return');
   var rows=[
     ['Customer', c.customer_name],
     ['Car', (c.car_model||'')+' '+(c.car_plate||'')],
     ['Lease from', c.lease_from],
     ['Lease to', c.lease_to],
     ['Duration', c.duration_days],
-    ['Mileage out', c.out_mileage],
-    ['Petrol', (c.out_petrol!=null?c.out_petrol+' / 5':'')],
+    [isReturn?'Mileage in':'Mileage out', isReturn?c.in_mileage:c.out_mileage],
+    ['Petrol', (isReturn ? (c.in_petrol!=null?c.in_petrol+' / 5':'') : (c.out_petrol!=null?c.out_petrol+' / 5':''))],
     ['Deposit', c.deposit?('RM '+c.deposit):'']
   ].filter(function(x){return x[1];});
   $('details').innerHTML=rows.map(function(x){
     return '<div class="rowline"><span class="muted">'+esc(x[0])+'</span><span>'+esc(x[1])+'</span></div>';
   }).join('');
-  // photos
+  // photos — show this stage's photos
   var ph=[];
-  try{ ph=(c.out_photos||[]).map(function(p){return (typeof p==='string')?p:(p&&p.url);}).filter(Boolean); }catch(e){}
+  var src = isReturn ? (c.in_photos||[]) : (c.out_photos||[]);
+  try{ ph=src.map(function(p){return (typeof p==='string')?p:(p&&p.url);}).filter(Boolean); }catch(e){}
   if(ph.length){
     $('photosCard').classList.remove('hidden');
     $('photos').innerHTML=ph.slice(0,9).map(function(u){return '<img src="'+esc(u)+'">';}).join('');
   }
+  // heading hint for the customer
+  var h=document.getElementById('signHeading');
+  if(h) h.textContent = isReturn ? 'Return / handover — please sign' : 'Delivery — please sign';
 }
 
 /* signature pad */
@@ -146,7 +154,8 @@ async function submitSign(){
   var dataUrl=pad.toDataURL('image/png');
   toast('Submitting…');
   try{
-    var body={ out_sig_customer:dataUrl, customer_signed_at:new Date().toISOString() };
+    var body={ customer_signed_at:new Date().toISOString() };
+    body[CUST_SIG_FIELD]=dataUrl;                    // out_sig_customer or in_sig_customer
     var r=await fetch(base()+'/rest/v1/gp_checklists?id=eq.'+encodeURIComponent(ID), {
       method:'PATCH', headers:hdr({'Prefer':'return=minimal'}), body:JSON.stringify(body)
     });
