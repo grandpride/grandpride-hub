@@ -281,6 +281,12 @@ function parseWhatsApp(raw){
   const startLine = wpField(text,['start date']) || dateLine;
   // split range on dash variants
   const parts=(startLine||dateLine).split(/\s*[-–—]\s*/);
+  // Compact range like "22-24/8/26" or "22 - 24/8/26 4pm": the first part is a bare
+  // day that shares the second part's month/year. Backfill it so the start date parses.
+  if(parts.length===2 && /^\s*\d{1,2}\s*$/.test(parts[0])){
+    const em=wpClean(parts[1]).match(/\/\s*(\d{1,2})\s*\/\s*(\d{2,4})/);
+    if(em){ parts[0]=wpClean(parts[0]).trim()+'/'+em[1]+'/'+em[2]; }
+  }
   if(parts[0]){ d.start_date=wpDate(parts[0]); const t=wpTime(parts[0]); if(t) d.start_time=t; }
   if(parts[1]){ d.end_date=wpDate(parts[1]); const t=wpTime(parts[1]); if(t) d.end_time=t; }
   // separate Time: line (BG/driver)
@@ -371,6 +377,13 @@ function jobCard(j){
     : num(j.paid_amount)>0?`<span class="chip" style="color:#e0b060">bal RM ${jobBalance(j).toLocaleString()}</span>`
     : '<span class="chip" style="color:#ffb3a6">unpaid</span>';
   const depDue = (j.stage==='returned' && num(j.deposit_amount)>0 && num(j.deposit_returned)===0)?'<span class="chip" style="color:#e0b060">deposit due</span>':'';
+  // damage settlement status (returned jobs with new damage)
+  let dmgChip='';
+  if(j.stage==='returned'){
+    const hasDmg=Array.isArray(j.damages)&&j.damages.length>0;
+    if(hasDmg && !j.damage_customer_agreed) dmgChip='<span class="chip" style="color:#ffb3a6">awaiting agree</span>';
+    else if(hasDmg && j.damage_customer_agreed && num(j.deposit_returned)===0) dmgChip='<span class="chip" style="color:#7fe0a0">repair agreed</span>';
+  }
   return `<div class="card" onclick="openJob('${j.id}')">
     <div class="jobcard-top">
       <div>
@@ -382,7 +395,7 @@ function jobCard(j){
     <div class="stagebar">${bar}</div>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <span class="muted" style="font-size:13px">${fmtDate(j.start_date)}${j.end_date?' → '+fmtDate(j.end_date):''}</span>
-      <span>${pay}${depDue}</span>
+      <span>${pay}${depDue}${dmgChip}</span>
     </div>
   </div>`;
 }
@@ -1143,7 +1156,10 @@ function damageEditor(j){
       ${repairAgreed
         ? `<div class="rowline"><span class="muted">Customer agreed repair</span><b style="color:var(--green)">Agreed ✓</b></div>
            <div class="rowline"><span class="muted">Agreed on</span><span>${fmtDate(j.damage_customer_agreed_at)}</span></div>`
-        : `<button class="btn sec" onclick="sendDamageToCustomer('${j.id}')"><i class="ti ti-brand-whatsapp"></i> Send charges to customer to sign</button>
+        : `${(dmgs.length>0||num(j.exceed_km_charge)>0||num(j.summons_charge)>0)
+             ? `<div class="rowline"><span class="muted">Status</span><b style="color:var(--amber)">Waiting for customer to agree</b></div>`
+             : ''}
+           <button class="btn sec" style="margin-top:8px" onclick="sendDamageToCustomer('${j.id}')"><i class="ti ti-brand-whatsapp"></i> Send charges to customer to sign</button>
            <button class="btn sec" style="margin-top:8px" onclick="markDamageAgreed('${j.id}')"><i class="ti ti-check"></i> Mark agreed manually</button>
            <div class="hint" style="text-align:center;margin-top:6px">Settle deposit unlocks after the customer agrees the repair</div>`}
     </div>`;
