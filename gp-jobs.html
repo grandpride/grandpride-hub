@@ -106,6 +106,7 @@ a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
     <div class="tab" data-f="delivered" onclick="setFilter('delivered')">Out now</div>
     <div class="tab" data-f="returned" onclick="setFilter('returned')">Returned</div>
     <div class="tab" data-f="deposit" onclick="setFilter('deposit')">Deposit due</div>
+    <div class="tab" data-f="stuff" onclick="setFilter('stuff')">Car stuff</div>
     <div class="tab" data-f="done" onclick="setFilter('done')">Done</div>
     <div class="tab" data-f="customers" onclick="setFilter('customers')">Customers</div>
   </div>
@@ -152,6 +153,33 @@ function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
 function num(v){const n=parseFloat(v);return isNaN(n)?0:n;}
 function fmtDate(d){if(!d)return '—';const t=new Date(d);if(isNaN(t))return '—';return t.toLocaleDateString('en-GB',{day:'numeric',month:'short'});}
+const IMGBB_KEY='e8dbe75e3933b7bf63be0253e1b122d6';
+/* compress an image in-browser (cap long edge, JPEG re-encode) before upload */
+function compressImage(file, maxEdge, quality){
+  maxEdge=maxEdge||1200; quality=quality||0.8;
+  return new Promise(function(resolve){
+    if(!file || !/^image\//.test(file.type) || /gif/i.test(file.type)){ resolve(file); return; }
+    const img=new Image(); const url=URL.createObjectURL(file);
+    img.onload=function(){
+      let w=img.naturalWidth, h=img.naturalHeight;
+      if(Math.max(w,h)>maxEdge){ const s=maxEdge/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h); URL.revokeObjectURL(url);
+      cv.toBlob(function(blob){
+        if(!blob || blob.size>=file.size){ resolve(file); return; }
+        resolve(new File([blob],(file.name||'photo').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'}));
+      },'image/jpeg',quality);
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); resolve(file); };
+    img.src=url;
+  });
+}
+async function imgbbUpload(file){
+  file=await compressImage(file,1200,0.8);
+  const fd=new FormData(); fd.append('image',file);
+  const r=await fetch('https://api.imgbb.com/1/upload?key='+IMGBB_KEY,{method:'POST',body:fd});
+  const j=await r.json(); return (j&&j.data&&j.data.url)?j.data.url:null;
+}
 // convert "9:00 AM" (or "09:00") -> "09:00" for the native time picker
 function to24(s){
   if(!s) return '';
@@ -362,6 +390,7 @@ function render(){
   else if(FILTER==='delivered') list=list.filter(j=>j.stage==='delivered');
   else if(FILTER==='returned') list=list.filter(j=>j.stage==='returned');
   else if(FILTER==='deposit') list=list.filter(j=>j.stage==='returned' && num(j.deposit_amount)>0 && num(j.deposit_returned)===0);
+  else if(FILTER==='stuff') list=list.filter(j=>Array.isArray(j.car_items) && j.car_items.length>0 && !j.car_items_returned);
   else if(FILTER==='done') list=list.filter(j=>['done','deposit_settled','cancelled'].includes(j.stage));
   if(q) list=list.filter(j=>((j.customer_name||'')+' '+(j.car_model||'')+' '+(j.car_plate||'')+' '+(j.job_no||'')).toLowerCase().includes(q));
 
@@ -384,6 +413,7 @@ function jobCard(j){
     if(hasDmg && !j.damage_customer_agreed) dmgChip='<span class="chip" style="color:#ffb3a6">awaiting agree</span>';
     else if(hasDmg && j.damage_customer_agreed && num(j.deposit_returned)===0) dmgChip='<span class="chip" style="color:#7fe0a0">repair agreed</span>';
   }
+  const stuffChip = (Array.isArray(j.car_items)&&j.car_items.length>0&&!j.car_items_returned)?'<span class="chip" style="color:#ffcf8f">⚠ car stuff</span>':'';
   return `<div class="card" onclick="openJob('${j.id}')">
     <div class="jobcard-top">
       <div>
@@ -395,7 +425,7 @@ function jobCard(j){
     <div class="stagebar">${bar}</div>
     <div style="display:flex;justify-content:space-between;align-items:center">
       <span class="muted" style="font-size:13px">${fmtDate(j.start_date)}${j.end_date?' → '+fmtDate(j.end_date):''}</span>
-      <span>${pay}${depDue}${dmgChip}</span>
+      <span>${pay}${depDue}${dmgChip}${stuffChip}</span>
     </div>
   </div>`;
 }
@@ -760,6 +790,7 @@ function openJob(id){
       <h3>Progress</h3>${steps}
     </div>
     ${signStatusHtml(j)}
+    ${carItemsCard(j)}
     ${j.stage==='returned'?damageEditor(j):''}
     ${j.stage==='deposit_settled'?settledSummary(j):''}
     ${nextBtn}
@@ -1036,14 +1067,112 @@ async function markDelivered(id){
   } else if(!confirm('Mark as delivered? This marks the car as rented.')) return;
   await sb.from('gp_jobs').update({stage:'delivered',updated_at:new Date().toISOString()}).eq('id',id);
   if(j.fleet_id){ await sb.from('gp_fleet').update({status:'rented'}).eq('id',j.fleet_id); }
-  toast('Delivered ✓ — car marked rented'); await loadAll(); openJob(id);
+  toast('Delivered ✓ — car marked rented'); await loadAll();
+  // after delivery, ask about personal items inside the car
+  if(!j.car_items_checked){ openCarItemsPrompt(id); } else { openJob(id); }
 }
 async function markReturned(id){
   const j=JOBS.find(x=>x.id===id);
   if(!confirm('Mark as returned? Car goes back to available.')) return;
   await sb.from('gp_jobs').update({stage:'returned',updated_at:new Date().toISOString()}).eq('id',id);
   if(j.fleet_id){ await sb.from('gp_fleet').update({status:'available'}).eq('id',j.fleet_id); }
-  toast('Returned ✓'); await loadAll(); openJob(id);
+  toast('Returned ✓'); await loadAll();
+  // if this car had personal items logged and not yet returned, force a notice
+  const items=Array.isArray(j.car_items)?j.car_items:[];
+  if(items.length>0 && !j.car_items_returned){ openCarItemsNotice(id); } else { openJob(id); }
+}
+
+/* ===== Personal items inside the car (partner/owner stuff) ===== */
+let CAR_ITEMS=[];
+function openCarItemsPrompt(id){
+  CAR_ITEMS=[];
+  showModal(`
+    <button class="x" onclick="skipCarItems('${id}')">×</button>
+    <h3>Personal items inside the car?</h3>
+    <div class="hint" style="margin-bottom:10px">If the owner/partner left belongings in this car, log them with photos so nothing is lost. Cleared when the car returns.</div>
+    <div id="carItemsList"></div>
+    <button class="btn sec" style="margin-top:6px" onclick="addCarItem()"><i class="ti ti-plus"></i> Add item</button>
+    <button class="btn" style="margin-top:14px" onclick="saveCarItems('${id}')"><i class="ti ti-check"></i> Save items</button>
+    <button class="btn sec" style="margin-top:8px" onclick="skipCarItems('${id}')">No personal items in this car</button>
+  `);
+  addCarItem();
+}
+function renderCarItems(){
+  const host=$('carItemsList'); if(!host) return;
+  host.innerHTML=CAR_ITEMS.map((it,i)=>`
+    <div class="card" style="padding:11px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b>Item ${i+1}</b>
+        <button class="btn sec" style="width:auto;padding:4px 10px;margin:0" onclick="delCarItem(${i})">Remove</button>
+      </div>
+      <input placeholder="What is it? e.g. sunglasses, documents" value="${esc(it.name||'')}" oninput="CAR_ITEMS[${i}].name=this.value">
+      <input placeholder="Note (optional) e.g. in glovebox" value="${esc(it.note||'')}" oninput="CAR_ITEMS[${i}].note=this.value" style="margin-top:6px">
+      <div class="photostrip" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${(it.photos||[]).map(u=>`<img src="${esc(u)}" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--border)">`).join('')}</div>
+      <input type="file" accept="image/*" multiple style="margin-top:6px" onchange="uploadCarItemPhotos(this,${i})">
+      <div class="hint" id="ciHint${i}"></div>
+    </div>`).join('');
+}
+function addCarItem(){ CAR_ITEMS.push({name:'',note:'',photos:[]}); renderCarItems(); }
+function delCarItem(i){ CAR_ITEMS.splice(i,1); renderCarItems(); }
+async function uploadCarItemPhotos(inp,i){
+  const files=[...inp.files]; if(!files.length) return;
+  const hint=$('ciHint'+i); if(hint) hint.textContent='Uploading '+files.length+' photo(s)…';
+  for(const f of files){ try{ const u=await imgbbUpload(f); if(u) CAR_ITEMS[i].photos.push(u); }catch(e){} }
+  if(hint) hint.textContent='Photos added ✓'; renderCarItems();
+}
+async function saveCarItems(id){
+  const items=CAR_ITEMS.filter(it=>(it.name&&it.name.trim())||(it.photos&&it.photos.length));
+  if(!items.length){ return skipCarItems(id); }
+  const res=await sb.from('gp_jobs').update({car_items:items, car_items_returned:false, car_items_checked:true, updated_at:new Date().toISOString()}).eq('id',id);
+  if(res.error){ toast('Failed: '+res.error.message); return; }
+  toast('Items logged ✓'); await loadAll(); openJob(id);
+}
+async function skipCarItems(id){
+  await sb.from('gp_jobs').update({car_items:[], car_items_returned:true, car_items_checked:true, updated_at:new Date().toISOString()}).eq('id',id);
+  await loadAll(); openJob(id);
+}
+function openCarItemsNotice(id){
+  const j=JOBS.find(x=>x.id===id);
+  const items=Array.isArray(j.car_items)?j.car_items:[];
+  showModal(`
+    <button class="x" onclick="openJob('${id}')">×</button>
+    <h3 style="color:var(--amber)">⚠️ This car had personal items</h3>
+    <div class="hint" style="margin-bottom:10px">Logged when the car went out. Check they have been taken out before releasing the car.</div>
+    ${items.map((it,i)=>`
+      <div class="card" style="padding:11px;margin-bottom:10px">
+        <b>${i+1}. ${esc(it.name||'Item')}</b>${it.note?` <span class="muted">— ${esc(it.note)}</span>`:''}
+        <div class="photostrip" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${(it.photos||[]).map(u=>`<img src="${esc(u)}" onclick="window.open('${esc(u)}','_blank')" style="width:74px;height:74px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer">`).join('')||'<span class="muted" style="font-size:12px">No photo</span>'}</div>
+      </div>`).join('')}
+    <button class="btn" style="margin-top:8px" onclick="confirmItemsReturned('${id}')"><i class="ti ti-check"></i> Yes, items taken out</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openJob('${id}')">Not yet — keep flagged</button>
+  `);
+}
+async function confirmItemsReturned(id){
+  const res=await sb.from('gp_jobs').update({car_items_returned:true, car_items_returned_at:new Date().toISOString(), updated_at:new Date().toISOString()}).eq('id',id);
+  if(res.error){ toast('Failed: '+res.error.message); return; }
+  toast('Items cleared ✓'); await loadAll(); openJob(id);
+}
+function carItemsCard(j){
+  const items=Array.isArray(j.car_items)?j.car_items:[];
+  const outstanding = items.length>0 && !j.car_items_returned;
+  // nothing logged yet and car is out — offer to log
+  if(items.length===0){
+    if(['delivered'].includes(j.stage)){
+      return `<div class="card" style="margin-top:12px">
+        <h3>Personal items in car</h3>
+        <div class="hint" style="margin-bottom:8px">${j.car_items_checked?'No personal items logged for this car.':'Not checked yet.'}</div>
+        <button class="btn sec" onclick="openCarItemsPrompt('${j.id}')"><i class="ti ti-briefcase"></i> Log personal items</button>
+      </div>`;
+    }
+    return '';
+  }
+  return `<div class="card" style="margin-top:12px">
+    <h3>Personal items in car ${outstanding?'<span class="chip" style="color:#ffb3a6">not returned</span>':'<span class="chip" style="color:#7fe0a0">returned</span>'}</h3>
+    ${items.map((it,i)=>`<div class="rowline"><span>${i+1}. ${esc(it.name||'Item')}${it.note?` <span class="muted">— ${esc(it.note)}</span>`:''}</span><span class="muted">${(it.photos||[]).length}📷</span></div>`).join('')}
+    ${outstanding
+      ? `<button class="btn" style="margin-top:10px" onclick="openCarItemsNotice('${j.id}')"><i class="ti ti-check"></i> Mark items taken out</button>`
+      : `<div class="rowline"><span class="muted">Cleared on</span><span>${fmtDate(j.car_items_returned_at)}</span></div>`}
+  </div>`;
 }
 /* ===== Return damage assessment + settlement ===== */
 const DEFECTS={ D:{name:'Dent',color:'#e0322f'}, S:{name:'Scratch',color:'#2f6fe0'}, PG:{name:'Paint Gone',color:'#e08a2f'}, SC:{name:'Stonechip',color:'#7d3fe0'}, C:{name:'Cracked',color:'#2fae5a'}, ND:{name:'New Damage',color:'#e0322f'} };
