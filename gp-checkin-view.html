@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vehicle Check-in — GrandPride</title>
+<style>
+  :root{ --bg:#0b0b0b; --card:#151515; --card2:#1c1c1a; --border:#2a2a26; --text:#f5f3ee; --muted:#9a978d; --gold:#e3c887; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:15px;line-height:1.45}
+  .wrap{max-width:640px;margin:0 auto;padding:18px 16px 60px}
+  .logo{text-align:center;margin:10px 0 14px}
+  .logo img{height:42px}
+  h2{font-size:19px;margin:0 0 4px;color:var(--gold);text-align:center}
+  .sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
+  .rowline{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px}
+  .rowline:last-child{border-bottom:none}
+  .muted{color:var(--muted)}
+  h3{font-size:14px;color:var(--gold);margin:0 0 10px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid img,.grid video{width:100%;border-radius:10px;border:1px solid var(--border);display:block;background:#000}
+  .media-item{position:relative}
+  .media-item .lbl{position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:2px 7px;border-radius:6px}
+  .done{text-align:center;padding:44px 20px}
+  .done .big{font-size:46px;margin-bottom:10px}
+  .hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo" id="logo"></div>
+  <div id="loading" style="text-align:center;padding:40px;color:var(--muted)">Loading check-in…</div>
+
+  <div id="content" class="hidden">
+    <h2>Vehicle Check-in</h2>
+    <div class="sub" id="stageSub"></div>
+    <div class="card" id="details"></div>
+    <div class="card">
+      <h3 id="mediaHead">Photos &amp; videos</h3>
+      <div class="grid" id="mediaGrid"></div>
+    </div>
+  </div>
+
+  <div id="errorView" class="done hidden">
+    <div class="big">⚠️</div>
+    <h2 style="color:#d2533f">Not found</h2>
+    <div class="sub">This check-in link is invalid or has expired.</div>
+  </div>
+</div>
+
+<script>
+var SB_URL='https://iefevjkeckysdluzazeq.supabase.co';
+var SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k';
+function $(id){return document.getElementById(id);}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function param(k){try{return new URLSearchParams(location.search).get(k)||'';}catch(e){return '';}}
+
+async function load(){
+  var t=param('t');
+  if(!t){ fail(); return; }
+  try{
+    var r=await fetch(SB_URL+'/rest/v1/rpc/get_checkin',{method:'POST',
+      headers:{'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY},
+      body:JSON.stringify({p_token:t})});
+    var d=await r.json();
+    if(!d){ throw new Error('not found'); }
+    render(d);
+    $('loading').classList.add('hidden');
+    $('content').classList.remove('hidden');
+  }catch(e){ fail(); }
+}
+function fail(){ $('loading').classList.add('hidden'); $('errorView').classList.remove('hidden'); }
+
+function render(d){
+  var stageMap={delivery:'Delivery (car going out)',return:'Return (car came back)',checkin:'Check-in'};
+  $('stageSub').textContent=(stageMap[d.stage]||d.stage||'')+(d.created_at?(' · '+new Date(d.created_at).toLocaleString()):'');
+  $('details').innerHTML=
+    '<div class="rowline"><span class="muted">Customer</span><span>'+esc(d.customer_name||'—')+'</span></div>'+
+    '<div class="rowline"><span class="muted">Car</span><span>'+esc((d.car_model||'')+(d.car_plate?(' ('+d.car_plate+')'):''))+'</span></div>'+
+    (d.note?('<div class="rowline"><span class="muted">Note</span><span style="text-align:right;max-width:60%">'+esc(d.note)+'</span></div>'):'');
+
+  var media=Array.isArray(d.media)?d.media:[];
+  $('mediaHead').textContent='Photos & videos ('+(d.photo_count||0)+' photo'+((d.photo_count||0)===1?'':'s')+', '+(d.video_count||0)+' video'+((d.video_count||0)===1?'':'s')+')';
+  $('mediaGrid').innerHTML = media.length ? media.map(function(m){
+    if(m.type==='video'){
+      return '<div class="media-item"><video src="'+esc(m.url)+'" controls preload="metadata"></video>'+(m.label?'<span class="lbl">'+esc(m.label)+'</span>':'')+'</div>';
+    }
+    return '<div class="media-item"><a href="'+esc(m.url)+'" target="_blank"><img src="'+esc(m.url)+'" loading="lazy"></a>'+(m.label?'<span class="lbl">'+esc(m.label)+'</span>':'')+'</div>';
+  }).join('') : '<div class="muted" style="font-size:13px">No media.</div>';
+}
+load();
+</script>
+</body>
+</html>

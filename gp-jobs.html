@@ -989,6 +989,7 @@ function openJob(id){
     ${nextBtn}
     ${['booked','paid','delivered'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="extendJob('${j.id}')"><i class="ti ti-clock-plus"></i> ⏱ Extend booking</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit details</button>
+    ${serviceHasCar(j.service_type)&&['delivered','returned','deposit_settled','done'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="openCheckin('${j.id}')"><i class="ti ti-camera"></i> 📸 Send check-in to WhatsApp</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="waSummary('${j.id}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp summary</button>
   `);
 }
@@ -1349,6 +1350,148 @@ async function confirmItemsReturned(id){
   const res=await sb.from('gp_jobs').update({car_items_returned:true, car_items_returned_at:new Date().toISOString(), updated_at:new Date().toISOString()}).eq('id',id);
   if(res.error){ toast('Failed: '+res.error.message); return; }
   toast('Items cleared ✓'); await loadAll(); openJob(id);
+}
+
+/* ===== WhatsApp Check-in (photos + video gallery) ===== */
+let CHECKIN={media:[]};   // media: [{type,label,file?,dataUrl?,url?}]
+function randToken(){ return 'ci_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+async function openCheckin(id){
+  const j=JOBS.find(x=>x.id===id); if(!j) return;
+  CHECKIN={media:[], job:j};
+  // pull photos already captured on this job's checklist(s) (base64) so staff can include them
+  toast('Loading checklist photos…');
+  let clPhotos=[];
+  try{
+    const r=await sb.from('gp_checklists').select('out_photos,in_photos,out_defect_photos,in_defect_photos').eq('job_id',id);
+    (r.data||[]).forEach(row=>{
+      ['out_photos','in_photos','out_defect_photos','in_defect_photos'].forEach(k=>{
+        (row[k]||[]).forEach(p=>{ if(p&&p.data){ clPhotos.push({type:'photo',label:p.label||'',dataUrl:p.data,_pick:true}); } });
+      });
+    });
+  }catch(e){}
+  CHECKIN.media=clPhotos;
+  renderCheckinModal();
+}
+function renderCheckinModal(){
+  const j=CHECKIN.job;
+  const items=CHECKIN.media.map((m,i)=>{
+    const src=m.dataUrl||m.url||'';
+    const thumb = m.type==='video'
+      ? `<video src="${src}" style="width:100%;height:80px;object-fit:cover;border-radius:8px;background:#000"></video>`
+      : `<img src="${src}" style="width:100%;height:80px;object-fit:cover;border-radius:8px">`;
+    return `<div style="position:relative">
+      <label style="position:absolute;top:3px;left:3px;z-index:2"><input type="checkbox" ${m._pick?'checked':''} onchange="CHECKIN.media[${i}]._pick=this.checked"></label>
+      <span style="position:absolute;top:3px;right:3px;z-index:2;background:rgba(0,0,0,.6);color:#fff;border-radius:6px;font-size:10px;padding:1px 5px">${m.type==='video'?'🎥':'📷'}</span>
+      ${thumb}
+    </div>`;
+  }).join('');
+  showModal(`
+    <button class="x" onclick="openJob('${j.id}')">×</button>
+    <h3>Send check-in to WhatsApp</h3>
+    <div class="hint" style="margin-bottom:10px">Pick the photos/videos to include. Checklist photos are pre-loaded. Add more below.</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px">${items||'<div class="muted" style="font-size:12px;grid-column:1/-1">No media yet — add photos/videos below.</div>'}</div>
+    <label class="btn sec" style="display:block;text-align:center">📷 Add photos<input type="file" accept="image/*" multiple style="display:none" onchange="addCheckinFiles(this,'photo')"></label>
+    <label class="btn sec" style="display:block;text-align:center;margin-top:8px">🎥 Add videos<input type="file" accept="video/*" multiple style="display:none" onchange="addCheckinFiles(this,'video')"></label>
+    <label style="margin-top:10px;display:block">Note (optional)</label>
+    <input id="ci_note" placeholder="e.g. car delivered in good condition">
+    <div class="hint" id="ciProgress" style="margin-top:8px"></div>
+    <button class="btn" style="margin-top:8px" onclick="uploadAndSendCheckin('${j.id}')"><i class="ti ti-upload"></i> Upload &amp; get share link</button>
+  `);
+}
+function addCheckinFiles(inp,type){
+  [...inp.files].forEach(f=>{ CHECKIN.media.push({type:type,label:'',file:f,_pick:true}); });
+  inp.value=''; renderCheckinModal();
+}
+function dataUrlToBlob(dataUrl){
+  const [head,b64]=dataUrl.split(','); const mime=(head.match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+  const bin=atob(b64); const arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+async function uploadAndSendCheckin(id){
+  const j=JOBS.find(x=>x.id===id);
+  const chosen=CHECKIN.media.filter(m=>m._pick);
+  if(!chosen.length){ toast('Pick at least one photo or video'); return; }
+  const note=$('ci_note')?$('ci_note').value:'';
+  const token=randToken();
+  const prog=$('ciProgress');
+  const uploaded=[]; let pc=0, vc=0;
+  for(let i=0;i<chosen.length;i++){
+    const m=chosen[i];
+    if(prog) prog.textContent='Uploading '+(i+1)+'/'+chosen.length+'…';
+    try{
+      let blob, ext;
+      if(m.file){ blob=m.file; ext=(m.file.name.match(/\.([a-z0-9]+)$/i)||[,''])[1]||(m.type==='video'?'mp4':'jpg'); }
+      else if(m.dataUrl){ blob=dataUrlToBlob(m.dataUrl); ext='jpg'; }
+      else continue;
+      const path=token+'/'+(m.type)+'_'+String(i+1).padStart(2,'0')+'.'+ext;
+      const up=await sb.storage.from('checkins').upload(path,blob,{contentType:blob.type||undefined,upsert:true});
+      if(up.error) throw up.error;
+      const url=sb.storage.from('checkins').getPublicUrl(path).data.publicUrl;
+      uploaded.push({type:m.type,label:m.label||'',url:url});
+      if(m.type==='video') vc++; else pc++;
+    }catch(e){ if(prog) prog.textContent='Upload error: '+(e.message||e); return; }
+  }
+  // save the check-in record
+  const rec={ share_token:token, job_id:j.id, fleet_id:j.fleet_id||null,
+    customer_name:j.customer_name, car_model:j.car_model, car_plate:j.car_plate,
+    stage:(j.stage==='returned'?'return':(j.stage==='delivered'?'delivery':'checkin')),
+    note:note||null, media:uploaded, photo_count:pc, video_count:vc, created_by:ME };
+  const ins=await sb.from('gp_checkins').insert(rec).select().single();
+  if(ins.error){ if(prog) prog.textContent='Save failed: '+ins.error.message; return; }
+  CHECKIN.saved={token:token, link:checkinBase()+'gp-checkin-view.html?t='+token, pc:pc, vc:vc, note:note, firstPhoto:uploaded.find(u=>u.type==='photo')};
+  renderCheckinDone(j);
+}
+function checkinBase(){ return location.origin+location.pathname.replace(/[^/]*$/,''); }
+function checkinMsg(j){
+  const s=CHECKIN.saved;
+  const now=new Date().toLocaleString('en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const stageLbl = j.stage==='returned'?'RETURN':(j.stage==='delivered'?'DELIVERY':'CHECK-IN');
+  return '🚗 *GRANDPRIDE VEHICLE '+stageLbl+'*\n'+
+    '━━━━━━━━━━━━━━\n'+
+    (j.customer_name?('👤 Customer: '+j.customer_name+'\n'):'')+
+    '🔖 Car: '+((j.car_model||'')+(j.car_plate?(' ('+j.car_plate+')'):''))+'\n'+
+    '📅 '+now+'\n'+
+    '📷 '+s.pc+' photo'+(s.pc===1?'':'s')+', 🎥 '+s.vc+' video'+(s.vc===1?'':'s')+'\n'+
+    (s.note?('📝 '+s.note+'\n'):'')+
+    '━━━━━━━━━━━━━━\n'+
+    '👉 View all photos & videos:\n'+s.link;
+}
+function renderCheckinDone(j){
+  const s=CHECKIN.saved;
+  const phone=(j.customer_contact||'').replace(/[^0-9]/g,'').replace(/^0/,'60');
+  const canAttach = !!(navigator.canShare && navigator.share);
+  showModal(`
+    <button class="x" onclick="openJob('${j.id}')">×</button>
+    <h3>Check-in ready ✓</h3>
+    <div class="card" style="padding:11px;margin-bottom:10px">
+      <div class="rowline"><span class="muted">Media</span><span>${s.pc} photo${s.pc===1?'':'s'}, ${s.vc} video${s.vc===1?'':'s'}</span></div>
+      <div class="rowline"><span class="muted">Link</span><a href="${esc(s.link)}" target="_blank" style="color:var(--gold);max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">open</a></div>
+    </div>
+    ${canAttach?`<button class="btn" onclick="ciSharePhoto('${j.id}')">📸 Share with 1 photo attached</button>`:''}
+    ${phone?`<button class="btn ${canAttach?'sec':''}" style="margin-top:8px" onclick="ciSendCustomer('${j.id}')">📤 Send to ${esc(j.customer_name||'customer')}</button>`:''}
+    <button class="btn sec" style="margin-top:8px" onclick="ciChooseGroup('${j.id}')">👥 Choose chat / group</button>
+    <button class="btn sec" style="margin-top:8px" onclick="ciCopy('${j.id}')">📋 Copy message</button>
+    <button class="btn sec" style="margin-top:8px" onclick="openJob('${j.id}')">Done</button>
+  `);
+}
+function ciChooseGroup(id){ const j=JOBS.find(x=>x.id===id); window.open('https://wa.me/?text='+encodeURIComponent(checkinMsg(j)),'_blank'); }
+function ciSendCustomer(id){ const j=JOBS.find(x=>x.id===id); const phone=(j.customer_contact||'').replace(/[^0-9]/g,'').replace(/^0/,'60'); if(!phone){toast('No phone number');return;} window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(checkinMsg(j)),'_blank'); }
+function ciCopy(id){ const j=JOBS.find(x=>x.id===id); navigator.clipboard.writeText(checkinMsg(j)).then(()=>toast('Copied ✓')); }
+async function ciSharePhoto(id){
+  const j=JOBS.find(x=>x.id===id); const s=CHECKIN.saved; const msg=checkinMsg(j);
+  if(!s.firstPhoto){ ciChooseGroup(id); return; }
+  try{
+    const resp=await fetch(s.firstPhoto.url); const blob=await resp.blob();
+    const file=new File([blob],(j.car_plate||'vehicle').replace(/[^A-Za-z0-9]+/g,'_')+'.jpg',{type:blob.type||'image/jpeg'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.clipboard.writeText(msg); }catch(e){}
+      await navigator.share({files:[file],text:msg});
+      return;
+    }
+    toast('Cannot attach here — opening chat picker');
+  }catch(e){ if(e&&e.name==='AbortError') return; }
+  ciChooseGroup(id);
 }
 function carItemsCard(j){
   const items=Array.isArray(j.car_items)?j.car_items:[];
