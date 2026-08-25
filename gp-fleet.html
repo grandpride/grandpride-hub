@@ -37,6 +37,7 @@
   .pill.rented{background:#33260f;color:#e0b060}
   .pill.service{background:#1a2a33;color:#7fcbe0}
   .pill.returned{background:#2a2a26;color:var(--muted)}
+  .pill.accident{background:#3a1a14;color:#ff9a7a}
   .pill.company{background:#1a2333;color:#7fa8e0}
   .pill.partner{background:#2a1a33;color:#c79fe0}
   .due-ok{color:var(--muted)}
@@ -249,8 +250,8 @@ function renderList(){
   $('listEmpty').classList.toggle('hidden', list.length>0);
   grid.innerHTML=list.map(c=>{
     const st=c.status||'available';
-    const stLabel={available:'Available',rented:'Rented',service:'In service',returned_owner:'Returned'}[st]||st;
-    const stCls={available:'avail',rented:'rented',service:'service',returned_owner:'returned'}[st]||'avail';
+    const stLabel={available:'Available',rented:'Rented',service:'In service',returned_owner:'Returned',accident_fixing:'Accident / fixing'}[st]||st;
+    const stCls={available:'avail',rented:'rented',service:'service',returned_owner:'returned',accident_fixing:'accident'}[st]||'avail';
     const due=dueItems(c).filter(d=>d.level==='urgent'||d.level==='soon');
     const dueBadge=due.length?`<span class="pill" style="background:#331a1a;color:#ffb3a6">⚠ ${due.length}</span>`:'';
     const ph=c.photo_url?`style="background-image:url('${esc(c.photo_url)}')"`:'';
@@ -269,8 +270,8 @@ function renderList(){
 function openDetail(id){
   const c=FLEET.find(x=>x.id===id); if(!c) return; CURRENT=c;
   const st=c.status||'available';
-  const stLabel={available:'Available',rented:'Rented',service:'In service',returned_owner:'Returned'}[st]||st;
-  const stCls={available:'avail',rented:'rented',service:'service',returned_owner:'returned'}[st]||'avail';
+  const stLabel={available:'Available',rented:'Rented',service:'In service',returned_owner:'Returned',accident_fixing:'Accident / fixing'}[st]||st;
+  const stCls={available:'avail',rented:'rented',service:'service',returned_owner:'returned',accident_fixing:'accident'}[st]||'avail';
   const own=c.owner_type==='partner'
     ? `<span class="pill partner">Partner: ${esc(c.partner_name||'—')}</span>`
     : `<span class="pill company">Company car</span>`;
@@ -356,7 +357,7 @@ function openEdit(id){
     </div>
     <label>Status</label>
     <select id="f_status">
-      ${['available','rented','service','returned_owner'].map(s=>`<option value="${s}" ${(c.status||'available')===s?'selected':''}>${({available:'Available',rented:'Rented',service:'In service',returned_owner:'Returned to owner'})[s]}</option>`).join('')}
+      ${['available','rented','service','returned_owner','accident_fixing'].map(s=>`<option value="${s}" ${(c.status||'available')===s?'selected':''}>${({available:'Available',rented:'Rented',service:'In service',returned_owner:'Returned to owner',accident_fixing:'Accident / fixing'})[s]}</option>`).join('')}
     </select>
 
     <h3 style="margin-top:18px"><i class="ti ti-calendar"></i> Reminders (alert 1 month before)</h3>
@@ -364,6 +365,16 @@ function openEdit(id){
       <div><label>Road tax expiry</label><input type="date" id="f_roadtax_expiry" value="${v('roadtax_expiry')}"></div>
       <div><label>Insurance expiry</label><input type="date" id="f_insurance_expiry" value="${v('insurance_expiry')}"></div>
     </div>
+
+    <h3 style="margin-top:18px"><i class="ti ti-shield"></i> Insurance & accident</h3>
+    <label>Insurance company</label>
+    <input id="f_insurance_company" value="${v('insurance_company')}" placeholder="e.g. Allianz, Etiqa, Zurich">
+    <label>Accident instructions (shown when you tap Accident)</label>
+    <textarea id="f_accident_instructions" placeholder="e.g. Call towing 03-xxxx, or scan QR in policy → WhatsApp claims. Steps...">${esc(c.accident_instructions||'')}</textarea>
+    <label>Policy / documents (photo or PDF)</label>
+    <input type="file" accept="image/*,application/pdf" multiple onchange="uploadInsuranceDocs(this)">
+    <div class="photostrip" id="insDocStrip">${(c.insurance_docs||[]).map((u,i)=>`<a href="${esc(u)}" target="_blank" style="font-size:12px;color:var(--gold);display:inline-block;margin:2px 6px 2px 0">📄 doc ${i+1}</a>`).join('')}</div>
+    <input type="hidden" id="f_insurance_docs" value="${esc(JSON.stringify(c.insurance_docs||[]))}">
     <label>Engine oil — next due</label>
     <div class="row2">
       <div><input type="date" id="f_engine_oil_next_date" value="${v('engine_oil_next_date')}"></div>
@@ -443,6 +454,9 @@ async function saveCar(id){
     engine_oil_next_date:g('engine_oil_next_date')||null, engine_oil_next_km:g('engine_oil_next_km')?num(g('engine_oil_next_km')):null,
     atf_next_date:g('atf_next_date')||null, atf_next_km:g('atf_next_km')?num(g('atf_next_km')):null,
     alignment_last_date:g('alignment_last_date')||null,
+    insurance_company:g('insurance_company')||null,
+    accident_instructions:g('accident_instructions')||null,
+    insurance_docs:(function(){ try{ return JSON.parse($('f_insurance_docs').value||'[]'); }catch(e){ return []; } })(),
     remark:up(g('remark'))||null, updated_at:new Date().toISOString()
   };
   let res;
@@ -586,11 +600,27 @@ async function openAccident(fleetId){
   }).join('');
   showModal(`
     <button class="x" onclick="openDetail('${fleetId}')">×</button>
-    <h3><i class="ti ti-alert-triangle"></i> Accidents — ${esc(c.plate)}</h3>
-    <button class="btn" onclick="addAccidentForm('${fleetId}')"><i class="ti ti-plus"></i> New accident record</button>
-    <div class="hint" style="margin-top:8px">Insurance hotline + claim steps are in your remark / notes — add them per partner.</div>
-    <div style="margin-top:14px">${rows||'<div class="muted" style="text-align:center;padding:20px 0">No accident records.</div>'}</div>
+    <h3><i class="ti ti-alert-triangle"></i> Accident — ${esc(c.plate)}</h3>
+    <div class="card" style="padding:12px;border-color:#5a2a20;background:#1e1512">
+      <h3 style="color:#ff9a7a"><i class="ti ti-urgent"></i> What to do now</h3>
+      ${c.insurance_company?`<div class="rowline"><span class="muted">Insurance</span><b>${esc(c.insurance_company)}</b></div>`:'<div class="hint">No insurance company set — add it in Edit car.</div>'}
+      ${c.accident_instructions?`<div style="margin-top:8px;white-space:pre-wrap;line-height:1.5">${esc(c.accident_instructions)}</div>`:''}
+      ${(c.insurance_docs&&c.insurance_docs.length)?`<div style="margin-top:10px"><div class="muted" style="font-size:12px;margin-bottom:4px">Policy / documents:</div>${c.insurance_docs.map((u,i)=>`<a href="${esc(u)}" target="_blank" class="btn sec sm" style="display:block;text-align:center;margin-bottom:6px"><i class="ti ti-file"></i> Open document ${i+1}</a>`).join('')}</div>`:''}
+      ${(c.status!=='accident_fixing')?`<button class="btn" style="margin-top:10px;background:#d2533f;color:#fff" onclick="setAccidentStatus('${fleetId}')"><i class="ti ti-alert-triangle"></i> Mark car as accident / fixing</button>`:`<div class="rowline" style="margin-top:8px"><span class="muted">Status</span><b style="color:#ff9a7a">Accident / fixing</b></div><button class="btn sec" style="margin-top:8px" onclick="clearAccidentStatus('${fleetId}')">✓ Car fixed — set available</button>`}
+    </div>
+    <button class="btn sec" onclick="addAccidentForm('${fleetId}')"><i class="ti ti-plus"></i> New accident cost record</button>
+    <div style="margin-top:14px">${rows||'<div class="muted" style="text-align:center;padding:20px 0">No accident cost records.</div>'}</div>
   `);
+}
+async function setAccidentStatus(fleetId){
+  const res=await sb.from('gp_fleet').update({status:'accident_fixing',updated_at:new Date().toISOString()}).eq('id',fleetId);
+  if(res.error){ toast('Failed: '+res.error.message); return; }
+  toast('Car marked accident / fixing'); await loadFleet(); openAccident(fleetId);
+}
+async function clearAccidentStatus(fleetId){
+  const res=await sb.from('gp_fleet').update({status:'available',updated_at:new Date().toISOString()}).eq('id',fleetId);
+  if(res.error){ toast('Failed: '+res.error.message); return; }
+  toast('Car set available'); await loadFleet(); openAccident(fleetId);
 }
 function addAccidentForm(fleetId){
   ACC_ITEMS=[{item:'',cost:''}]; ACC_PHOTOS=[];
@@ -644,6 +674,25 @@ function accTotals(){
   if(box) box.style.display = bear==='company'?'none':'block';
   const mk=$('a_markup')?num($('a_markup').value):30;
   if($('a_custprice')) $('a_custprice').value = Math.round(total*(1+mk/100)).toLocaleString();
+}
+async function uploadInsuranceDocs(inp){
+  const files=[...inp.files]; if(!files.length) return;
+  let docs=[]; try{ docs=JSON.parse($('f_insurance_docs').value||'[]'); }catch(e){ docs=[]; }
+  toast('Uploading '+files.length+' file(s)…');
+  for(const f of files){
+    try{
+      let blob=f, ext=(f.name.match(/\.([a-z0-9]+)$/i)||[,''])[1]||'jpg';
+      // compress images; leave PDFs as-is
+      if(/^image\//.test(f.type)){ blob=await compressImage(f,1600,0.82); ext='jpg'; }
+      const path='insurance/'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,7)+'.'+ext;
+      const up=await sb.storage.from('checkins').upload(path,blob,{contentType:blob.type||undefined,upsert:true});
+      if(up.error) throw up.error;
+      docs.push(sb.storage.from('checkins').getPublicUrl(path).data.publicUrl);
+    }catch(e){ toast('Upload failed: '+(e.message||e)); }
+  }
+  $('f_insurance_docs').value=JSON.stringify(docs);
+  const strip=$('insDocStrip'); if(strip) strip.innerHTML=docs.map((u,i)=>`<a href="${esc(u)}" target="_blank" style="font-size:12px;color:var(--gold);display:inline-block;margin:2px 6px 2px 0">📄 doc ${i+1}</a>`).join('');
+  toast('Documents added ✓');
 }
 async function uploadAccPhotos(inp,fleetId){
   const files=[...inp.files]; if(!files.length) return;
