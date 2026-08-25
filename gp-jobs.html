@@ -358,13 +358,24 @@ function parseWhatsApp(raw){
   // ----- rental: how many days -----
   const days = wpNum(wpField(text,['how many days','days','duration days','no of days','number of days']));
   if(days!=null) d.rental_days=days;
-  // pickup mode / delivery
-  const puMode = (wpField(text,['pickup mode','pick up or deliver','collect or deliver','pickup or deliver'])||'').toLowerCase();
-  if(/deliver/.test(puMode)) d.pickup_mode='deliver'; else if(/office|pickup|pick up|collect/.test(puMode)) d.pickup_mode='office';
+  // pickup mode / delivery — template offers "office / deliver", SA deletes one.
+  // If BOTH words remain (SA forgot to delete), leave blank for manual pick.
+  const puModeRaw = (wpField(text,['pickup mode','pick up mode','pick up or deliver','collect or deliver','pickup or deliver'])||'').toLowerCase();
+  if(puModeRaw){
+    const hasOffice=/office|collect|pick\s*up/.test(puModeRaw), hasDeliver=/deliver/.test(puModeRaw);
+    if(hasDeliver && !hasOffice) d.pickup_mode='deliver';
+    else if(hasOffice && !hasDeliver) d.pickup_mode='office';
+    // both present -> leave undefined (manual)
+  }
   const delCharge = wpNum(wpField(text,['delivery charge','delivery fee','deliver charge']));
   if(delCharge!=null){ d.delivery_charge=delCharge; if(!d.pickup_mode) d.pickup_mode='deliver'; }
-  const delTrip=(wpField(text,['trip','delivery trip'])||'').toLowerCase();
-  if(/round/.test(delTrip)) d.delivery_trip='round'; else if(/single|one/.test(delTrip)) d.delivery_trip='single';
+  const delTripRaw=(wpField(text,['trip','delivery trip'])||'').toLowerCase();
+  if(delTripRaw){
+    const hasSingle=/single|one/.test(delTripRaw), hasRound=/round/.test(delTripRaw);
+    if(hasRound && !hasSingle) d.delivery_trip='round';
+    else if(hasSingle && !hasRound) d.delivery_trip='single';
+    // both present -> leave undefined (manual)
+  }
 
   // ----- subscription -----
   const subMon = wpField(text,['subscription month','subscription months','sub month','sub months','months','tenure']);
