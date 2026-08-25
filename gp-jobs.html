@@ -297,16 +297,17 @@ function parseWhatsApp(raw){
   let carModel = wpField(text,['car model','model','vehicle']) || '';
   d.car_model_text = carModel;
   if(carModel){
-    // plate heuristic: a trailing token with letters+digits (e.g. VFA421, PRP169, WXX1234, AGH30)
-    const pm=carModel.match(/\b([A-Z]{2,3}\s?\d{1,4}[A-Z]?)\b\s*$/);
-    if(pm){ d.car_plate_text=wpClean(pm[1]).replace(/\s+/g,''); d.car_model_text=wpClean(carModel.slice(0,pm.index)); }
+    // plate heuristic: trailing token, letters+digits(+optional letter).
+    // Malaysian plates: 1-4 leading letters, digits, optional trailing letter (VFH7678, WABC123, AGH30, PRP169, WLTO456).
+    const pm=carModel.match(/\b([A-Z]{1,4}\s?\d{1,4}\s?[A-Z]?)\s*$/i);
+    if(pm){ d.car_plate_text=wpClean(pm[1]).replace(/\s+/g,'').toUpperCase(); d.car_model_text=wpClean(carModel.slice(0,pm.index)); }
   }
 
   // ----- dates -----
   // a "Date:" line may hold a range "23/8/26 12pm - 24/8/26 12:30am"
-  const dateLine = wpField(text,['date','start date','duration','period']) || '';
+  const dateLine = wpField(text,['date','start date','duration','period','pickup date','pick up date','lease to own start date','lto start date']) || '';
   // also a Start date line for subscriptions "13/8/26 - 13/9/26"
-  const startLine = wpField(text,['start date']) || dateLine;
+  const startLine = wpField(text,['start date','pickup date','pick up date','lease to own start date','lto start date']) || dateLine;
   // split range on dash variants
   const parts=(startLine||dateLine).split(/\s*[-–—]\s*/);
   // Compact range like "22-24/8/26" or "22 - 24/8/26 4pm": the first part is a bare
@@ -317,9 +318,12 @@ function parseWhatsApp(raw){
   }
   if(parts[0]){ d.start_date=wpDate(parts[0]); const t=wpTime(parts[0]); if(t) d.start_time=t; }
   if(parts[1]){ d.end_date=wpDate(parts[1]); const t=wpTime(parts[1]); if(t) d.end_time=t; }
-  // separate Time: line (BG/driver)
-  const tLine=wpField(text,['time','pick up time','pickup time']);
-  if(tLine && !d.start_time){ const t=wpTime(tLine); if(t) d.start_time=t; }
+  // an explicit End date line (chauffeur/rental use separate start+end lines)
+  const endLine = wpField(text,['end date']) || '';
+  if(endLine){ const ed=wpDate(endLine); if(ed) d.end_date=ed; const et=wpTime(endLine); if(et) d.end_time=et; }
+  // separate Time line (BG / driver / pickup time)
+  const tLine=wpField(text,['time','pick up time','pickup time','start time']);
+  if(tLine){ const t=wpTime(tLine); if(t) d.start_time=t; }
 
   // ----- money -----
   const rate  = wpNum(wpField(text,['rate','rental','leasing price','price']));
@@ -341,6 +345,46 @@ function parseWhatsApp(raw){
   const ot = wpField(text,['ot','overtime']);
   const otn = wpNum(ot); if(otn!=null && /hour|hr|\/\s*hour/i.test(ot+text)) d.ot_rate=otn;
   const hrsM = text.match(/(\d+(?:\.\d+)?)\s*hours?\b/i); if(hrsM) d.duration_hours=parseFloat(hrsM[1]);
+
+  // ----- pickup / drop-off locations (chauffeur, pickup/dropoff, airport) -----
+  const puLoc = wpField(text,['pickup location','pick up location','pick-up location','pickup','pick up','from']) || '';
+  const doLoc = wpField(text,['drop off location','dropoff location','drop-off location','drop off','dropoff','drop-off','to','destination']) || '';
+  if(puLoc) d.pickup_location=puLoc;
+  if(doLoc) d.dropoff_location=doLoc;
+  // standby location (bodyguard / hire driver)
+  const sbLoc = wpField(text,['standby location','stand by location','standby','stand by']) || '';
+  if(sbLoc) d.pickup_location=sbLoc;
+
+  // ----- rental: how many days -----
+  const days = wpNum(wpField(text,['how many days','days','duration days','no of days','number of days']));
+  if(days!=null) d.rental_days=days;
+  // pickup mode / delivery
+  const puMode = (wpField(text,['pickup mode','pick up or deliver','collect or deliver','pickup or deliver'])||'').toLowerCase();
+  if(/deliver/.test(puMode)) d.pickup_mode='deliver'; else if(/office|pickup|pick up|collect/.test(puMode)) d.pickup_mode='office';
+  const delCharge = wpNum(wpField(text,['delivery charge','delivery fee','deliver charge']));
+  if(delCharge!=null){ d.delivery_charge=delCharge; if(!d.pickup_mode) d.pickup_mode='deliver'; }
+  const delTrip=(wpField(text,['trip','delivery trip'])||'').toLowerCase();
+  if(/round/.test(delTrip)) d.delivery_trip='round'; else if(/single|one/.test(delTrip)) d.delivery_trip='single';
+
+  // ----- subscription -----
+  const subMon = wpField(text,['subscription month','subscription months','sub month','sub months','months','tenure']);
+  if(subMon){ const n=wpNum(subMon); if(n!=null) d.subscription_months=String(n); }
+  const rateMon = wpNum(wpField(text,['rate per month','rate per monthly','monthly rate','rate monthly','per month','monthly']));
+  if(rateMon!=null) d.rate_monthly=rateMon;
+  const subFee = wpNum(wpField(text,['subscription fee','sub fee','joining fee']));
+  if(subFee!=null) d.subscription_fee=subFee;
+
+  // ----- lease to own -----
+  const ltoMon = wpField(text,['lease to own month','lease to own months','lto month','lto months','lease month','lease months']);
+  if(ltoMon){ const n=wpNum(ltoMon); if(n!=null) d.lto_months=String(n); }
+  const down = wpNum(wpField(text,['downpayment','down payment','deposit downpayment']));
+  if(down!=null) d.downpayment=down;
+  const safety = wpNum(wpField(text,['safety fee','safety deposit']));
+  if(safety!=null) d.safety_fee=safety;
+  const insFee = wpNum(wpField(text,['insurance fee','insurance']));
+  if(insFee!=null) d.insurance_fee=insFee;
+  const rtax = wpNum(wpField(text,['roadtax','road tax']));
+  if(rtax!=null) d.roadtax=rtax;
 
   // ----- remark: keep the whole original message so nothing is lost -----
   // pull an explicit Remark: block if present
@@ -611,6 +655,20 @@ function applyPaste(){
   if(d.invoice_to) JOB_DRAFT.invoice_to=d.invoice_to;
   if(d.referral) JOB_DRAFT.referral=d.referral;
   if(d.location) JOB_DRAFT.location=d.location;
+  if(d.pickup_location) JOB_DRAFT.pickup_location=d.pickup_location;
+  if(d.dropoff_location) JOB_DRAFT.dropoff_location=d.dropoff_location;
+  if(d.rental_days!=null) JOB_DRAFT.rental_days=d.rental_days;
+  if(d.pickup_mode) JOB_DRAFT.pickup_mode=d.pickup_mode;
+  if(d.delivery_charge!=null) JOB_DRAFT.delivery_charge=d.delivery_charge;
+  if(d.delivery_trip) JOB_DRAFT.delivery_trip=d.delivery_trip;
+  if(d.subscription_months) JOB_DRAFT.subscription_months=d.subscription_months;
+  if(d.rate_monthly!=null) JOB_DRAFT.rate_monthly=d.rate_monthly;
+  if(d.subscription_fee!=null) JOB_DRAFT.subscription_fee=d.subscription_fee;
+  if(d.lto_months) JOB_DRAFT.lto_months=d.lto_months;
+  if(d.downpayment!=null) JOB_DRAFT.downpayment=d.downpayment;
+  if(d.safety_fee!=null) JOB_DRAFT.safety_fee=d.safety_fee;
+  if(d.insurance_fee!=null) JOB_DRAFT.insurance_fee=d.insurance_fee;
+  if(d.roadtax!=null) JOB_DRAFT.roadtax=d.roadtax;
   JOB_DRAFT.source_text=raw;
   // remark: keep whole original message so nothing is lost
   JOB_DRAFT.remark = raw;
