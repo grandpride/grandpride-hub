@@ -651,18 +651,99 @@ async function savePastedCustomer(){
   toast('Customer added ✓'); jobForm();
 }
 function reopenJobForm(){ jobForm(); }
+
+/* ===== Per-service form field configuration =====
+   Each service lists the field KEYS it shows, in order. Field HTML is built by fieldHtml().
+   Services not listing 'car' are "no-car" (bodyguard, hire_driver) and skip car stages. */
+const SERVICE_FIELDS={
+  chauffeur:      ['car','dates','pickup_time','driver','price','deposit','grand_total','ot_rate','duration','pickup_loc','dropoff_loc','remark'],
+  pickup_dropoff: ['car','pickup_date','pickup_time','pickup_loc','dropoff_loc','driver','rate','remark'],
+  airport:        ['car','pickup_date','pickup_time','pickup_loc','dropoff_loc','driver','rate','remark'],
+  rental:         ['car','dates','price','deposit','grand_total','invoice','days','mileage','perkm','pickup_mode','location_referral','remark'],
+  subscription:   ['car','sub_months','rate_monthly','deposit','sub_fee','grand_total','remark'],
+  lto:            ['car','lto_start','lto_months','downpayment','rate_monthly','safety_fee','insurance_fee','roadtax','remark'],
+  bodyguard:      ['start_dt','standby_loc','rate','ot_hour','remark'],
+  hire_driver:    ['start_dt','standby_loc','rate','ot_hour','remark']
+};
+const NO_CAR_SERVICES=['bodyguard','hire_driver'];
+function serviceHasCar(sv){ return (SERVICE_FIELDS[sv]||[]).includes('car'); }
+
+/* one field -> HTML snippet. j is the draft. */
+function fieldHtml(key,j){
+  const carOpts=`<option value="">— choose car —</option>`+FLEET.map(f=>`<option value="${f.id}" ${j.fleet_id===f.id?'selected':''}>${esc(f.plate)} · ${esc(f.model)}</option>`).join('');
+  const parsedCarHint=(!j.fleet_id && (j.car_model_text||j.car_plate_text))
+    ? `<div class="muted" style="font-size:12px;margin-top:4px">From message: <b>${esc(j.car_model_text||'')}${j.car_plate_text?(' · '+esc(j.car_plate_text)):''}</b> — pick the matching fleet car, or leave blank if not in fleet.</div>` : '';
+  const drvOpts=`<option value="">— none —</option>`+DRIVERS.map(d=>`<option value="${esc(d.username)}" ${j.driver_username===d.username?'selected':''}>${esc(d.name)}</option>`).join('');
+  const subMonths=['12','24','36','48','60'];
+  const ltoMonths=['36','48','60'];
+  switch(key){
+    case 'car': return `<label>Car (from fleet)</label><select id="j_fleet">${carOpts}</select>${parsedCarHint}`;
+    case 'dates': return `<div class="row2"><div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div><div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div></div><div class="row2"><div><label>End date</label><input type="date" id="j_end_date" value="${esc(j.end_date||'')}"></div><div><label>End time</label><input type="time" id="j_end_time" value="${esc(to24(j.end_time)||'')}"></div></div>`;
+    case 'start_dt': return `<div class="row2"><div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div><div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div></div>`;
+    case 'pickup_date': return `<label>Pickup date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}">`;
+    case 'pickup_time': return `<label>Pickup time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}">`;
+    case 'driver': return `<label>Assigned driver</label><select id="j_driver">${drvOpts}</select>`;
+    case 'price': return `<label>Price (RM)</label><input id="j_price" inputmode="decimal" value="${esc(j.price||'')}">`;
+    case 'rate': return `<label>Rate (RM)</label><input id="j_price" inputmode="decimal" value="${esc(j.price||'')}">`;
+    case 'deposit': return `<label>Deposit (RM)${key==='deposit'?' <span class="muted">(optional)</span>':''}</label><input id="j_deposit" inputmode="decimal" value="${esc(j.deposit_amount||'')}">`;
+    case 'grand_total': return `<label>Grand total (RM)</label><input id="j_total" inputmode="decimal" value="${esc(j.grand_total||'')}">`;
+    case 'invoice': return `<label>Invoice to</label><input id="j_invoice" value="${esc(j.invoice_to||'')}">`;
+    case 'ot_rate': return `<label>OT rate (RM/hr)</label><input id="j_ot" inputmode="decimal" value="${esc(j.ot_rate||'')}">`;
+    case 'ot_hour': return `<label>OT per hour rate (RM/hr)</label><input id="j_ot" inputmode="decimal" value="${esc(j.ot_rate||'')}">`;
+    case 'duration': return `<label>Duration (hours)</label><input id="j_hours" inputmode="decimal" value="${esc(j.duration_hours||'')}">`;
+    case 'days': return `<label>How many days</label><input id="j_days" inputmode="decimal" value="${esc(j.rental_days||'')}">`;
+    case 'mileage': return `<label>Mileage given (km)</label><input id="j_mileage" inputmode="decimal" value="${esc(j.mileage_given||'')}">`;
+    case 'perkm': return `<label>Per km exceed (RM)</label><input id="j_perkm" inputmode="decimal" value="${esc(j.per_km_exceed||'')}">`;
+    case 'pickup_loc': return `<label>Pickup location</label><input id="j_pickup_loc" value="${esc(j.pickup_location||'')}">`;
+    case 'dropoff_loc': return `<label>Drop-off location</label><input id="j_dropoff_loc" value="${esc(j.dropoff_location||'')}">`;
+    case 'standby_loc': return `<label>Standby location</label><input id="j_pickup_loc" value="${esc(j.pickup_location||j.location||'')}">`;
+    case 'location_referral': return `<label>Location / referral</label><div class="row2"><div><input id="j_location" placeholder="location" value="${esc(j.location||'')}"></div><div><input id="j_referral" placeholder="referral" value="${esc(j.referral||'')}"></div></div>`;
+    case 'sub_months': return `<label>Subscription months</label><select id="j_sub_months" onchange="toggleOtherMonths('j_sub_months','j_sub_months_other')">${subMonths.map(m=>`<option value="${m}" ${String(j.subscription_months)===m?'selected':''}>${m} months</option>`).join('')}<option value="other" ${j.subscription_months&&!subMonths.includes(String(j.subscription_months))?'selected':''}>Others</option></select><input id="j_sub_months_other" placeholder="type months" value="${(j.subscription_months&&!subMonths.includes(String(j.subscription_months)))?esc(j.subscription_months):''}" style="margin-top:6px;${(j.subscription_months&&!subMonths.includes(String(j.subscription_months)))?'':'display:none'}">`;
+    case 'rate_monthly': return `<label>Rate per month (RM)</label><input id="j_rate_monthly" inputmode="decimal" value="${esc(j.rate_monthly||'')}">`;
+    case 'sub_fee': return `<label>Subscription fee (RM)</label><input id="j_sub_fee" inputmode="decimal" value="${esc(j.subscription_fee||'')}">`;
+    case 'lto_start': return `<label>Lease-to-own start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}">`;
+    case 'lto_months': return `<label>Lease-to-own months</label><select id="j_lto_months">${ltoMonths.map(m=>`<option value="${m}" ${String(j.lto_months)===m?'selected':''}>${m} months</option>`).join('')}</select>`;
+    case 'downpayment': return `<label>Downpayment (RM)</label><input id="j_downpayment" inputmode="decimal" value="${esc(j.downpayment||'')}">`;
+    case 'safety_fee': return `<label>Safety fee (RM)</label><input id="j_safety_fee" inputmode="decimal" value="${esc(j.safety_fee||'')}">`;
+    case 'insurance_fee': return `<label>Insurance fee (RM)</label><input id="j_insurance_fee" inputmode="decimal" value="${esc(j.insurance_fee||'')}">`;
+    case 'roadtax': return `<label>Roadtax (RM)</label><input id="j_roadtax" inputmode="decimal" value="${esc(j.roadtax||'')}">`;
+    case 'pickup_mode': {
+      const mode=j.pickup_mode||'office';
+      return `<label>Pickup at office or deliver</label>
+        <select id="j_pickup_mode" onchange="togglePickupMode()">
+          <option value="office" ${mode==='office'?'selected':''}>Pickup at office</option>
+          <option value="deliver" ${mode==='deliver'?'selected':''}>Deliver to customer</option>
+        </select>
+        <div id="deliverBox" style="${mode==='deliver'?'':'display:none'};margin-top:8px">
+          <div class="row2">
+            <div><label>Delivery charge (RM)</label><input id="j_delivery_charge" inputmode="decimal" value="${esc(j.delivery_charge||'')}"></div>
+            <div><label>Trip</label><select id="j_delivery_trip"><option value="single" ${j.delivery_trip==='single'?'selected':''}>Single trip</option><option value="round" ${j.delivery_trip==='round'?'selected':''}>Round trip</option></select></div>
+          </div>
+        </div>`;
+    }
+    case 'remark': {
+      const rentalNote='Insurance coverage insured 80% when accident caused by customer, he has to bear only the 20% & loss of NCD';
+      const val=j.remark || (j.service_type==='rental'?rentalNote:'');
+      return `<label>Remark</label><textarea id="j_remark" placeholder="e.g. pickup at St Regis, go to Desaru">${esc(val)}</textarea>`;
+    }
+    default: return '';
+  }
+}
+function jobFieldsHtml(sv,j){ return (SERVICE_FIELDS[sv]||SERVICE_FIELDS.rental).map(k=>fieldHtml(k,j)).join(''); }
+function onServiceChange(){
+  const sv=$('j_service').value; JOB_DRAFT.service_type=sv;
+  $('jobFields').innerHTML=jobFieldsHtml(sv,JOB_DRAFT);
+}
+function toggleOtherMonths(selId,otherId){ const s=$(selId),o=$(otherId); if(!s||!o)return; o.style.display=(s.value==='other')?'block':'none'; }
+function togglePickupMode(){ const m=$('j_pickup_mode'); const b=$('deliverBox'); if(m&&b) b.style.display=(m.value==='deliver')?'block':'none'; }
+
 function jobForm(){
   const j=JOB_DRAFT;
+  const sv=j.service_type||'rental';
   const custBtn = j.customer_name
     ? `<div class="pickrow" onclick="pickCustomer()"><b>${esc(j.customer_name)}</b><div class="muted" style="font-size:13px">${esc(j.customer_contact||'')} · tap to change</div></div>`
     : `<button class="btn sec" onclick="pickCustomer()"><i class="ti ti-user-plus"></i> Choose customer</button>`;
-  const carOpts=`<option value="">— choose car —</option>`+FLEET.map(f=>`<option value="${f.id}" ${j.fleet_id===f.id?'selected':''}>${esc(f.plate)} · ${esc(f.model)}</option>`).join('');
-  // if pasted car text didn't match fleet, show it as a hint
-  const parsedCarHint = (!j.fleet_id && (j.car_model_text||j.car_plate_text))
-    ? `<div class="muted" style="font-size:12px;margin-top:4px">From message: <b>${esc(j.car_model_text||'')}${j.car_plate_text?(' · '+esc(j.car_plate_text)):''}</b> — pick the matching fleet car above, or leave blank if not in fleet.</div>`
-    : '';
-  const drvOpts=`<option value="">— none —</option>`+DRIVERS.map(d=>`<option value="${esc(d.username)}" ${j.driver_username===d.username?'selected':''}>${esc(d.name)}</option>`).join('');
-  const svcOpts=SERVICES.map(s=>`<option value="${s.v}" ${j.service_type===s.v?'selected':''}>${s.label}</option>`).join('');
+  const svcOpts=SERVICES.map(s=>`<option value="${s.v}" ${sv===s.v?'selected':''}>${s.label}</option>`).join('');
   showModal(`
     <button class="x" onclick="closeModal()">×</button>
     <h3>${j.id?'Edit job':'New job'}</h3>
@@ -670,43 +751,8 @@ function jobForm(){
     <label>Customer</label>
     ${custBtn}
     <label>Service</label>
-    <select id="j_service">${svcOpts}</select>
-    <label>Car (from fleet)</label>
-    <select id="j_fleet">${carOpts}</select>
-    ${parsedCarHint}
-    <div class="row2">
-      <div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div>
-      <div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div>
-    </div>
-    <div class="row2">
-      <div><label>End date</label><input type="date" id="j_end_date" value="${esc(j.end_date||'')}"></div>
-      <div><label>End time</label><input type="time" id="j_end_time" value="${esc(to24(j.end_time)||'')}"></div>
-    </div>
-    <label>Assigned driver (optional)</label>
-    <select id="j_driver">${drvOpts}</select>
-    <div class="row2">
-      <div><label>Price (RM)</label><input id="j_price" inputmode="decimal" value="${esc(j.price||'')}"></div>
-      <div><label>Deposit (RM)</label><input id="j_deposit" inputmode="decimal" value="${esc(j.deposit_amount||'')}"></div>
-    </div>
-    <div class="row2">
-      <div><label>Grand total (RM)</label><input id="j_total" inputmode="decimal" value="${esc(j.grand_total||'')}"></div>
-      <div><label>Invoice to</label><input id="j_invoice" value="${esc(j.invoice_to||'')}"></div>
-    </div>
-    <div class="row2">
-      <div><label>Mileage given (km)</label><input id="j_mileage" inputmode="decimal" value="${esc(j.mileage_given||'')}"></div>
-      <div><label>Per km exceed (RM)</label><input id="j_perkm" inputmode="decimal" value="${esc(j.per_km_exceed||'')}"></div>
-    </div>
-    <div class="row2">
-      <div><label>OT rate (RM/hr)</label><input id="j_ot" inputmode="decimal" value="${esc(j.ot_rate||'')}"></div>
-      <div><label>Duration (hours)</label><input id="j_hours" inputmode="decimal" value="${esc(j.duration_hours||'')}"></div>
-    </div>
-    <label>Location / referral</label>
-    <div class="row2">
-      <div><input id="j_location" placeholder="location" value="${esc(j.location||'')}"></div>
-      <div><input id="j_referral" placeholder="referral" value="${esc(j.referral||'')}"></div>
-    </div>
-    <label>Remark</label>
-    <textarea id="j_remark" placeholder="e.g. pickup at St Regis, go to Desaru">${esc(j.remark||'')}</textarea>
+    <select id="j_service" onchange="onServiceChange()">${svcOpts}</select>
+    <div id="jobFields">${jobFieldsHtml(sv,j)}</div>
     <button class="btn" style="margin-top:14px" onclick="saveJob()">${j.id?'Save changes':'Create job'}</button>
     ${j.id?`<button class="btn danger" style="margin-top:8px" onclick="cancelJob('${j.id}')">Cancel this job</button>`:''}
   `);
@@ -714,29 +760,49 @@ function jobForm(){
 async function saveJob(){
   const j=JOB_DRAFT;
   if(!j.customer_id){ toast('Choose a customer first'); return; }
-  const fleetId=$('j_fleet').value||null;
+  const sv=$('j_service').value;
+  const gv=(id)=>{ const el=$(id); return el?el.value:undefined; };            // undefined if field not shown
+  const gnum=(id)=>{ const v=gv(id); return v===undefined?undefined:(num(v)||null); };
+  const fleetId=gv('j_fleet')||null;
   const car=FLEET.find(f=>f.id===fleetId);
-  const drvUser=$('j_driver').value||null;
+  const drvUser=gv('j_driver')||null;
   const drv=DRIVERS.find(d=>d.username===drvUser);
+  // subscription months (dropdown or "other")
+  let subM=gv('j_sub_months'); if(subM==='other') subM=gv('j_sub_months_other')||null;
   const row={
     customer_id:j.customer_id, customer_name:j.customer_name, customer_contact:j.customer_contact||null,
-    fleet_id:fleetId, car_model:car?car.model:null, car_plate:car?car.plate:null,
-    service_type:$('j_service').value, service_desc:svcLabel($('j_service').value),
-    start_date:$('j_start_date').value||null, start_time:to12($('j_start_time').value)||null,
-    end_date:$('j_end_date').value||null, end_time:to12($('j_end_time').value)||null,
-    driver_username:drvUser, driver_name:drv?drv.name:null,
-    price:num($('j_price').value), deposit_amount:num($('j_deposit').value),
-    grand_total:num($('j_total').value)||null,
-    invoice_to:($('j_invoice').value||'').toUpperCase()||null,
-    mileage_given:num($('j_mileage').value)||null,
-    per_km_exceed:num($('j_perkm').value)||null,
-    ot_rate:num($('j_ot').value)||null,
-    duration_hours:num($('j_hours').value)||null,
-    location:($('j_location').value||'')||null,
-    referral:($('j_referral').value||'')||null,
-    source_text:JOB_DRAFT.source_text||null,
-    remark:($('j_remark').value||'').toUpperCase()||null, updated_at:new Date().toISOString()
+    service_type:sv, service_desc:svcLabel(sv),
+    source_text:JOB_DRAFT.source_text||null, updated_at:new Date().toISOString()
   };
+  // only set keys whose fields are present in this service's form
+  const set=(k,v)=>{ if(v!==undefined) row[k]=v; };
+  set('fleet_id', serviceHasCar(sv)?fleetId:null);
+  set('car_model', serviceHasCar(sv)?(car?car.model:null):null);
+  set('car_plate', serviceHasCar(sv)?(car?car.plate:null):null);
+  set('start_date', gv('j_start_date')||null);
+  set('start_time', gv('j_start_time')!==undefined?(to12(gv('j_start_time'))||null):undefined);
+  set('end_date', gv('j_end_date')||null);
+  set('end_time', gv('j_end_time')!==undefined?(to12(gv('j_end_time'))||null):undefined);
+  set('driver_username', drvUser); set('driver_name', drv?drv.name:null);
+  set('price', gnum('j_price')); set('deposit_amount', gnum('j_deposit'));
+  set('grand_total', gnum('j_total'));
+  set('invoice_to', gv('j_invoice')!==undefined?((gv('j_invoice')||'').toUpperCase()||null):undefined);
+  set('mileage_given', gnum('j_mileage')); set('per_km_exceed', gnum('j_perkm'));
+  set('ot_rate', gnum('j_ot')); set('duration_hours', gnum('j_hours'));
+  set('rental_days', gnum('j_days'));
+  set('pickup_location', gv('j_pickup_loc')!==undefined?(gv('j_pickup_loc')||null):undefined);
+  set('dropoff_location', gv('j_dropoff_loc')!==undefined?(gv('j_dropoff_loc')||null):undefined);
+  set('location', gv('j_location')!==undefined?(gv('j_location')||null):undefined);
+  set('referral', gv('j_referral')!==undefined?(gv('j_referral')||null):undefined);
+  set('subscription_months', gv('j_sub_months')!==undefined?(subM||null):undefined);
+  set('rate_monthly', gnum('j_rate_monthly')); set('subscription_fee', gnum('j_sub_fee'));
+  set('lto_months', gv('j_lto_months')!==undefined?(gv('j_lto_months')||null):undefined);
+  set('downpayment', gnum('j_downpayment')); set('safety_fee', gnum('j_safety_fee'));
+  set('insurance_fee', gnum('j_insurance_fee')); set('roadtax', gnum('j_roadtax'));
+  set('pickup_mode', gv('j_pickup_mode')!==undefined?(gv('j_pickup_mode')||null):undefined);
+  set('delivery_charge', gnum('j_delivery_charge')); 
+  set('delivery_trip', gv('j_delivery_trip')!==undefined?(gv('j_delivery_trip')||null):undefined);
+  set('remark', gv('j_remark')!==undefined?((gv('j_remark')||'').toUpperCase()||null):undefined);
   let res, jobId=j.id;
   if(j.id){ res=await sb.from('gp_jobs').update(row).eq('id',j.id); }
   else {
@@ -759,7 +825,10 @@ async function cancelJob(id){
 function openJob(id){
   const j=JOBS.find(x=>x.id===id); if(!j) return;
   const stageIdx=STAGES.indexOf(j.stage);
-  const steps=STAGES.slice(0,5).map((s,i)=>`<div class="rowline"><span class="${stageIdx>=i?'':'muted'}">${stageIdx>=i?'✓':'○'} ${STAGE_LABEL[s]}</span></div>`).join('');
+  const noCar=!serviceHasCar(j.service_type);
+  const stepStages = noCar ? ['booked','paid','done'] : STAGES.slice(0,5);
+  const noCarIdx = noCar ? ['booked','paid','done'].indexOf(j.stage==='done'?'done':(j.stage==='paid'?'paid':'booked')) : stageIdx;
+  const steps=stepStages.map((s,i)=>`<div class="rowline"><span class="${(noCar?noCarIdx:stageIdx)>=i?'':'muted'}">${(noCar?noCarIdx:stageIdx)>=i?'✓':'○'} ${STAGE_LABEL[s]}</span></div>`).join('');
   const nextBtn=lifecycleButton(j);
   showModal(`
     <button class="x" onclick="closeModal()">×</button>
@@ -767,19 +836,27 @@ function openJob(id){
     <div class="muted" style="margin-bottom:10px">${esc(j.job_no||'')} · ${esc(svcLabel(j.service_type))}</div>
     <span class="pill st-${j.stage}">${STAGE_LABEL[j.stage]||j.stage}</span>
     <div class="card" style="margin-top:12px">
-      <div class="rowline"><span class="muted">Car</span><span>${esc(j.car_model||'—')} ${esc(j.car_plate||'')}</span></div>
-      <div class="rowline"><span class="muted">Dates</span><span>${fmtDate(j.start_date)}${j.start_time?' '+esc(j.start_time):''} → ${fmtDate(j.end_date)}${j.end_time?' '+esc(j.end_time):''}</span></div>
-      <div class="rowline"><span class="muted">Driver</span><span>${esc(j.driver_name||'—')}</span></div>
+      ${serviceHasCar(j.service_type)?`<div class="rowline"><span class="muted">Car</span><span>${esc(j.car_model||'—')} ${esc(j.car_plate||'')}</span></div>`:''}
+      <div class="rowline"><span class="muted">Dates</span><span>${fmtDate(j.start_date)}${j.start_time?' '+esc(j.start_time):''}${j.end_date?(' → '+fmtDate(j.end_date)+(j.end_time?' '+esc(j.end_time):'')):''}</span></div>
+      ${(j.driver_name)?`<div class="rowline"><span class="muted">Driver</span><span>${esc(j.driver_name)}</span></div>`:''}
+      ${j.pickup_location?`<div class="rowline"><span class="muted">Pickup</span><span style="text-align:right;max-width:60%">${esc(j.pickup_location)}</span></div>`:''}
+      ${j.dropoff_location?`<div class="rowline"><span class="muted">Drop-off</span><span style="text-align:right;max-width:60%">${esc(j.dropoff_location)}</span></div>`:''}
       <div class="rowline"><span class="muted">Price</span><span>RM ${num(j.price).toLocaleString()}</span></div>
-      <div class="rowline"><span class="muted">Deposit</span><span>RM ${num(j.deposit_amount).toLocaleString()}</span></div>
+      ${num(j.deposit_amount)>0?`<div class="rowline"><span class="muted">Deposit</span><span>RM ${num(j.deposit_amount).toLocaleString()}</span></div>`:''}
       <div class="rowline"><span class="muted">Total to collect</span><b>RM ${jobTotal(j).toLocaleString()}</b></div>
       <div class="rowline"><span class="muted">Paid</span><span>RM ${jobPaid(j).toLocaleString()}</span></div>
       ${jobBalance(j)>0?`<div class="rowline"><span class="muted">Balance</span><b style="color:var(--amber)">RM ${jobBalance(j).toLocaleString()}</b></div>`:`<div class="rowline"><span class="muted">Payment</span><b style="color:var(--green)">Fully paid ✓</b></div>`}
       ${j.invoice_to?`<div class="rowline"><span class="muted">Invoice to</span><span>${esc(j.invoice_to)}</span></div>`:''}
+      ${j.rental_days?`<div class="rowline"><span class="muted">Days</span><span>${esc(j.rental_days)}</span></div>`:''}
+      ${j.subscription_months?`<div class="rowline"><span class="muted">Subscription</span><span>${esc(j.subscription_months)} months</span></div>`:''}
+      ${j.rate_monthly?`<div class="rowline"><span class="muted">Rate/month</span><span>RM ${num(j.rate_monthly).toLocaleString()}</span></div>`:''}
+      ${j.lto_months?`<div class="rowline"><span class="muted">LTO term</span><span>${esc(j.lto_months)} months</span></div>`:''}
+      ${j.downpayment?`<div class="rowline"><span class="muted">Downpayment</span><span>RM ${num(j.downpayment).toLocaleString()}</span></div>`:''}
       ${j.mileage_given?`<div class="rowline"><span class="muted">Mileage given</span><span>${num(j.mileage_given).toLocaleString()} km</span></div>`:''}
       ${j.per_km_exceed?`<div class="rowline"><span class="muted">Per km exceed</span><span>RM ${esc(j.per_km_exceed)}</span></div>`:''}
       ${j.ot_rate?`<div class="rowline"><span class="muted">OT rate</span><span>RM ${esc(j.ot_rate)}/hr</span></div>`:''}
       ${j.duration_hours?`<div class="rowline"><span class="muted">Hours</span><span>${esc(j.duration_hours)}</span></div>`:''}
+      ${j.pickup_mode?`<div class="rowline"><span class="muted">Pickup mode</span><span>${j.pickup_mode==='deliver'?('Deliver'+(j.delivery_trip?(' · '+esc(j.delivery_trip)+' trip'):'')+(j.delivery_charge?(' · RM '+num(j.delivery_charge).toLocaleString()):'')):'At office'}</span></div>`:''}
       ${j.location?`<div class="rowline"><span class="muted">Location</span><span style="text-align:right;max-width:60%">${esc(j.location)}</span></div>`:''}
       ${j.referral?`<div class="rowline"><span class="muted">Referral</span><span style="text-align:right;max-width:60%">${esc(j.referral)}</span></div>`:''}
       ${paymentHistoryHtml(j)}
@@ -789,10 +866,10 @@ function openJob(id){
     <div class="card">
       <h3>Progress</h3>${steps}
     </div>
-    ${signStatusHtml(j)}
-    ${carItemsCard(j)}
-    ${j.stage==='returned'?damageEditor(j):''}
-    ${j.stage==='deposit_settled'?settledSummary(j):''}
+    ${serviceHasCar(j.service_type)?signStatusHtml(j):''}
+    ${serviceHasCar(j.service_type)?carItemsCard(j):''}
+    ${serviceHasCar(j.service_type)&&j.stage==='returned'?damageEditor(j):''}
+    ${serviceHasCar(j.service_type)&&j.stage==='deposit_settled'?settledSummary(j):''}
     ${nextBtn}
     ${['booked','paid','delivered'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="extendJob('${j.id}')"><i class="ti ti-clock-plus"></i> ⏱ Extend booking</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit details</button>
@@ -881,7 +958,12 @@ function lifecycleButton(j){
     if(jobBalance(j)>0){
       return `<div class="card" style="padding:11px;margin-bottom:8px"><div class="rowline"><span class="muted">Paid</span><span>RM ${jobPaid(j).toLocaleString()}</span></div><div class="rowline"><span class="muted">Balance to collect</span><b style="color:var(--amber)">RM ${jobBalance(j).toLocaleString()}</b></div></div>
       <button class="btn" onclick="markPaid('${j.id}')"><i class="ti ti-cash"></i> Pay balance</button>
-      <div class="hint" style="text-align:center;margin-top:8px">Deliver unlocks once fully paid</div>
+      <div class="hint" style="text-align:center;margin-top:8px">${serviceHasCar(j.service_type)?'Deliver unlocks once fully paid':'Complete unlocks once fully paid'}</div>
+      <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
+    }
+    // no-car services (bodyguard, hire driver): no checklist/delivery — just complete the job
+    if(!serviceHasCar(j.service_type)){
+      return `<button class="btn" onclick="markDone('${j.id}')"><i class="ti ti-check"></i> Mark job done</button>
       <button class="btn danger" style="margin-top:10px" onclick="cancelDeal('${j.id}')"><i class="ti ti-x"></i> Customer cancelled deal</button>`;
     }
     // once the delivery checklist is done (customer signed, or at least inspector signed),
