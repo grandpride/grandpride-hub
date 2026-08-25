@@ -589,7 +589,13 @@ function applyPaste(){
       const mt=d.car_model_text.toLowerCase();
       car=FLEET.find(f=>{ const fm=(f.model||'').toLowerCase(); return fm && (fm.includes(mt)||mt.includes(fm)); });
     }
-    if(car) JOB_DRAFT.fleet_id=car.id;
+    if(car){ JOB_DRAFT.fleet_id=car.id; JOB_DRAFT._manual_car=false; }
+    else if(d.car_model_text||d.car_plate_text){
+      // no fleet match — open manual car entry prefilled, will auto-add to fleet on save
+      JOB_DRAFT._manual_car=true;
+      JOB_DRAFT.car_model=d.car_model_text||'';
+      JOB_DRAFT.car_plate=d.car_plate_text||'';
+    }
   })();
   if(d.start_date) JOB_DRAFT.start_date=d.start_date;
   if(d.start_time) JOB_DRAFT.start_time=d.start_time;
@@ -670,14 +676,29 @@ function serviceHasCar(sv){ return (SERVICE_FIELDS[sv]||[]).includes('car'); }
 
 /* one field -> HTML snippet. j is the draft. */
 function fieldHtml(key,j){
-  const carOpts=`<option value="">— choose car —</option>`+FLEET.map(f=>`<option value="${f.id}" ${j.fleet_id===f.id?'selected':''}>${esc(f.plate)} · ${esc(f.model)}</option>`).join('');
-  const parsedCarHint=(!j.fleet_id && (j.car_model_text||j.car_plate_text))
-    ? `<div class="muted" style="font-size:12px;margin-top:4px">From message: <b>${esc(j.car_model_text||'')}${j.car_plate_text?(' · '+esc(j.car_plate_text)):''}</b> — pick the matching fleet car, or leave blank if not in fleet.</div>` : '';
   const drvOpts=`<option value="">— none —</option>`+DRIVERS.map(d=>`<option value="${esc(d.username)}" ${j.driver_username===d.username?'selected':''}>${esc(d.name)}</option>`).join('');
   const subMonths=['12','24','36','48','60'];
   const ltoMonths=['36','48','60'];
   switch(key){
-    case 'car': return `<label>Car (from fleet)</label><select id="j_fleet">${carOpts}</select>${parsedCarHint}`;
+    case 'car': {
+      const manual = j._manual_car || (!j.fleet_id && (j.car_model||j.car_model_text));
+      const carTypes=['sedan','suv','mpv','supercar'];
+      return `<label>Car</label>
+        <select id="j_fleet" onchange="onFleetSelect()">
+          <option value="">— choose from fleet —</option>
+          ${FLEET.map(f=>`<option value="${f.id}" ${j.fleet_id===f.id?'selected':''}>${esc(f.plate)} · ${esc(f.model)}</option>`).join('')}
+          <option value="__manual__" ${manual?'selected':''}>➕ Type new car (not in fleet)</option>
+        </select>
+        <div id="manualCarBox" style="${manual?'':'display:none'};margin-top:8px">
+          <div class="row2">
+            <div><label>Car model</label><input id="j_car_model" placeholder="e.g. Toyota Alphard AGH30" value="${esc(j.car_model||j.car_model_text||'')}"></div>
+            <div><label>Car plate</label><input id="j_car_plate" placeholder="e.g. VFH7678" value="${esc(j.car_plate||j.car_plate_text||'')}" style="text-transform:uppercase"></div>
+          </div>
+          <label>Car type</label>
+          <select id="j_car_type">${carTypes.map(t=>`<option value="${t}" ${j.car_type===t?'selected':''}>${t.charAt(0).toUpperCase()+t.slice(1)}</option>`).join('')}</select>
+          <div class="hint" style="margin-top:4px">New car will be auto-added to Fleet on save. You can edit full details later in Fleet.</div>
+        </div>`;
+    }
     case 'dates': return `<div class="row2"><div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div><div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div></div><div class="row2"><div><label>End date</label><input type="date" id="j_end_date" value="${esc(j.end_date||'')}"></div><div><label>End time</label><input type="time" id="j_end_time" value="${esc(to24(j.end_time)||'')}"></div></div>`;
     case 'start_dt': return `<div class="row2"><div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div><div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div></div>`;
     case 'pickup_date': return `<label>Pickup date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}">`;
@@ -736,6 +757,7 @@ function onServiceChange(){
 }
 function toggleOtherMonths(selId,otherId){ const s=$(selId),o=$(otherId); if(!s||!o)return; o.style.display=(s.value==='other')?'block':'none'; }
 function togglePickupMode(){ const m=$('j_pickup_mode'); const b=$('deliverBox'); if(m&&b) b.style.display=(m.value==='deliver')?'block':'none'; }
+function onFleetSelect(){ const sel=$('j_fleet'); const box=$('manualCarBox'); if(sel&&box) box.style.display=(sel.value==='__manual__')?'block':'none'; }
 
 function jobForm(){
   const j=JOB_DRAFT;
@@ -763,12 +785,37 @@ async function saveJob(){
   const sv=$('j_service').value;
   const gv=(id)=>{ const el=$(id); return el?el.value:undefined; };            // undefined if field not shown
   const gnum=(id)=>{ const v=gv(id); return v===undefined?undefined:(num(v)||null); };
-  const fleetId=gv('j_fleet')||null;
-  const car=FLEET.find(f=>f.id===fleetId);
+  const fleetSel=gv('j_fleet');
   const drvUser=gv('j_driver')||null;
   const drv=DRIVERS.find(d=>d.username===drvUser);
   // subscription months (dropdown or "other")
   let subM=gv('j_sub_months'); if(subM==='other') subM=gv('j_sub_months_other')||null;
+  // resolve the car: existing fleet pick, or a manually-typed car that we auto-add to fleet
+  let carResolved={fleet_id:null, model:null, plate:null};
+  if(serviceHasCar(sv)){
+    if(fleetSel==='__manual__'){
+      const model=(gv('j_car_model')||'').trim();
+      const plate=(gv('j_car_plate')||'').trim().toUpperCase();
+      const ctype=gv('j_car_type')||'sedan';
+      if(plate){
+        // reuse if this plate already exists in fleet, else create it
+        let existing=FLEET.find(f=>(f.plate||'').toUpperCase()===plate);
+        if(!existing){
+          const ins=await sb.from('gp_fleet').insert({plate:plate, model:model||plate, car_type:ctype, status:'ready', changed_by:ME, remark:'Auto-added from GP Jobs'}).select().single();
+          if(ins.error){ toast('Fleet add failed: '+ins.error.message); return; }
+          existing=ins.data; FLEET.push(existing);
+          toast('New car added to Fleet ✓');
+        }
+        carResolved={fleet_id:existing.id, model:existing.model||model||plate, plate:existing.plate};
+      } else {
+        // model typed but no plate — store text only, no fleet row
+        carResolved={fleet_id:null, model:model||null, plate:null};
+      }
+    } else if(fleetSel){
+      const car=FLEET.find(f=>f.id===fleetSel);
+      carResolved={fleet_id:fleetSel, model:car?car.model:null, plate:car?car.plate:null};
+    }
+  }
   const row={
     customer_id:j.customer_id, customer_name:j.customer_name, customer_contact:j.customer_contact||null,
     service_type:sv, service_desc:svcLabel(sv),
@@ -776,9 +823,9 @@ async function saveJob(){
   };
   // only set keys whose fields are present in this service's form
   const set=(k,v)=>{ if(v!==undefined) row[k]=v; };
-  set('fleet_id', serviceHasCar(sv)?fleetId:null);
-  set('car_model', serviceHasCar(sv)?(car?car.model:null):null);
-  set('car_plate', serviceHasCar(sv)?(car?car.plate:null):null);
+  set('fleet_id', serviceHasCar(sv)?carResolved.fleet_id:null);
+  set('car_model', serviceHasCar(sv)?carResolved.model:null);
+  set('car_plate', serviceHasCar(sv)?carResolved.plate:null);
   set('start_date', gv('j_start_date')||null);
   set('start_time', gv('j_start_time')!==undefined?(to12(gv('j_start_time'))||null):undefined);
   set('end_date', gv('j_end_date')||null);
