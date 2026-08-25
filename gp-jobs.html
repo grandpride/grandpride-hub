@@ -213,9 +213,11 @@ function wpClean(s){ return String(s==null?'':s).replace(/\u202a|\u202c|\u2066|\
 // grab the value after a label on the same line, e.g. "Customer: Ali" -> "Ali"
 function wpField(text, labels){
   const lines=text.split(/\r?\n/);
+  // allow leading emoji, symbols, bullets, asterisks and spaces before the label
+  const lead='[^A-Za-z0-9\\n]*';
   for(const lab of labels){
-    const re=new RegExp('^\\s*'+lab+'\\s*[:：]\\s*(.+)$','i');
-    for(const ln of lines){ const m=ln.match(re); if(m && wpClean(m[1])) return wpClean(m[1]); }
+    const re=new RegExp('^'+lead+lab+'\\s*[:：]\\s*(.+)$','i');
+    for(const ln of lines){ const m=ln.match(re); if(m){ const v=wpClean(m[1]).replace(/\*/g,'').trim(); if(v) return v; } }
   }
   return '';
 }
