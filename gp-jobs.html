@@ -989,7 +989,7 @@ function openJob(id){
     ${nextBtn}
     ${['booked','paid','delivered'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="extendJob('${j.id}')"><i class="ti ti-clock-plus"></i> ⏱ Extend booking</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit details</button>
-    ${serviceHasCar(j.service_type)&&['delivered','returned','deposit_settled','done'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="openCheckin('${j.id}')"><i class="ti ti-camera"></i> 📸 Send check-in to WhatsApp</button>`:''}
+    ${serviceHasCar(j.service_type)&&['delivered','returned','deposit_settled','done'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="openCheckin('${j.id}')"><i class="ti ti-camera"></i> 📸 Send checklist and photo to WhatsApp</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="waSummary('${j.id}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp summary</button>
   `);
 }
