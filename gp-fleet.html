@@ -44,7 +44,7 @@
   .due-urgent{color:var(--red);font-weight:600}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .fcard{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer}
-  .fcard .ph{height:96px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:34px;background-size:cover;background-position:center}
+  .fcard .ph{aspect-ratio:3/4;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--muted2);font-size:34px;background-size:cover;background-position:center}
   .fcard .body{padding:10px 11px}
   .fcard .nm{font-weight:700;font-size:14px}
   .fcard .sub{font-size:12px;color:var(--muted);margin-top:1px}
@@ -386,10 +386,35 @@ function openEdit(id){
 function togglePartner(){ $('partnerBox').classList.toggle('hidden', $('f_owner_type').value!=='partner'); }
 function carTypeToggle(){ $('f_car_type_other').classList.toggle('hidden', $('f_car_type_sel').value!=='__other'); }
 
+/* Compress an image file in-browser before upload: cap long edge, re-encode JPEG.
+   Keeps ImgBB uploads small so the fleet list loads fast on mobile data. */
+function compressImage(file, maxEdge, quality){
+  maxEdge=maxEdge||1200; quality=quality||0.8;
+  return new Promise(function(resolve){
+    if(!file || !/^image\//.test(file.type) || /gif/i.test(file.type)){ resolve(file); return; }
+    const img=new Image(); const url=URL.createObjectURL(file);
+    img.onload=function(){
+      let w=img.naturalWidth, h=img.naturalHeight;
+      if(Math.max(w,h)>maxEdge){ const s=maxEdge/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      const cx=cv.getContext('2d'); cx.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      cv.toBlob(function(blob){
+        if(!blob || blob.size>=file.size){ resolve(file); return; } // don't upsize
+        resolve(new File([blob], (file.name||'photo').replace(/\.[^.]+$/,'')+'.jpg', {type:'image/jpeg'}));
+      },'image/jpeg',quality);
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); resolve(file); };
+    img.src=url;
+  });
+}
+
 async function uploadCarPhoto(inp){
-  const file=inp.files[0]; if(!file) return;
-  $('photoHint').textContent='Uploading…';
+  let file=inp.files[0]; if(!file) return;
+  $('photoHint').textContent='Compressing…';
   try{
+    file=await compressImage(file,1200,0.8);
+    $('photoHint').textContent='Uploading…';
     const fd=new FormData(); fd.append('image',file);
     const r=await fetch('https://api.imgbb.com/1/upload?key='+IMGBB_KEY,{method:'POST',body:fd});
     const j=await r.json();
@@ -623,8 +648,8 @@ function accTotals(){
 async function uploadAccPhotos(inp,fleetId){
   const files=[...inp.files]; if(!files.length) return;
   toast('Uploading '+files.length+' photo(s)…');
-  for(const f of files){
-    try{ const fd=new FormData(); fd.append('image',f);
+  for(let f of files){
+    try{ f=await compressImage(f,1200,0.8); const fd=new FormData(); fd.append('image',f);
       const r=await fetch('https://api.imgbb.com/1/upload?key='+IMGBB_KEY,{method:'POST',body:fd});
       const j=await r.json(); if(j&&j.data&&j.data.url) ACC_PHOTOS.push(j.data.url);
     }catch(e){}
