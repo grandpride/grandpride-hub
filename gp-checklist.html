@@ -1011,13 +1011,14 @@ const PHOTO_SLOTS=['Rim — Front Left','Rim — Front Right','Rim — Rear Left
 function onDefectPhotos(input){
   const files=[...(input.files||[])];
   if(!files.length) return;
-  let pending=files.length;
-  files.forEach(file=>{
+  const results=new Array(files.length); let pending=files.length;
+  files.forEach((file,idx)=>{
     downscalePhoto(file,data=>{
-      const arr=(f('defect_photos')||[]).slice();
-      arr.push({data:data});
-      STATE.current[P()+'_defect_photos']=arr;
-      if(--pending===0) renderDefectPhotos();
+      results[idx]={data:data};
+      if(--pending===0){
+        const arr=(f('defect_photos')||[]).slice().concat(results);
+        STATE.current[P()+'_defect_photos']=arr; renderDefectPhotos();
+      }
     });
   });
   input.value='';
@@ -1035,13 +1036,14 @@ function rmDefectPhoto(i){
 function onInteriorPhotos(input){
   const files=[...(input.files||[])];
   if(!files.length) return;
-  let pending=files.length;
-  files.forEach(file=>{
+  const results=new Array(files.length); let pending=files.length;
+  files.forEach((file,idx)=>{
     downscalePhoto(file,data=>{
-      const arr=(f('interior_photos')||[]).slice();
-      arr.push({data:data});
-      STATE.current[P()+'_interior_photos']=arr;
-      if(--pending===0) renderInteriorPhotos();
+      results[idx]={data:data};
+      if(--pending===0){
+        const arr=(f('interior_photos')||[]).slice().concat(results);
+        STATE.current[P()+'_interior_photos']=arr; renderInteriorPhotos();
+      }
     });
   });
   input.value='';
@@ -1110,28 +1112,36 @@ function downscalePhoto(file,cb){
   };
   reader.readAsDataURL(file);
 }
-/* bulk: fill EMPTY slots in [start,end) with the selected files, in order */
+/* bulk: fill EMPTY slots in [start,end) with the selected files, in order.
+   Decodes are async and finish out of order, so we collect results keyed by the
+   target slot index and commit once all are done — otherwise fast/slow decodes
+   overwrite each other and photos land in the wrong slots. */
 function onBulkPhotos(input,start,end){
   const files=[...(input.files||[])];
   if(!files.length) return;
   const arr=(f('photos')||[]).slice();
-  // collect the empty slot indexes in this group
   let slots=[]; for(let i=start;i<end;i++){ if(!(arr[i]&&arr[i].data)) slots.push(i); }
   if(!slots.length){ toast('Those slots are already filled — remove one to replace'); input.value=''; return; }
   const use=files.slice(0,slots.length);
   if(files.length>slots.length) toast('Only '+slots.length+' empty slot(s) here — extra photos ignored');
+  const results={};           // slotIdx -> dataUrl
   let done=0;
   use.forEach((file,k)=>{
-    const slotIdx=slots[k];
+    const slotIdx=slots[k];   // this file's fixed target slot
     downscalePhoto(file,data=>{
-      const cur=(f('photos')||[]).slice();
-      cur[slotIdx]={label:PHOTO_SLOTS[slotIdx],data:data};
-      STATE.current[P()+'_photos']=cur;
+      results[slotIdx]=data;
       done++;
-      if(done===use.length){ refreshPhotoSlots(); toast(done+' photo(s) added'); }
+      if(done===use.length){
+        // commit all at once, in slot order, off the latest state
+        const cur=(f('photos')||[]).slice();
+        Object.keys(results).forEach(si=>{ cur[si]={label:PHOTO_SLOTS[si],data:results[si]}; });
+        STATE.current[P()+'_photos']=cur;
+        refreshPhotoSlots();
+        toast(use.length+' photo(s) added');
+      }
     });
   });
-  input.value=''; // allow re-selecting same files later
+  input.value='';
 }
 function refreshPhotoSlots(){
   const grid=$('photoGrid'); if(!grid) return;
