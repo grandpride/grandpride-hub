@@ -740,6 +740,8 @@ function showForm(){
       <div class="sig-actions"><button class="btn sec mini" onclick="clearPad('padCustomer')">Clear</button></div></div>
     <button class="btn sec" style="margin-top:10px;width:100%" onclick="sendSignLink()"><span style="text-transform:none">📲 Send to customer to sign (WhatsApp)</span></button>
     <div class="hint" style="margin-top:6px">If the customer isn't here, save first, then send them the link to sign on their phone.</div>`}
+    <button class="btn sec" style="margin-top:10px;width:100%" onclick="sendChecklistToGroup()"><span style="text-transform:none">📸 Send checklist + photos to WhatsApp group</span></button>
+    <div class="hint" style="margin-top:6px">Uploads this stage's photos and gives a gallery link to share with the group.</div>
   </div>
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
@@ -1186,6 +1188,61 @@ async function sendSignLink(){
   window.open(wa,'_blank');
   toast('Link sent — returning to GP Jobs…');
   setTimeout(function(){ backToJob(); }, 1200);
+}
+
+/* ===== Send checklist stage photos to WhatsApp group (reuses gp_checkins gallery) ===== */
+function dataUrlToBlob_(dataUrl){
+  const [head,b64]=dataUrl.split(','); const mime=(head.match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+  const bin=atob(b64); const arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+async function sendChecklistToGroup(){
+  readForm();
+  const a=STATE.current; const st=STATE.stage;
+  const stageLabel = st==='out' ? 'delivery' : (st==='intake' ? 'intake' : 'return');
+  // gather this stage's photos (main + defect), both stored as {label?,data(base64)}
+  const main=(f('photos')||[]);
+  const defect=(f('defect_photos')||[]);
+  const all=[...main.map(p=>({label:p.label||'',data:p.data})), ...defect.map(p=>({label:p.label||'defect',data:p.data}))]
+            .filter(p=>p.data);
+  if(!all.length){ toast('No photos on this stage yet'); return; }
+  toast('Uploading '+all.length+' photo(s)…');
+  const token='ci_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  const uploaded=[];
+  for(let i=0;i<all.length;i++){
+    try{
+      const blob=dataUrlToBlob_(all[i].data);
+      const path=token+'/'+stageLabel+'_'+String(i+1).padStart(2,'0')+'.jpg';
+      const up=await fetch(sbBase()+'/storage/v1/object/checkins/'+path,
+        {method:'POST', headers:sbHeaders({'Content-Type':'image/jpeg','x-upsert':'true'}), body:blob});
+      if(!up.ok) throw new Error('upload '+up.status);
+      uploaded.push({type:'photo',label:all[i].label||'',url:sbBase()+'/storage/v1/object/public/checkins/'+path});
+    }catch(e){ toast('Upload error: '+(e.message||e)); return; }
+  }
+  // save the gp_checkins record via REST
+  const rec={ share_token:token, job_id:(typeof jobParam==='function'?jobParam('job'):null)||null,
+    customer_name:a.customer_name||null, car_model:a.car_model||null, car_plate:a.car_plate||null,
+    stage:stageLabel, note:(a.remark||null), media:uploaded, photo_count:uploaded.length, video_count:0, created_by:curUser() };
+  const ins=await fetch(sbBase()+'/rest/v1/gp_checkins',
+    {method:'POST', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}), body:JSON.stringify(rec)});
+  if(!ins.ok){ toast('Save failed: '+ins.status); return; }
+  // build the WhatsApp message + gallery link (same style as GP Jobs check-in)
+  const base=location.origin+location.pathname.replace(/[^/]*$/,'');
+  const link=base+'gp-checkin-view.html?t='+token;
+  const now=new Date().toLocaleString('en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const stageUp = st==='out'?'DELIVERY':(st==='intake'?'INTAKE':'RETURN');
+  const car=((a.car_model||'')+(a.car_plate?(' ('+a.car_plate+')'):'')).trim();
+  const msg='🚗 *GRANDPRIDE VEHICLE '+stageUp+'*\n'+
+    '━━━━━━━━━━━━━━\n'+
+    (a.customer_name?('👤 Customer: '+a.customer_name+'\n'):'')+
+    (car?('🔖 Car: '+car+'\n'):'')+
+    '📅 '+now+'\n'+
+    '📷 '+uploaded.length+' photo'+(uploaded.length===1?'':'s')+'\n'+
+    '━━━━━━━━━━━━━━\n'+
+    '👉 View all photos:\n'+link;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+  toast('Photos uploaded — pick the group ✓');
 }
 
 /* Return to GP Jobs if this checklist was opened from a job, else to the Hub */

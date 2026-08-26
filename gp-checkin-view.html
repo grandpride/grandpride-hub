@@ -73,7 +73,7 @@ async function load(){
 function fail(){ $('loading').classList.add('hidden'); $('errorView').classList.remove('hidden'); }
 
 function render(d){
-  var stageMap={delivery:'Delivery (car going out)',return:'Return (car came back)',checkin:'Check-in'};
+  var stageMap={delivery:'Delivery (car going out)',return:'Return (car came back)',intake:'General intake',checkin:'Check-in'};
   $('stageSub').textContent=(stageMap[d.stage]||d.stage||'')+(d.created_at?(' · '+new Date(d.created_at).toLocaleString()):'');
   $('details').innerHTML=
     '<div class="rowline"><span class="muted">Customer</span><span>'+esc(d.customer_name||'—')+'</span></div>'+
