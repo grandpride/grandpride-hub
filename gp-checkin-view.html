@@ -80,6 +80,21 @@ function render(d){
     '<div class="rowline"><span class="muted">Car</span><span>'+esc((d.car_model||'')+(d.car_plate?(' ('+d.car_plate+')'):''))+'</span></div>'+
     (d.note?('<div class="rowline"><span class="muted">Note</span><span style="text-align:right;max-width:60%">'+esc(d.note)+'</span></div>'):'');
 
+  // vehicle condition: marked-up diagram + defect list
+  var defects=Array.isArray(d.defects)?d.defects:[];
+  if(d.diagram_url || defects.length){
+    var condHtml='<div class="card"><h3>Vehicle condition</h3>';
+    if(d.diagram_url){ condHtml+='<img src="'+esc(d.diagram_url)+'" style="width:100%;max-width:340px;display:block;margin:0 auto 10px;border-radius:10px;border:1px solid var(--border);background:#fff">'; }
+    if(defects.length){
+      condHtml+='<div>'+defects.map(function(x){return '<div class="rowline"><span>'+esc(x.type)+'</span><span class="muted">'+x.count+'</span></div>';}).join('')+'</div>';
+    } else {
+      condHtml+='<div class="muted" style="font-size:13px">No damage marked.</div>';
+    }
+    condHtml+='</div>';
+    // insert the condition card right after details
+    var det=$('details'); det.insertAdjacentHTML('afterend', condHtml);
+  }
+
   var media=Array.isArray(d.media)?d.media:[];
   $('mediaHead').textContent='Photos & videos ('+(d.photo_count||0)+' photo'+((d.photo_count||0)===1?'':'s')+', '+(d.video_count||0)+' video'+((d.video_count||0)===1?'':'s')+')';
   $('mediaGrid').innerHTML = media.length ? media.map(function(m){

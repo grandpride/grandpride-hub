@@ -453,8 +453,8 @@ async function showHistory(){
   $('view').innerHTML=`
     <div class="panel">
       <h3>All Jobs</h3>
-      <label>Search by plate or customer</label>
-      <input id="histSearch" placeholder="e.g. VNS31 or John" oninput="filterHistory()">
+      <label>Search by plate, car model or customer</label>
+      <input id="histSearch" placeholder="e.g. VNS31, Alphard or John" oninput="filterHistory()">
       <div id="histBody" style="margin-top:12px">Loading…</div>
     </div>
     <button class="btn sec full" style="margin-top:14px" onclick="showChooser()">‹ Back</button>`;
@@ -466,6 +466,7 @@ function filterHistory(){
   const q=($('histSearch').value||'').trim().toUpperCase();
   const rows=(window._history||[]).filter(r=>!q ||
     (r.car_plate||'').toUpperCase().includes(q) ||
+    (r.car_model||'').toUpperCase().includes(q) ||
     (r.customer_name||'').toUpperCase().includes(q));
   renderHistory(rows);
 }
@@ -478,7 +479,7 @@ function renderHistory(rows){
     return `
     <div class="rec" onclick="showHistoryDetail('${r.id}')" style="cursor:pointer">
       <div class="meta"><b>${esc(r.car_plate||'(no plate)')}</b> ${tag}<br>
-        <small>${esc(r.customer_name||'(no name)')}</small></div>
+        <small>${esc(r.car_model||'')}${r.car_model?' · ':''}${esc(r.customer_name||'(no name)')}</small></div>
       <div><button class="btn sec mini" onclick="event.stopPropagation();showHistoryDetail('${r.id}')">View ›</button></div>
     </div>`;
   }).join('');
@@ -1318,14 +1319,16 @@ async function saveChecklist(silent){
 async function maybeCreateFleetCar(){
   const a=STATE.current;
   if(!a._manual_car) return;
+  // capture latest typed values in case oninput didn't fire
+  if($('f_new_model')) a.car_model=$('f_new_model').value||a.car_model;
+  if($('f_new_plate')) a.car_plate=($('f_new_plate').value||a.car_plate||'').toUpperCase();
   const plate=(a.car_plate||'').trim().toUpperCase();
   const model=(a.car_model||'').trim();
-  if(!plate){ return; }
+  if(!plate){ toast('New car needs a plate to add to Fleet'); return; }
   try{
-    // reuse if plate already exists
     const chk=await fetch(sbBase()+'/rest/v1/gp_fleet?plate=eq.'+encodeURIComponent(plate)+'&select=id',{headers:sbHeaders()});
     const existing=chk.ok?await chk.json():[];
-    if(existing && existing.length){ a.fleet_id=existing[0].id; a._manual_car=false; return; }
+    if(existing && existing.length){ a.fleet_id=existing[0].id; a._manual_car=false; toast('Car already in Fleet — linked'); return; }
     const row={ plate:plate, model:model||plate, car_type:(a.car_type||'sedan'), status:'ready', remark:'Auto-added from checklist' };
     if(STATE.stage==='intake'){
       if(a.intake_mileage) row.current_mileage=a.intake_mileage;
@@ -1335,9 +1338,9 @@ async function maybeCreateFleetCar(){
     }
     const ins=await fetch(sbBase()+'/rest/v1/gp_fleet',
       {method:'POST', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=representation'}), body:JSON.stringify(row)});
-    if(ins.ok){ const d=await ins.json(); if(d&&d[0]){ a.fleet_id=d[0].id; toast('New car added to Fleet ✓'); } a._manual_car=false; }
-    else { toast('Fleet add failed'); }
-  }catch(e){ toast('Fleet add error'); }
+    if(ins.ok){ const d=await ins.json(); if(d&&d[0]){ a.fleet_id=d[0].id; toast('✓ '+plate+' added to Fleet'); } a._manual_car=false; }
+    else { let txt=''; try{ txt=await ins.text(); }catch(e){} toast('Fleet add failed: '+ins.status+' '+txt.slice(0,80)); }
+  }catch(e){ toast('Fleet add error: '+(e.message||e)); }
 }
 
 async function sendSignLink(){
@@ -1388,6 +1391,23 @@ async function sendChecklistToGroup(){
   if(!all.length && !vids.length){ toast('No photos or videos on this stage yet'); return; }
   toast('Uploading '+all.length+' photo(s)…');
   const token='ci_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+  // render the marked-up car diagram to an image + build a defect summary
+  let diagram_url=null;
+  const marks=(f('defects')||[]);
+  const defectSummary=(()=>{
+    const counts={}; marks.forEach(m=>{ const n=(DEFECTS[m.code]||{}).name||m.code; counts[n]=(counts[n]||0)+1; });
+    return Object.keys(counts).map(n=>({type:n,count:counts[n]}));
+  })();
+  try{
+    const diagData=await renderDiagramPng();
+    if(diagData){
+      const dblob=dataUrlToBlob_(diagData);
+      const dpath=token+'/diagram.jpg';
+      const dup=await fetch(sbBase()+'/storage/v1/object/checkins/'+dpath,
+        {method:'POST', headers:sbHeaders({'Content-Type':'image/jpeg','x-upsert':'true'}), body:dblob});
+      if(dup.ok) diagram_url=sbBase()+'/storage/v1/object/public/checkins/'+dpath;
+    }
+  }catch(e){}
   const uploaded=[];
   for(let i=0;i<all.length;i++){
     try{
@@ -1410,7 +1430,7 @@ async function sendChecklistToGroup(){
   // save the gp_checkins record via REST
   const rec={ share_token:token, job_id:(typeof jobParam==='function'?jobParam('job'):null)||null,
     customer_name:a.customer_name||null, car_model:a.car_model||null, car_plate:a.car_plate||null,
-    stage:stageLabel, note:((st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location+(a.remark?(' · '+a.remark):'')):(a.remark||null)), media:uploaded, photo_count:pc, video_count:vc, preview_url:preview_url, created_by:curUser() };
+    stage:stageLabel, note:((st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location+(a.remark?(' · '+a.remark):'')):(a.remark||null)), media:uploaded, photo_count:pc, video_count:vc, preview_url:preview_url, diagram_url:diagram_url, defects:defectSummary, created_by:curUser() };
   const ins=await fetch(sbBase()+'/rest/v1/gp_checkins',
     {method:'POST', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}), body:JSON.stringify(rec)});
   if(!ins.ok){ toast('Save failed: '+ins.status); return; }
