@@ -557,6 +557,12 @@ async function showHistoryDetail(id){
 /* ====== FORM ====== */
 function P(){ return STATE.stage; } // 'out' or 'in'
 function f(key){ return STATE.current[P()+'_'+key]; }
+function changeStage(newStage){
+  try{ readForm(); }catch(e){}          // save current inputs before switching
+  STATE.stage=newStage;
+  STATE.current.is_intake=(newStage==='intake');
+  showForm();
+}
 function showForm(){
   const a=STATE.current; const st=STATE.stage; STATE.view='form';
   const stageLabel = st==='out' ? 'Delivery (OUT)' : (st==='intake' ? 'General Intake (IN)' : 'Return (BACK)');
@@ -582,7 +588,11 @@ function showForm(){
         </select>
       </div>
       <div><label>Stage</label>
-        <input value="${st==='out'?'Delivery (OUT)':'Return (BACK)'}" disabled>
+        <select id="f_stage" onchange="changeStage(this.value)">
+          <option value="out" ${st==='out'?'selected':''}>Delivery (OUT)</option>
+          <option value="in" ${st==='in'?'selected':''}>Return (BACK)</option>
+          <option value="intake" ${st==='intake'?'selected':''}>General Intake (car in to rent out)</option>
+        </select>
       </div>
     </div>
     <label style="margin-top:10px">Car type</label>
@@ -605,6 +615,13 @@ function showForm(){
         <input id="f_car_model" type="hidden" value="${esc(a.car_model)}">
       </div>
       <div><label>Car plate number</label><input id="f_car_plate" value="${esc(a.car_plate)}" readonly placeholder="auto-filled" style="opacity:.7"></div>
+    </div>
+    <div id="manualCarBox" style="display:${a._manual_car?'block':'none'};margin-top:8px">
+      <div class="row2">
+        <div><label>New car model</label><input id="f_new_model" value="${esc(a._manual_car?(a.car_model||''):'')}" placeholder="e.g. Toyota Alphard AGH30" oninput="STATE.current.car_model=this.value"></div>
+        <div><label>New car plate</label><input id="f_new_plate" value="${esc(a._manual_car?(a.car_plate||''):'')}" placeholder="e.g. VFH7678" style="text-transform:uppercase" oninput="STATE.current.car_plate=this.value.toUpperCase()"></div>
+      </div>
+      <p class="hint" style="margin-top:4px">New car will be added to Fleet on save${st==='intake'?', with the current mileage and this owner’s name & contact.':'.'}</p>
     </div>
     <div class="row2" style="margin-top:8px">
       <div><label>Petrol fuel type</label>
@@ -630,7 +647,7 @@ function showForm(){
   </div>
 
   <div class="panel">
-    <h3>${st==='out'?'Delivery':'Return'} Details</h3>
+    <h3>${st==='out'?'Delivery':(st==='intake'?'Intake':'Return')} Details</h3>
     <div class="row2">
       <div><label>Date</label><input type="date" id="f_date" value="${esc(f('date'))}" onclick="try{this.showPicker()}catch(e){}"></div>
       <div><label>Time (check)</label><input id="f_time" value="${esc(f('time'))}" placeholder="HH:MM"></div>
@@ -651,13 +668,13 @@ function showForm(){
     <label style="margin-top:8px">Deposit (RM)</label>
     <input id="f_deposit" value="${esc(a.deposit||'')}" inputmode="decimal" placeholder="0.00">
     `:''}
-    <label>${st==='out'?'Begin Mileage':'End Mileage'}</label>
+    <label>${st==='out'?'Begin Mileage':(st==='intake'?'Current Mileage':'End Mileage')}</label>
     <input id="f_mileage" value="${esc(f('mileage'))}" inputmode="numeric" placeholder="e.g. 35000" oninput="updateDistance()">
     ${st==='in'?`<div class="row2" style="margin-top:8px">
       <div><label>Begin Mileage (at delivery)</label><input value="${esc(a.out_mileage||'')}" disabled></div>
       <div><label>Distance used</label><input id="distanceUsed" value="${distanceText(a)}" disabled></div>
     </div>`:''}
-    <label style="margin-top:10px">${st==='out'?'Begin':'End'} Petrol bar</label>
+    <label style="margin-top:10px">${st==='out'?'Begin':(st==='intake'?'Current':'End')} Petrol bar</label>
     <div class="seg" id="petrolSeg">
       ${[1,2,3,4,5].map(n=>`<button type="button" class="${f('petrol')==n?'on':''}" onclick="setPetrol(${n})">${n}</button>`).join('')}
     </div>
@@ -815,16 +832,26 @@ async function loadChkFleet(){
     if(r.ok) CHK_FLEET=await r.json();
   }catch(e){}
   const cur=(STATE.current&&STATE.current.car_plate)||'';
-  if(!CHK_FLEET.length){ sel.innerHTML='<option value="">No cars in fleet — add in GP Vehicle Fleet first</option>'; return; }
+  if(!CHK_FLEET.length){ sel.innerHTML='<option value="">Select car…</option><option value="__manual__" '+(STATE.current._manual_car?'selected':'')+'>➕ Type new car (not in fleet)</option>'; return; }
   sel.innerHTML='<option value="">Select car…</option>'+CHK_FLEET.map(c=>
-    `<option value="${c.id}" data-plate="${esc(c.plate||'')}" data-model="${esc(c.model||'')}" ${cur&&c.plate===cur?'selected':''}>${esc(c.plate||'')} — ${esc(c.model||'')}</option>`
-  ).join('');
+    `<option value="${c.id}" data-plate="${esc(c.plate||'')}" data-model="${esc(c.model||'')}" ${!STATE.current._manual_car&&cur&&c.plate===cur?'selected':''}>${esc(c.plate||'')} — ${esc(c.model||'')}</option>`
+  ).join('')+'<option value="__manual__" '+(STATE.current._manual_car?'selected':'')+'>➕ Type new car (not in fleet)</option>';
 }
 function onChkCarPick(){
   var sel=$('f_car_sel'); if(!sel) return;
+  var val=sel.value;
+  if(val==='__manual__'){
+    STATE.current._manual_car=true;
+    STATE.current.fleet_id=null;
+    var box=$('manualCarBox'); if(box) box.style.display='block';
+    return;
+  }
+  STATE.current._manual_car=false;
+  var box=$('manualCarBox'); if(box) box.style.display='none';
   var opt=sel.options[sel.selectedIndex];
   var plate=opt?opt.getAttribute('data-plate'):'';
   var model=opt?opt.getAttribute('data-model'):'';
+  STATE.current.fleet_id=val||null;
   if($('f_car_model')) $('f_car_model').value=model||'';
   if($('f_car_plate')) $('f_car_plate').value=plate||'';
   STATE.current.car_model=model||''; STATE.current.car_plate=plate||'';
@@ -1200,6 +1227,17 @@ function readForm(){
     a.leasing_price=g('f_leasing_price')||a.leasing_price;
     a.deposit=g('f_deposit')||a.deposit;
   }
+  // customer + car are editable on delivery AND intake (owner brings car); locked only on return
+  if(st!=='in'){
+    if(g('f_customer_name')!==undefined) a.customer_name=g('f_customer_name');
+    if(g('f_customer_contact')!==undefined) a.customer_contact=g('f_customer_contact');
+    if(a._manual_car){
+      a.car_model=g('f_new_model')||a.car_model;
+      a.car_plate=(g('f_new_plate')||a.car_plate||'').toUpperCase();
+    }
+    if(g('f_fuel_type')!==undefined) a.fuel_type=g('f_fuel_type')||a.fuel_type;
+    if(g('f_tank_size')!==undefined) a.tank_size=g('f_tank_size')||a.tank_size;
+  }
   a[st+'_date']=g('f_date'); a[st+'_time']=g('f_time'); a[st+'_mileage']=g('f_mileage');
   // petrol + checks + defects + photos already in state
   const si=getPad('padInspector'); if(si) a[st+'_sig_inspector']=si;
@@ -1230,9 +1268,36 @@ function rowFor(a){
 async function saveChecklist(silent){
   readForm();
   window.__lastSbError='';
+  await maybeCreateFleetCar();          // new car → auto-add to fleet (+ intake mileage/owner)
   const ok=await sbUpsert(rowFor(STATE.current));
   if(!silent) toast(ok?'Saved ✓':('Saved (cloud off) — '+(window.__lastSbError||'no response')));
   return ok;
+}
+/* If a manually-typed car was entered, create it in gp_fleet (reuse if plate exists).
+   In General Intake, also fill current mileage + owner name/contact onto the fleet row. */
+async function maybeCreateFleetCar(){
+  const a=STATE.current;
+  if(!a._manual_car) return;
+  const plate=(a.car_plate||'').trim().toUpperCase();
+  const model=(a.car_model||'').trim();
+  if(!plate){ return; }
+  try{
+    // reuse if plate already exists
+    const chk=await fetch(sbBase()+'/rest/v1/gp_fleet?plate=eq.'+encodeURIComponent(plate)+'&select=id',{headers:sbHeaders()});
+    const existing=chk.ok?await chk.json():[];
+    if(existing && existing.length){ a.fleet_id=existing[0].id; a._manual_car=false; return; }
+    const row={ plate:plate, model:model||plate, car_type:(a.car_type||'sedan'), status:'ready', remark:'Auto-added from checklist' };
+    if(STATE.stage==='intake'){
+      if(a.intake_mileage) row.current_mileage=a.intake_mileage;
+      row.owner_type='partner';
+      if(a.customer_name) row.partner_name=a.customer_name;
+      if(a.customer_contact) row.partner_contact=a.customer_contact;
+    }
+    const ins=await fetch(sbBase()+'/rest/v1/gp_fleet',
+      {method:'POST', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=representation'}), body:JSON.stringify(row)});
+    if(ins.ok){ const d=await ins.json(); if(d&&d[0]){ a.fleet_id=d[0].id; toast('New car added to Fleet ✓'); } a._manual_car=false; }
+    else { toast('Fleet add failed'); }
+  }catch(e){ toast('Fleet add error'); }
 }
 
 async function sendSignLink(){
