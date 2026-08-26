@@ -376,7 +376,7 @@ function blankChecklist(){
     out_date:todayISO(), out_time:nowTime(), out_mileage:'', out_petrol:0,
     out_defects:[], out_checks:{}, out_photos:[], out_defect_photos:[], out_interior_photos:[], out_video_sent:0, out_videos:[], out_sig_inspector:'', out_sig_customer:'', out_pdf_url:'',
     intake_date:todayISO(), intake_time:nowTime(), intake_mileage:'', intake_petrol:0,
-    intake_defects:[], intake_checks:{}, intake_photos:[], intake_defect_photos:[], intake_interior_photos:[], intake_video_sent:0, intake_videos:[], intake_sig_inspector:'', intake_pdf_url:'',
+    intake_defects:[], intake_checks:{}, intake_photos:[], intake_defect_photos:[], intake_interior_photos:[], intake_stuff_photos:[], intake_stuff_location:'', intake_video_sent:0, intake_videos:[], intake_sig_inspector:'', intake_pdf_url:'',
     in_date:'', in_time:'', in_mileage:'', in_petrol:0,
     in_defects:[], in_checks:{}, in_photos:[], in_defect_photos:[], in_interior_photos:[], in_video_sent:0, in_videos:[], in_sig_inspector:'', in_sig_customer:'', in_pdf_url:''
   };
@@ -682,11 +682,11 @@ function showForm(){
   </div>
 
   <div class="panel">
-    <h3>${st==='out'?'Vehicle Defects':'New Damage'}</h3>
-    ${st==='out'
+    <h3>${(st==='out'||st==='intake')?'Vehicle Defects':'New Damage'}</h3>
+    ${(st==='out'||st==='intake')
       ? `<p class="hint" style="margin-bottom:8px">Pick a defect type, then tap the car where it is.</p>
     <div class="defect-bar" id="defectBar">
-      ${Object.keys(DEFECTS).map(k=>`<button type="button" data-k="${k}" onclick="setDefect('${k}')" style="${activeDefect===k?('border-color:'+DEFECTS[k].color):''}">${k}<small>${DEFECTS[k].name}</small></button>`).join('')}
+      ${Object.keys(DEFECTS).filter(k=>k!=='ND').map(k=>`<button type="button" data-k="${k}" onclick="setDefect('${k}')" style="${activeDefect===k?('border-color:'+DEFECTS[k].color):''}">${k}<small>${DEFECTS[k].name}</small></button>`).join('')}
     </div>`
       : `<p class="hint" style="margin-bottom:8px">Faded grey marks = existing damage from delivery. Tap the car to mark any <b>NEW</b> damage found on return.</p>
     <div class="defect-bar" id="defectBar">
@@ -696,7 +696,7 @@ function showForm(){
     <div class="marker-count" id="markerCount"></div>
     <div class="diag-actions">
       <button class="btn sec mini" onclick="undoDefect()">↶ Undo</button>
-      <button class="btn danger mini" onclick="clearDefects()">Clear ${st==='out'?'all':'new'}</button>
+      <button class="btn danger mini" onclick="clearDefects()">Clear ${(st==='out'||st==='intake')?'all':'new'}</button>
     </div>
   </div>
 
@@ -745,6 +745,17 @@ function showForm(){
     </label>
     <div class="photo-grid" id="interiorPhotoGrid"></div>
 
+    ${st==='intake'?`
+    <h3 style="margin-top:18px">Personal Items in Car <span style="font-weight:400;color:var(--grey);font-size:12px">(owner's belongings left in the car)</span></h3>
+    <label>Where stored in office</label>
+    <input id="f_stuff_location" value="${esc(a.intake_stuff_location||'')}" placeholder="e.g. Store room shelf B, or key box 3" oninput="STATE.current.intake_stuff_location=this.value">
+    <label class="btn sec mini bulk-btn" style="margin-top:8px">📷 Add personal item photos
+      <input type="file" accept="image/*" multiple onchange="onStuffPhotos(this)">
+    </label>
+    <div class="photo-grid" id="stuffPhotoGrid"></div>
+    <p class="hint" style="margin-top:6px">Recorded so on return you know what was left and where it's kept.</p>
+    `:''}
+
     <h3 style="margin-top:18px">Walkaround Video</h3>
     <p style="color:var(--grey);font-size:12px;margin:2px 0 8px">Record or upload full-car video (2–3 clips ok). Uploaded clips are stored and included in the WhatsApp gallery.</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -790,6 +801,7 @@ function showForm(){
     refreshPhotoSlots();
     renderDefectPhotos();
     renderInteriorPhotos();
+    if(STATE.stage==='intake') renderStuffPhotos();
     renderVideoStrip();
     loadChkFleet();
     const _vn=$('videoNote'), _vc=f('video_sent')||0;
@@ -1084,6 +1096,31 @@ function rmInteriorPhoto(i){
   const arr=(f('interior_photos')||[]).slice(); arr.splice(i,1);
   STATE.current[P()+'_interior_photos']=arr; renderInteriorPhotos();
 }
+/* ===== PERSONAL ITEMS PHOTOS (intake only, fixed key) ===== */
+function onStuffPhotos(input){
+  const files=[...(input.files||[])];
+  if(!files.length) return;
+  const results=new Array(files.length); let pending=files.length;
+  files.forEach((file,idx)=>{
+    downscalePhoto(file,data=>{
+      results[idx]={data:data};
+      if(--pending===0){
+        const arr=(STATE.current.intake_stuff_photos||[]).slice().concat(results);
+        STATE.current.intake_stuff_photos=arr; renderStuffPhotos();
+      }
+    });
+  });
+  input.value='';
+}
+function renderStuffPhotos(){
+  const grid=$('stuffPhotoGrid'); if(!grid) return;
+  const arr=STATE.current.intake_stuff_photos||[];
+  grid.innerHTML=arr.map((p,i)=>`<div class="photo-slot filled"><span class="rm" onclick="rmStuffPhoto(${i})">✕</span><img src="${p.data}"></div>`).join('');
+}
+function rmStuffPhoto(i){
+  const arr=(STATE.current.intake_stuff_photos||[]).slice(); arr.splice(i,1);
+  STATE.current.intake_stuff_photos=arr; renderStuffPhotos();
+}
 /* ===== WALKAROUND VIDEO → WHATSAPP (not stored) ===== */
 async function onVideoUpload(input){
   const files=[...(input.files||[])];
@@ -1259,6 +1296,7 @@ function rowFor(a){
     out_defects:a.out_defects||[], out_checks:a.out_checks||{}, out_photos:a.out_photos||[], out_defect_photos:a.out_defect_photos||[], out_interior_photos:a.out_interior_photos||[], out_video_sent:a.out_video_sent||0, out_videos:a.out_videos||[],
     out_sig_inspector:a.out_sig_inspector, out_sig_customer:a.out_sig_customer, out_pdf_url:a.out_pdf_url,
     intake_videos:a.intake_videos||[], intake_interior_photos:a.intake_interior_photos||[],
+    intake_stuff_photos:a.intake_stuff_photos||[], intake_stuff_location:a.intake_stuff_location||null,
     in_date:a.in_date, in_time:a.in_time, in_mileage:a.in_mileage, in_petrol:a.in_petrol||0,
     in_defects:a.in_defects||[], in_checks:a.in_checks||{}, in_photos:a.in_photos||[], in_defect_photos:a.in_defect_photos||[], in_interior_photos:a.in_interior_photos||[], in_video_sent:a.in_video_sent||0, in_videos:a.in_videos||[],
     in_sig_inspector:a.in_sig_inspector, in_sig_customer:a.in_sig_customer, in_pdf_url:a.in_pdf_url,
@@ -1341,7 +1379,8 @@ async function sendChecklistToGroup(){
   const main=(f('photos')||[]);
   const defect=(f('defect_photos')||[]);
   const interior=(f('interior_photos')||[]);
-  const all=[...main.map(p=>({label:p.label||'',data:p.data})), ...defect.map(p=>({label:p.label||'defect',data:p.data})), ...interior.map(p=>({label:'interior',data:p.data}))]
+  const stuff=(st==='intake'?(STATE.current.intake_stuff_photos||[]):[]);
+  const all=[...main.map(p=>({label:p.label||'',data:p.data})), ...defect.map(p=>({label:p.label||'defect',data:p.data})), ...interior.map(p=>({label:'interior',data:p.data})), ...stuff.map(p=>({label:'personal item',data:p.data}))]
             .filter(p=>p.data);
   const vids=(f('videos')||[]).filter(v=>v.url);
   if(!all.length && !vids.length){ toast('No photos or videos on this stage yet'); return; }
@@ -1365,7 +1404,7 @@ async function sendChecklistToGroup(){
   // save the gp_checkins record via REST
   const rec={ share_token:token, job_id:(typeof jobParam==='function'?jobParam('job'):null)||null,
     customer_name:a.customer_name||null, car_model:a.car_model||null, car_plate:a.car_plate||null,
-    stage:stageLabel, note:(a.remark||null), media:uploaded, photo_count:pc, video_count:vc, created_by:curUser() };
+    stage:stageLabel, note:((st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location+(a.remark?(' · '+a.remark):'')):(a.remark||null)), media:uploaded, photo_count:pc, video_count:vc, created_by:curUser() };
   const ins=await fetch(sbBase()+'/rest/v1/gp_checkins',
     {method:'POST', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}), body:JSON.stringify(rec)});
   if(!ins.ok){ toast('Save failed: '+ins.status); return; }
