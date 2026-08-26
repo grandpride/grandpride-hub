@@ -1434,14 +1434,16 @@ async function uploadAndSendCheckin(id){
       if(m.type==='video') vc++; else pc++;
     }catch(e){ if(prog) prog.textContent='Upload error: '+(e.message||e); return; }
   }
+  // pick a front-view photo for the WhatsApp preview
+  const frontPhoto = uploaded.find(u=>u.type==='photo' && /front/i.test(u.label||'')) || uploaded.find(u=>u.type==='photo');
   // save the check-in record
   const rec={ share_token:token, job_id:j.id, fleet_id:j.fleet_id||null,
     customer_name:j.customer_name, car_model:j.car_model, car_plate:j.car_plate,
     stage:(j.stage==='returned'?'return':(j.stage==='delivered'?'delivery':'checkin')),
-    note:note||null, media:uploaded, photo_count:pc, video_count:vc, created_by:ME };
+    note:note||null, media:uploaded, photo_count:pc, video_count:vc, preview_url:(frontPhoto?frontPhoto.url:null), created_by:ME };
   const ins=await sb.from('gp_checkins').insert(rec).select().single();
   if(ins.error){ if(prog) prog.textContent='Save failed: '+ins.error.message; return; }
-  CHECKIN.saved={token:token, link:checkinBase()+'gp-checkin-view.html?t='+token, pc:pc, vc:vc, note:note, firstPhoto:uploaded.find(u=>u.type==='photo')};
+  CHECKIN.saved={token:token, link:SUPABASE_URL+'/functions/v1/checkin-share?t='+token, pc:pc, vc:vc, note:note, firstPhoto:frontPhoto};
   renderCheckinDone(j);
 }
 function checkinBase(){ return location.origin+location.pathname.replace(/[^/]*$/,''); }

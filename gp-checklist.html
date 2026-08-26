@@ -1129,13 +1129,15 @@ async function onVideoUpload(input){
   const arr=(f('videos')||[]).slice();
   let done=0;
   for(const file of files){
-    if(note) note.textContent='Uploading video '+(done+1)+'/'+files.length+'…';
+    if(note) note.textContent='Uploading video '+(done+1)+'/'+files.length+'… ('+Math.round(file.size/1048576)+'MB)';
     try{
-      const ext=(file.name.match(/\.([a-z0-9]+)$/i)||[,'mp4'])[1]||'mp4';
+      let ext=(file.name.match(/\.([a-z0-9]+)$/i)||[,''])[1]||'';
+      if(!ext){ ext=((file.type||'').split('/')[1]||'mp4').replace('quicktime','mov'); }
+      const ctype=file.type||'application/octet-stream';
       const path='ci_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+'.'+ext;
       const up=await fetch(sbBase()+'/storage/v1/object/checkins/vid/'+path,
-        {method:'POST', headers:sbHeaders({'Content-Type':(file.type||'video/mp4'),'x-upsert':'true'}), body:file});
-      if(!up.ok) throw new Error('upload '+up.status);
+        {method:'POST', headers:sbHeaders({'Content-Type':ctype,'x-upsert':'true'}), body:file});
+      if(!up.ok){ let txt=''; try{ txt=await up.text(); }catch(e){} throw new Error(up.status+(txt?(' '+txt.slice(0,120)):'')); }
       arr.push({url:sbBase()+'/storage/v1/object/public/checkins/vid/'+path});
     }catch(e){ if(note) note.textContent='Video upload failed: '+(e.message||e); return; }
     done++;
@@ -1401,16 +1403,19 @@ async function sendChecklistToGroup(){
   vids.forEach(v=>uploaded.push({type:'video',label:'',url:v.url}));
   const pc=uploaded.filter(m=>m.type==='photo').length;
   const vc=uploaded.filter(m=>m.type==='video').length;
+  // pick a front-view photo for the WhatsApp preview: prefer a "Side — Front" label, else first photo
+  const frontPhoto = uploaded.find(m=>m.type==='photo' && /front/i.test(m.label||''))
+                  || uploaded.find(m=>m.type==='photo');
+  const preview_url = frontPhoto ? frontPhoto.url : null;
   // save the gp_checkins record via REST
   const rec={ share_token:token, job_id:(typeof jobParam==='function'?jobParam('job'):null)||null,
     customer_name:a.customer_name||null, car_model:a.car_model||null, car_plate:a.car_plate||null,
-    stage:stageLabel, note:((st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location+(a.remark?(' · '+a.remark):'')):(a.remark||null)), media:uploaded, photo_count:pc, video_count:vc, created_by:curUser() };
+    stage:stageLabel, note:((st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location+(a.remark?(' · '+a.remark):'')):(a.remark||null)), media:uploaded, photo_count:pc, video_count:vc, preview_url:preview_url, created_by:curUser() };
   const ins=await fetch(sbBase()+'/rest/v1/gp_checkins',
     {method:'POST', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}), body:JSON.stringify(rec)});
   if(!ins.ok){ toast('Save failed: '+ins.status); return; }
-  // build the WhatsApp message + gallery link (same style as GP Jobs check-in)
-  const base=location.origin+location.pathname.replace(/[^/]*$/,'');
-  const link=base+'gp-checkin-view.html?t='+token;
+  // share the Edge Function link so WhatsApp shows the car's front-view photo as the preview
+  const link=sbBase()+'/functions/v1/checkin-share?t='+token;
   const now=new Date().toLocaleString('en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const stageUp = st==='out'?'DELIVERY':(st==='intake'?'INTAKE':'RETURN');
   const car=((a.car_model||'')+(a.car_plate?(' ('+a.car_plate+')'):'')).trim();
