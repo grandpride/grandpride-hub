@@ -1398,6 +1398,20 @@ async function sendSignLink(){
 }
 
 /* ===== Send checklist stage photos to WhatsApp group (reuses gp_checkins gallery) ===== */
+function makeThumb_(dataUrl, maxW, quality){
+  return new Promise(res=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width,h=img.height;
+      if(w>maxW){ h=Math.round(h*maxW/w); w=maxW; }
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/jpeg',quality||0.6));
+    };
+    img.onerror=()=>res(dataUrl);
+    img.src=dataUrl;
+  });
+}
 function dataUrlToBlob_(dataUrl){
   const [head,b64]=dataUrl.split(','); const mime=(head.match(/data:([^;]+)/)||[])[1]||'image/jpeg';
   const bin=atob(b64); const arr=new Uint8Array(bin.length);
@@ -1455,10 +1469,23 @@ async function sendChecklistToGroup(){
   const frontPhoto = uploaded.find(m=>m.type==='photo' && /front/i.test(m.label||''))
                   || uploaded.find(m=>m.type==='photo');
   const preview_url = frontPhoto ? frontPhoto.url : null;
+  // build a SMALL thumbnail (<~120KB) for the WhatsApp link preview — big photos fail to preview
+  let preview_thumb = null;
+  try{
+    const srcData = (all.find(p=>/front/i.test(p.label||''))||all[0]||{}).data;
+    if(srcData){
+      const thumb = await makeThumb_(srcData, 800, 0.6);
+      const tblob = dataUrlToBlob_(thumb);
+      const tpath = token+'/preview.jpg';
+      const tup = await fetch(sbBase()+'/storage/v1/object/checkins/'+tpath,
+        {method:'POST', headers:sbHeaders({'Content-Type':'image/jpeg','x-upsert':'true'}), body:tblob});
+      if(tup.ok) preview_thumb = sbBase()+'/storage/v1/object/public/checkins/'+tpath;
+    }
+  }catch(e){}
   // save the gp_checkins record via REST
   const rec={ share_token:token, job_id:(typeof jobParam==='function'?jobParam('job'):null)||null,
     customer_name:a.customer_name||null, car_model:a.car_model||null, car_plate:a.car_plate||null,
-    stage:stageLabel, note:[(st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location):'', a.remark||''].filter(Boolean).join(' · ')||null, media:uploaded, photo_count:pc, video_count:vc, preview_url:preview_url, diagram_url:diagram_url, defects:defectSummary, created_by:curUser() };
+    stage:stageLabel, note:[(st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location):'', a.remark||''].filter(Boolean).join(' · ')||null, media:uploaded, photo_count:pc, video_count:vc, preview_url:preview_url, preview_thumb:preview_thumb, diagram_url:diagram_url, defects:defectSummary, created_by:curUser() };
   const ins=await fetch(sbBase()+'/rest/v1/gp_checkins',
     {method:'POST', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}), body:JSON.stringify(rec)});
   if(!ins.ok){ toast('Save failed: '+ins.status); return; }
