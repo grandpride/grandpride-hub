@@ -938,6 +938,17 @@ async function cancelJob(id){
   await sb.from('gp_jobs').update({stage:'cancelled',updated_at:new Date().toISOString()}).eq('id',id);
   toast('Job cancelled'); closeModal(); await loadAll();
 }
+async function deleteJob(id){
+  const j=JOBS.find(x=>x.id===id);
+  const label=j?((j.customer_name||'')+' · '+(j.car_plate||j.car_model||'')):'this job';
+  if(!confirm('⚠️ Permanently DELETE this job?\n\n'+label+'\n\nThis cannot be undone. The job and its Record Summary entry will be removed.')) return;
+  if(!confirm('Are you absolutely sure? This is permanent.')) return;
+  // remove any linked record-summary row first
+  try{ await sb.from('gp_records').delete().eq('job_id',id); }catch(e){}
+  const res=await sb.from('gp_jobs').delete().eq('id',id);
+  if(res.error){ toast('Delete failed: '+res.error.message); return; }
+  toast('Job deleted'); closeModal(); await loadAll();
+}
 
 /* ---------- open job detail + lifecycle ---------- */
 function openJob(id){
@@ -993,6 +1004,7 @@ function openJob(id){
     <button class="btn sec" style="margin-top:8px" onclick="editJob('${j.id}')"><i class="ti ti-edit"></i> Edit details</button>
     ${serviceHasCar(j.service_type)&&['delivered','returned','deposit_settled','done'].includes(j.stage)?`<button class="btn sec" style="margin-top:8px" onclick="openCheckin('${j.id}')"><i class="ti ti-camera"></i> 📸 Send checklist and photo to WhatsApp</button>`:''}
     <button class="btn sec" style="margin-top:8px" onclick="waSummary('${j.id}')"><i class="ti ti-brand-whatsapp"></i> WhatsApp summary</button>
+    <button class="btn danger" style="margin-top:14px" onclick="deleteJob('${j.id}')"><i class="ti ti-trash"></i> 🗑 Delete this job permanently</button>
   `);
 }
 function editJob(id){ const j=JOBS.find(x=>x.id===id); JOB_DRAFT=Object.assign({},j); jobForm(); }
@@ -1257,7 +1269,62 @@ async function doMarkPaid(id){
   if(res.error){ toast('Failed: '+res.error.message); return; }
   const bal=Math.max(0,total-newPaid);
   toast(fullyPaid?'Fully paid ✓':('Recorded ✓ — balance RM '+bal.toLocaleString()));
+  // once a deposit/first payment is in, mirror this job into the Record Summary
+  try{ await syncJobToRecord(id, Object.assign({}, j, upd)); }catch(e){}
   await loadAll(); openJob(id);
+}
+
+/* ===== Mirror a GP Job into gp_records (Record Summary) =====
+   Runs once the job has a deposit/payment, and again as it progresses.
+   Keyed by job_id so it updates one record in place (no duplicates). */
+function monthKeyFrom(dateStr){
+  const d=dateStr?new Date(dateStr):new Date();
+  if(isNaN(d)) return new Date().toISOString().slice(0,7);
+  return d.toISOString().slice(0,7);   // YYYY-MM
+}
+async function syncJobToRecord(jobId, job){
+  const j=job||JOBS.find(x=>x.id===jobId); if(!j) return;
+  // only mirror once there's money in (deposit or any payment)
+  if(num(j.paid_amount)<=0 && num(j.deposit_amount)<=0) return;
+  const svc=(j.service_type==='rental'||j.service_type==='lease')?'rental'
+           :(j.service_type==='chauffeur'||j.service_type==='hire_driver'||j.service_type==='bodyguard'||j.service_type==='pickup_dropoff'||j.service_type==='airport')?'chauffeur'
+           :(j.service_type==='lto')?'lto'
+           :(j.service_type==='subscription')?'subscription':'rental';
+  const carStatus = (j.stage==='deposit_settled'||j.stage==='done')?'done':(j.stage==='returned'?'returned':'ongoing');
+  const rec={
+    job_id:j.id,
+    service:svc, plan:j.service_type||null,
+    customer_name:j.customer_name||null, customer_contact:j.customer_contact||null,
+    car_model:j.car_model||null, car_plate:j.car_plate||null,
+    start_date:j.start_date||null, end_date:j.end_date||null,
+    month_key:monthKeyFrom(j.settled_at||j.start_date),
+    rental_rate:num(j.price)||num(j.grand_total)||0,
+    deposit:num(j.deposit_amount)||0,
+    deposit_return:num(j.deposit_returned)||0,
+    dep_return_date:j.deposit_return_date||null,
+    total_paid:num(j.paid_amount)||0,
+    mileage_given:j.mileage_given?parseInt(j.mileage_given,10):null,
+    per_km_exceed:num(j.per_km_exceed)||0,
+    beg_mileage:j.mileage_out?parseInt(j.mileage_out,10):null,
+    end_mileage:j.mileage_in?parseInt(j.mileage_in,10):null,
+    exceed_mileage_rm:num(j.exceed_charge)||0,
+    delivery_fee:num(j.delivery_charge)||0,
+    ot_rate:num(j.ot_rate)||0,
+    duration:j.duration_hours?String(j.duration_hours):(j.rental_days?String(j.rental_days)+' days':null),
+    car_status:carStatus,
+    source:'gp_jobs',
+    updated_at:new Date().toISOString()
+  };
+  // upsert on job_id
+  const res=await sb.from('gp_records').upsert(rec,{onConflict:'job_id'});
+  if(res.error){ console.warn('record sync', res.error.message); }
+  // also push to the Record Summary Google Sheet (same endpoint the summary page uses)
+  try{
+    const REC_SHEET_URL='https://script.google.com/macros/s/AKfycbwuEZNCQE_dLbErvqCVdeGTTB1x_anyRh4fCqidjWF7fgHQAlnTOctvZZXJ7N6RxIB3/exec';
+    if(REC_SHEET_URL.indexOf('http')===0){
+      fetch(REC_SHEET_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(rec)}).catch(function(){});
+    }
+  }catch(e){}
 }
 
 async function markDelivered(id){
@@ -1277,6 +1344,7 @@ async function markReturned(id){
   if(!confirm('Mark as returned? Car goes back to available.')) return;
   await sb.from('gp_jobs').update({stage:'returned',updated_at:new Date().toISOString()}).eq('id',id);
   if(j.fleet_id){ await sb.from('gp_fleet').update({status:'available'}).eq('id',j.fleet_id); }
+  try{ await syncJobToRecord(id); }catch(e){}
   toast('Returned ✓'); await loadAll();
   // if this car had personal items logged and not yet returned, force a notice
   const items=Array.isArray(j.car_items)?j.car_items:[];
@@ -1846,6 +1914,7 @@ async function doSettleDeposit(id,isCollect){
     updated_at:new Date().toISOString() };
   const res=await sb.from('gp_jobs').update(upd).eq('id',id);
   if(res.error){ toast('Failed: '+res.error.message); return; }
+  try{ await syncJobToRecord(id, Object.assign({}, j, upd)); }catch(e){}
   toast('Deposit settled ✓'); await loadAll(); openJob(id);
 }
 function settledSummary(j){

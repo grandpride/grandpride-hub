@@ -302,7 +302,7 @@ function phoneFmt(el){
 function curUser(){try{const u=new URLSearchParams(location.search).get('u');return u||'staff';}catch(e){return 'staff';}}
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(window._tt);window._tt=setTimeout(()=>t.classList.remove('show'),2600);}
 function setSub(s){$('sub').textContent=s;}
-const PLAN_NAME={lease:'Car Leasing',lto:'Lease to Own',subscription:'Subscription'};
+const PLAN_NAME={lease:'Car Leasing',lto:'Lease to Own',subscription:'Subscription',intake:'General Intake'};
 
 var STATE={view:'chooser',current:null,stage:'out'};
 
@@ -387,7 +387,7 @@ function startDelivery(){
   showForm();
 }
 function startIntake(){
-  STATE.current=blankChecklist(); STATE.current.is_intake=true; STATE.stage='intake';
+  STATE.current=blankChecklist(); STATE.current.is_intake=true; STATE.current.plan='intake'; STATE.current.status='intake'; STATE.stage='intake';
   showForm();
 }
 
@@ -475,7 +475,7 @@ function renderHistory(rows){
   if(!rows.length){ b.innerHTML='<p style="color:var(--grey);font-size:13px">No jobs found.</p>'; return; }
   b.innerHTML=rows.map(r=>{
     const done=r.status==='completed';
-    const tag=done?'<span class="pill done">Completed</span>':'<span class="pill wait">Awaiting return</span>';
+    const tag=r.plan==='intake'||r.status==='intake'?'<span class="pill">Intake</span>':(done?'<span class="pill done">Completed</span>':'<span class="pill wait">Awaiting return</span>');
     return `
     <div class="rec" onclick="showHistoryDetail('${r.id}')" style="cursor:pointer">
       <div class="meta"><b>${esc(r.car_plate||'(no plate)')}</b> ${tag}<br>
@@ -532,25 +532,48 @@ async function showHistoryDetail(id){
     ? `<a class="btn ok" href="${esc(url)}" target="_blank" style="text-decoration:none;display:block;width:100%;box-sizing:border-box;text-align:center;margin:0">${label} ›</a>`
     : `<div class="btn sec" style="display:block;width:100%;box-sizing:border-box;text-align:center;margin:0;opacity:.5;cursor:default">${label} — not available</div>`;
 
+  const galleryBase=location.origin+location.pathname.replace(/[^/]*$/,'');
+  function stageBlock(prefix, title){
+    const has = r[prefix+'_date'] || r[prefix+'_mileage'] || (r[prefix+'_photos']&&r[prefix+'_photos'].length) || r[prefix+'_sig_inspector'];
+    if(!has && prefix!=='out') return '';       // only show stages that have data (delivery always shows)
+    const mileage=r[prefix+'_mileage']?Number(r[prefix+'_mileage']).toLocaleString()+' km':'—';
+    const petrol=(r[prefix+'_petrol']!=null&&r[prefix+'_petrol']!=='')?r[prefix+'_petrol']+'/5':'—';
+    const defs=(r[prefix+'_defects']||[]);
+    const defCounts={}; defs.forEach(m=>{ const n=(DEFECTS[m.code]||{}).name||m.code; defCounts[n]=(defCounts[n]||0)+1; });
+    const defText=Object.keys(defCounts).length?Object.keys(defCounts).map(n=>n+' ×'+defCounts[n]).join(', '):'None marked';
+    const photos=(r[prefix+'_photos']||[]).concat(r[prefix+'_defect_photos']||[]).concat(r[prefix+'_interior_photos']||[]);
+    const stuff=(prefix==='intake'?(r.intake_stuff_photos||[]):[]);
+    const allPhotos=photos.concat(stuff).filter(p=>p&&p.data);
+    const token=r[prefix+'_share_token'];
+    const galleryLink=token?(galleryBase+'gp-checkin-view.html?t='+token):'';
+    return `
+    <div class="panel" style="margin-top:14px">
+      <h4 style="margin:0 0 10px;color:var(--gold)">${title}</h4>
+      <div class="sumrow"><span>Date</span><div>${esc(r[prefix+'_date']||'—')} ${esc(r[prefix+'_time']||'')}</div></div>
+      <div class="sumrow"><span>${prefix==='out'?'Begin':(prefix==='intake'?'Current':'End')} mileage</span><div>${mileage}</div></div>
+      <div class="sumrow"><span>Petrol</span><div>${petrol}</div></div>
+      <div class="sumrow"><span>${prefix==='in'?'New damage':'Damage'}</span><div>${esc(defText)}</div></div>
+      ${prefix==='intake'&&r.intake_stuff_location?`<div class="sumrow"><span>Items stored</span><div>${esc(r.intake_stuff_location)}</div></div>`:''}
+      ${allPhotos.length?`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px">${allPhotos.slice(0,12).map(p=>`<img src="${p.data}" style="width:100%;height:56px;object-fit:cover;border-radius:6px" onclick="window.open('${galleryLink||'#'}','_blank')">`).join('')}</div>${allPhotos.length>12?`<div class="hint" style="margin-top:4px">+${allPhotos.length-12} more in the gallery</div>`:''}`:''}
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
+        ${pdfBtn(r[prefix+'_pdf_url'], (prefix==='out'?'📤 Delivery':(prefix==='intake'?'📋 Intake':'📥 Return'))+' PDF')}
+        ${galleryLink?`<a class="btn sec" href="${esc(galleryLink)}" target="_blank" style="text-decoration:none;display:block;text-align:center;margin:0">🖼 Full inspection gallery ›</a>`:''}
+      </div>
+    </div>`;
+  }
+
   $('view').innerHTML=`
     <div class="panel">
       <h3>${esc(r.car_plate||'(no plate)')} · ${esc(r.customer_name||'')}</h3>
-      <p class="hint" style="margin-bottom:14px">${esc(r.car_model||'')} · ${PLAN_NAME[r.plan]||r.plan} · ${r.status==='completed'?'Completed':'Awaiting return'}</p>
-
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${pdfBtn(r.out_pdf_url,'📤 Delivery checklist PDF')}
-        ${pdfBtn(r.in_pdf_url,'📥 Return checklist PDF')}
-      </div>
-
-      <div class="panel" style="margin-top:14px;background:var(--bg2,#1a1a1a)">
-        <h4 style="margin:0 0 10px">Return summary</h4>
-        <div class="sumrow"><span>Mileage</span><div>${mileageRow}</div></div>
-        <div class="sumrow"><span>Petrol</span><div>${petrolRow}</div></div>
-        <div class="sumrow"><span>New damage</span><div>${damageRow}</div></div>
-      </div>
-
-      ${r.status!=='completed'?`<button class="btn ok full" style="margin-top:14px" onclick="openReturn('${r.id}')">Do Return now ›</button>`:''}
-      <button class="btn danger full" style="margin-top:14px" onclick="deleteChecklist('${r.id}','${esc(r.car_plate||'')}')">🗑 Delete this job</button>
+      <p class="hint" style="margin-bottom:6px">${esc(r.car_model||'')} · ${PLAN_NAME[r.plan]||r.plan} · ${r.status==='completed'?'Completed':'Awaiting return'}</p>
+      ${r.remark?`<div class="sumrow"><span>Remark</span><div>${esc(r.remark)}</div></div>`:''}
+    </div>
+    ${stageBlock('out','Delivery (OUT)')}
+    ${stageBlock('intake','General Intake')}
+    ${stageBlock('in','Return (BACK)')}
+    <div class="panel" style="margin-top:14px">
+      ${r.status!=='completed'&&r.plan!=='intake'?`<button class="btn ok full" onclick="openReturn('${r.id}')">Do Return now ›</button>`:''}
+      <button class="btn danger full" style="margin-top:10px" onclick="deleteChecklist('${r.id}','${esc(r.car_plate||'')}')">🗑 Delete this job</button>
     </div>
     <button class="btn sec full" style="margin-top:14px" onclick="showHistory()">‹ Back to history</button>`;
 }
@@ -680,6 +703,8 @@ function showForm(){
       ${[1,2,3,4,5].map(n=>`<button type="button" class="${f('petrol')==n?'on':''}" onclick="setPetrol(${n})">${n}</button>`).join('')}
     </div>
     ${st==='in'?`<p class="hint" style="margin-top:8px">Begin petrol (at delivery): <b>${a.out_petrol||'-'} / 5</b> &nbsp;→&nbsp; End petrol now: <b>${a.in_petrol||'-'} / 5</b></p>`:''}
+    <label style="margin-top:12px">Remark / Car condition <span style="font-weight:400;color:var(--grey);font-size:12px">(shown on WhatsApp — suggest repair / detailing etc.)</span></label>
+    <textarea id="f_remark" rows="3" placeholder="e.g. Front bumper has deep scratch — suggest repair. Interior needs detailing." style="width:100%">${esc(a.remark||'')}</textarea>
   </div>
 
   <div class="panel">
@@ -1282,6 +1307,7 @@ function readForm(){
   // petrol + checks + defects + photos already in state
   const si=getPad('padInspector'); if(si) a[st+'_sig_inspector']=si;
   const sc=getPad('padCustomer'); if(sc) a[st+'_sig_customer']=sc;
+  if($('f_remark')!=null) a.remark=$('f_remark').value;
   return a;
 }
 
@@ -1300,6 +1326,8 @@ function rowFor(a){
     out_sig_inspector:a.out_sig_inspector, out_sig_customer:a.out_sig_customer, out_pdf_url:a.out_pdf_url,
     intake_videos:a.intake_videos||[], intake_interior_photos:a.intake_interior_photos||[],
     intake_stuff_photos:a.intake_stuff_photos||[], intake_stuff_location:a.intake_stuff_location||null,
+    remark:a.remark||null,
+    out_share_token:a.out_share_token||null, intake_share_token:a.intake_share_token||null, in_share_token:a.in_share_token||null,
     in_date:a.in_date, in_time:a.in_time, in_mileage:a.in_mileage, in_petrol:a.in_petrol||0,
     in_defects:a.in_defects||[], in_checks:a.in_checks||{}, in_photos:a.in_photos||[], in_defect_photos:a.in_defect_photos||[], in_interior_photos:a.in_interior_photos||[], in_video_sent:a.in_video_sent||0, in_videos:a.in_videos||[],
     in_sig_inspector:a.in_sig_inspector, in_sig_customer:a.in_sig_customer, in_pdf_url:a.in_pdf_url,
@@ -1430,23 +1458,73 @@ async function sendChecklistToGroup(){
   // save the gp_checkins record via REST
   const rec={ share_token:token, job_id:(typeof jobParam==='function'?jobParam('job'):null)||null,
     customer_name:a.customer_name||null, car_model:a.car_model||null, car_plate:a.car_plate||null,
-    stage:stageLabel, note:((st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location+(a.remark?(' · '+a.remark):'')):(a.remark||null)), media:uploaded, photo_count:pc, video_count:vc, preview_url:preview_url, diagram_url:diagram_url, defects:defectSummary, created_by:curUser() };
+    stage:stageLabel, note:[(st==='intake'&&a.intake_stuff_location)?('Personal items stored: '+a.intake_stuff_location):'', a.remark||''].filter(Boolean).join(' · ')||null, media:uploaded, photo_count:pc, video_count:vc, preview_url:preview_url, diagram_url:diagram_url, defects:defectSummary, created_by:curUser() };
   const ins=await fetch(sbBase()+'/rest/v1/gp_checkins',
     {method:'POST', headers:sbHeaders({'Content-Type':'application/json','Prefer':'return=minimal'}), body:JSON.stringify(rec)});
   if(!ins.ok){ toast('Save failed: '+ins.status); return; }
+  // remember this stage's gallery token on the checklist so History can reopen it
+  STATE.current[stageLabel==='delivery'?'out_share_token':(stageLabel==='intake'?'intake_share_token':'in_share_token')]=token;
+  try{ await saveChecklist(true); }catch(e){}
   // share the Edge Function link so WhatsApp shows the car's front-view photo as the preview
   const link=sbBase()+'/functions/v1/checkin-share?t='+token;
   const now=new Date().toLocaleString('en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const stageUp = st==='out'?'DELIVERY':(st==='intake'?'INTAKE':'RETURN');
   const car=((a.car_model||'')+(a.car_plate?(' ('+a.car_plate+')'):'')).trim();
+
+  // ----- mileage + petrol + exceed calcs -----
+  const ob=parseInt(a.out_mileage,10), ib=parseInt(a.in_mileage,10);
+  const given=parseFloat(a.mileage_given), perkm=parseFloat(a.per_km);
+  const used=(!isNaN(ob)&&!isNaN(ib))?(ib-ob):null;
+  let exceedKm=null, exceedCharge=null;
+  if(used!=null && !isNaN(given)){ const ex=used-given; exceedKm=ex>0?ex:0; if(exceedKm>0 && !isNaN(perkm)) exceedCharge=exceedKm*perkm; }
+  const op=Number(a.out_petrol)||0, ip=Number(a.in_petrol)||0;
+  const nd=(a.in_checks&&a.in_checks.new_damage);
+  const ndText = nd===true?'YES — see photos':(nd===false?'N/A':(defectSummary.length?defectSummary.map(x=>x.type+' ×'+x.count).join(', '):'N/A'));
+
+  let body='';
+  if(st==='out' || st==='in'){
+    // full rental summary — return-only fields show "pending" at delivery
+    const beginMile = !isNaN(ob)?ob.toLocaleString()+' km':(st==='out'&&f('mileage')?Number(f('mileage')).toLocaleString()+' km':'—');
+    const endMile = !isNaN(ib)?ib.toLocaleString()+' km':(st==='out'?'⏳ pending return':'—');
+    const usedTxt = used!=null?used.toLocaleString()+' km':(st==='out'?'⏳ pending return':'—');
+    const exceedTxt = exceedKm!=null
+      ? (exceedKm>0?(exceedKm.toLocaleString()+' km'+(exceedCharge!=null?(' = RM'+exceedCharge.toFixed(2)):'')):'N/A')
+      : (st==='out'?'⏳ pending return':'—');
+    const endPetrolTxt = st==='in'?(ip+'/5'):'⏳ pending return';
+    const beginPetrolTxt = (st==='out'?(f('petrol')||op):op)+'/5';
+    const ndOut = st==='in'?ndText:(defectSummary.length?defectSummary.map(x=>x.type+' ×'+x.count).join(', ')+' (at delivery)':'⏳ pending return');
+    body =
+      (a.customer_name?('👤 Customer: '+a.customer_name+'\n'):'')+
+      (car?('🚗 Car: '+car+'\n'):'')+
+      ('🛣 Begin mileage: '+beginMile+'\n')+
+      ('🏁 End mileage: '+endMile+'\n')+
+      (!isNaN(given)?('📊 Given mileage: '+given.toLocaleString()+' km\n'):'')+
+      (!isNaN(perkm)?('➕ Per km exceed: RM'+perkm+'\n'):'')+
+      ('📍 Mileage used: '+usedTxt+'\n')+
+      ('⚠️ Exceed mileage: '+exceedTxt+'\n')+
+      ('⛽ Begin petrol: '+beginPetrolTxt+'\n')+
+      ('⛽ End petrol: '+endPetrolTxt+'\n')+
+      ('🔧 New damage: '+ndOut+'\n')+
+      (a.remark?('📝 Remark: '+a.remark+'\n'):'');
+  } else {
+    // intake — car coming in to rent out (not a rental), lighter summary
+    const mLbl='Current mileage';
+    body =
+      (a.customer_name?('👤 Owner: '+a.customer_name+'\n'):'')+
+      (car?('🚗 Car: '+car+'\n'):'')+
+      (f('mileage')?('🛣 '+mLbl+': '+Number(f('mileage')).toLocaleString()+' km\n'):'')+
+      ('⛽ Petrol: '+(f('petrol')||op)+'/5\n')+
+      (defectSummary.length?('🔧 Damage: '+defectSummary.map(x=>x.type+' ×'+x.count).join(', ')+'\n'):'')+
+      (a.remark?('📝 Condition: '+a.remark+'\n'):'');
+  }
+
   const msg='🚗 *GRANDPRIDE VEHICLE '+stageUp+'*\n'+
     '━━━━━━━━━━━━━━\n'+
-    (a.customer_name?('👤 Customer: '+a.customer_name+'\n'):'')+
-    (car?('🔖 Car: '+car+'\n'):'')+
+    body+
     '📅 '+now+'\n'+
     '📷 '+pc+' photo'+(pc===1?'':'s')+(vc?(', 🎥 '+vc+' video'+(vc===1?'':'s')):'')+'\n'+
     '━━━━━━━━━━━━━━\n'+
-    '👉 View all photos:\n'+link;
+    '👉 View full inspection & photos:\n'+link;
   window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
   toast('Photos uploaded — pick the group ✓');
 }
