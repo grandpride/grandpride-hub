@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>GrandPride Chauffeur</title>
+<link rel="manifest" href="gp-chauffeur.webmanifest">
+<meta name="theme-color" content="#0b0b0b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="GP Chauffeur">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root{ --bg:#0b0b0b; --card:#151515; --card2:#1c1c1a; --border:#2a2a26; --text:#f5f3ee; --muted:#9a978d; --gold:#e3c887; --green:#3ba55d; --red:#d2533f; --amber:#e0b060; }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -325,6 +331,10 @@ function showModal_confirm(msg){
   document.getElementById('waSend').onclick=()=>{ window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank'); ov.remove(); };
 }
 
+// register the standalone chauffeur service worker (separate from the Hub)
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('gp-chauffeur-sw.js').catch(function(){});
+}
 boot();
 </script>
 </body>
