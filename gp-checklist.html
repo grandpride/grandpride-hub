@@ -1495,7 +1495,7 @@ async function sendChecklistToGroup(){
     const ndOut = st==='in'?ndText:(defectSummary.length?defectSummary.map(x=>x.type+' ×'+x.count).join(', ')+' (at delivery)':'⏳ pending return');
     body =
       (a.customer_name?('👤 Customer: '+a.customer_name+'\n'):'')+
-      (car?('🚗 Car: '+car+'\n'):'')+
+      (car?('🚗 Car model: '+car+'\n'):'')+
       ('🛣 Begin mileage: '+beginMile+'\n')+
       ('🏁 End mileage: '+endMile+'\n')+
       (!isNaN(given)?('📊 Given mileage: '+given.toLocaleString()+' km\n'):'')+
@@ -1511,7 +1511,7 @@ async function sendChecklistToGroup(){
     const mLbl='Current mileage';
     body =
       (a.customer_name?('👤 Owner: '+a.customer_name+'\n'):'')+
-      (car?('🚗 Car: '+car+'\n'):'')+
+      (car?('🚗 Car model: '+car+'\n'):'')+
       (f('mileage')?('🛣 '+mLbl+': '+Number(f('mileage')).toLocaleString()+' km\n'):'')+
       ('⛽ Petrol: '+(f('petrol')||op)+'/5\n')+
       (defectSummary.length?('🔧 Damage: '+defectSummary.map(x=>x.type+' ×'+x.count).join(', ')+'\n'):'')+
