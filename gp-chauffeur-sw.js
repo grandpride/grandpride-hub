@@ -1,5 +1,5 @@
 /* GrandPride Chauffeur — standalone service worker (separate from the Hub sw.js) */
-const CACHE = 'gp-chauffeur-v1';
+const CACHE = 'gp-chauffeur-v2';
 const CORE = [
   'gp-chauffeur.html',
   'gp-chauffeur.webmanifest',

@@ -49,6 +49,14 @@
   .punch-done{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
   .punch-done:last-child{border-bottom:none}
   .punch-done .t{color:var(--gold);font-variant-numeric:tabular-nums}
+  .job{border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px;background:var(--card2)}
+  .job h4{margin:0 0 4px;font-size:15px}
+  .job .jmeta{font-size:13px;color:var(--muted);margin-bottom:2px}
+  .trip-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .trip-row button{flex:1;min-width:70px;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:9px 6px;font-size:12px;font-weight:600;cursor:pointer}
+  .trip-row button.active{background:var(--gold);color:#1c1810;border-color:var(--gold)}
+  .trip-row button.done{opacity:.55}
+  .jnav{display:block;text-align:center;margin-top:8px;color:var(--gold);text-decoration:none;font-size:13px}
 </style>
 </head>
 <body>
@@ -106,10 +114,10 @@
     <div class="hint" id="punchHint" style="text-align:center;margin-top:8px">You can clock in from anywhere. A photo is required.</div>
   </div>
 
-  <!-- Today's jobs - built in step 4 -->
+  <!-- Today's jobs -->
   <div class="card">
-    <h3 class="sec">MY JOBS TODAY</h3>
-    <div class="placeholder" id="jobsPlaceholder">Your assigned jobs will show here.</div>
+    <h3 class="sec">MY JOBS</h3>
+    <div id="jobsList"><div class="hint">Loading…</div></div>
   </div>
 </div>
 
@@ -145,6 +153,7 @@ async function afterLogin(session){
   renderProfile();
   show('app');
   loadAttendance();
+  loadMyJobs();
 }
 function renderProfile(){
   $('chName').textContent=ME.name||ME.username||'Chauffeur';
@@ -329,6 +338,59 @@ function showModal_confirm(msg){
   document.body.appendChild(ov);
   document.getElementById('waSkip').onclick=()=>ov.remove();
   document.getElementById('waSend').onclick=()=>{ window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank'); ov.remove(); };
+}
+
+/* ===== MY JOBS (assigned to this chauffeur) + trip status ===== */
+const TRIP_STEPS=[
+  {k:'on_the_way', label:'On the way'},
+  {k:'arrived',    label:'Arrived'},
+  {k:'pob',        label:'Passenger on board'},
+  {k:'completed',  label:'Completed'}
+];
+async function loadMyJobs(){
+  const box=$('jobsList'); if(!box) return;
+  try{
+    const r=await sb.from('gp_jobs')
+      .select('id,job_no,customer_name,customer_contact,car_model,car_plate,service_type,start_date,start_time,pickup_location,dropoff_location,location,stage,trip_status')
+      .eq('driver_username',ME.username)
+      .in('stage',['booked','paid','delivered','returned'])
+      .order('start_date',{ascending:true});
+    const jobs=r.data||[];
+    if(!jobs.length){ box.innerHTML='<div class="hint">No jobs assigned to you right now.</div>'; return; }
+    box.innerHTML=jobs.map(renderJobCard).join('');
+  }catch(e){ box.innerHTML='<div class="hint">Could not load jobs.</div>'; }
+}
+function renderJobCard(j){
+  const car=((j.car_model||'')+(j.car_plate?(' · '+j.car_plate):'')).trim();
+  const when=[j.start_date||'', j.start_time||''].filter(Boolean).join(' ');
+  const pickup=j.pickup_location||j.location||'';
+  const drop=j.dropoff_location||'';
+  const cur=j.trip_status||'';
+  const curIdx=TRIP_STEPS.findIndex(s=>s.k===cur);
+  const steps=TRIP_STEPS.map((s,i)=>{
+    const cls=s.k===cur?'active':(curIdx>=0&&i<curIdx?'done':'');
+    return `<button class="${cls}" onclick="setTrip('${j.id}','${s.k}')">${s.label}</button>`;
+  }).join('');
+  const navQ=encodeURIComponent(pickup||drop||'');
+  return `<div class="job">
+    <h4>${esc(j.customer_name||'(no name)')}</h4>
+    <div class="jmeta">${esc(car||'—')}</div>
+    ${when?`<div class="jmeta">🕐 ${esc(when)}</div>`:''}
+    ${pickup?`<div class="jmeta">📍 Pickup: ${esc(pickup)}</div>`:''}
+    ${drop?`<div class="jmeta">🏁 Drop: ${esc(drop)}</div>`:''}
+    ${j.customer_contact?`<div class="jmeta">📞 <a href="tel:${esc(j.customer_contact)}" style="color:var(--gold)">${esc(j.customer_contact)}</a></div>`:''}
+    <div class="trip-row">${steps}</div>
+    ${navQ?`<a class="jnav" href="https://maps.google.com/?q=${navQ}" target="_blank">🗺 Navigate ›</a>`:''}
+  </div>`;
+}
+async function setTrip(jobId, status){
+  try{
+    const up=await sb.from('gp_jobs').update({trip_status:status, trip_updated_at:new Date().toISOString()}).eq('id',jobId);
+    if(up.error){ toast('Failed: '+up.error.message); return; }
+    const lbl=(TRIP_STEPS.find(s=>s.k===status)||{}).label||status;
+    toast(lbl+' ✓');
+    loadMyJobs();
+  }catch(e){ toast('Update failed'); }
 }
 
 // register the standalone chauffeur service worker (separate from the Hub)

@@ -968,6 +968,7 @@ function openJob(id){
       ${serviceHasCar(j.service_type)?`<div class="rowline"><span class="muted">Car</span><span>${esc(j.car_model||'—')} ${esc(j.car_plate||'')}</span></div>`:''}
       <div class="rowline"><span class="muted">Dates</span><span>${fmtDate(j.start_date)}${j.start_time?' '+esc(j.start_time):''}${j.end_date?(' → '+fmtDate(j.end_date)+(j.end_time?' '+esc(j.end_time):'')):''}</span></div>
       ${(j.driver_name)?`<div class="rowline"><span class="muted">Driver</span><span>${esc(j.driver_name)}</span></div>`:''}
+      ${(j.trip_status)?`<div class="rowline"><span class="muted">Trip status</span><span>${esc(({on_the_way:'🚗 On the way',arrived:'📍 Arrived',pob:'🧑 Passenger on board',completed:'✅ Completed'})[j.trip_status]||j.trip_status)}</span></div>`:''}
       ${j.pickup_location?`<div class="rowline"><span class="muted">Pickup</span><span style="text-align:right;max-width:60%">${esc(j.pickup_location)}</span></div>`:''}
       ${j.dropoff_location?`<div class="rowline"><span class="muted">Drop-off</span><span style="text-align:right;max-width:60%">${esc(j.dropoff_location)}</span></div>`:''}
       <div class="rowline"><span class="muted">Price</span><span>RM ${num(j.price).toLocaleString()}</span></div>
