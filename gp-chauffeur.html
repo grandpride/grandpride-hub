@@ -34,6 +34,15 @@
   .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
   h3.sec{margin:0 0 10px;color:var(--gold);font-size:14px;letter-spacing:.05em}
   .placeholder{border:1px dashed var(--border);border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:13px}
+  .cam-overlay{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px}
+  .cam-box{width:100%;max-width:460px}
+  .cam-box video{width:100%;border-radius:12px;background:#000}
+  .cam-title{color:var(--gold);text-align:center;margin-bottom:10px;font-size:14px}
+  .cam-row{display:flex;gap:10px;margin-top:12px}
+  .cam-row .btn{flex:1}
+  .punch-done{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px}
+  .punch-done:last-child{border-bottom:none}
+  .punch-done .t{color:var(--gold);font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -83,10 +92,12 @@
     </div>
   </div>
 
-  <!-- Clock in/out - built in step 2 -->
+  <!-- Clock in/out -->
   <div class="card">
-    <h3 class="sec">ATTENDANCE</h3>
-    <div class="placeholder" id="attnPlaceholder">Clock in / out &mdash; coming in the next build.</div>
+    <h3 class="sec">ATTENDANCE — <span id="todayDate"></span></h3>
+    <div id="attnState"></div>
+    <button class="btn" id="punchBtn" onclick="doClockPunch()" style="margin-top:10px">Clock in</button>
+    <div class="hint" id="punchHint" style="text-align:center;margin-top:8px">You can clock in from anywhere. A photo is required.</div>
   </div>
 
   <!-- Today's jobs - built in step 4 -->
@@ -127,6 +138,7 @@ async function afterLogin(session){
   ME=me;
   renderProfile();
   show('app');
+  loadAttendance();
 }
 function renderProfile(){
   $('chName').textContent=ME.name||ME.username||'Chauffeur';
@@ -147,6 +159,171 @@ async function doLogin(){
   await afterLogin(data.session);
 }
 async function doLogout(){ await sb.auth.signOut(); ME=null; show('login'); }
+
+/* ===== ATTENDANCE (clock in/out) — writes to gp_attendance + Google Sheet ===== */
+const GS_URL='https://script.google.com/macros/s/AKfycbx0Gwt-lJu8xSoWL_rva48PCBw1yvsYL5sqIj3XJxfpnMqe60kJWN1p5PWxJNFyqFA/exec';
+let TODAY_REC=null, MY_PLATE='';
+function todayKey(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtTime(d){ return (d||new Date()).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); }
+function toMin(hhmm){ if(!hhmm) return null; const p=hhmm.split(':').map(Number); return p[0]*60+p[1]; }
+
+async function loadAttendance(){
+  $('todayDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  const k=todayKey();
+  try{
+    const r=await sb.from('gp_attendance').select('rec').eq('id',ME.username+'|'+k).maybeSingle();
+    TODAY_REC=(r.data&&r.data.rec)||{ amIn:null,lunchOut:null,lunchIn:null,pmOut:null,leave:null,lateMins:0,otMins:0,status:'',offsite:{} };
+  }catch(e){ TODAY_REC={ amIn:null,lunchOut:null,lunchIn:null,pmOut:null,leave:null,lateMins:0,otMins:0,status:'',offsite:{} }; }
+  // find this chauffeur's assigned car plate (latest active job), for the watermark
+  try{
+    const j=await sb.from('gp_jobs').select('car_plate,car_model,stage').eq('driver_username',ME.username).in('stage',['paid','delivered']).order('updated_at',{ascending:false}).limit(1);
+    if(j.data&&j.data[0]) MY_PLATE=j.data[0].car_plate||'';
+  }catch(e){}
+  renderAttendance();
+}
+function renderAttendance(){
+  const rec=TODAY_REC||{};
+  const rows=[];
+  if(rec.amIn) rows.push(['Clocked in', rec.amIn]);
+  if(rec.lunchOut) rows.push(['Lunch out', rec.lunchOut]);
+  if(rec.lunchIn) rows.push(['Lunch in', rec.lunchIn]);
+  if(rec.pmOut) rows.push(['Clocked out', rec.pmOut]);
+  $('attnState').innerHTML = rows.length
+    ? rows.map(r=>`<div class="punch-done"><span class="muted">${r[0]}</span><span class="t">${r[1]}</span></div>`).join('')
+    : '<div class="hint">Not clocked in yet today.</div>';
+  const btn=$('punchBtn'); const hint=$('punchHint');
+  let label='Clock in';
+  if(!rec.amIn) label='🟢 Clock in';
+  else if(!rec.lunchOut) label='🍱 Lunch out';
+  else if(!rec.lunchIn) label='🍱 Lunch in';
+  else if(!rec.pmOut) label='🔴 Clock out';
+  else { label='✓ Done for today'; btn.disabled=true; }
+  btn.textContent=label;
+  if(hint) hint.textContent = rec.pmOut?'All punches done today.':'You can clock in from anywhere. A photo is required.';
+}
+
+function payrollMonthChauffeur(k){ return k.slice(0,7); }
+
+async function getLocOnce(){
+  return new Promise(res=>{
+    if(!navigator.geolocation){ res(null); return; }
+    navigator.geolocation.getCurrentPosition(async p=>{
+      const lat=p.coords.latitude, lng=p.coords.longitude;
+      let address='';
+      try{ const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&zoom=18',{headers:{'Accept':'application/json'}}); const j=await r.json(); if(j&&j.display_name) address=j.display_name; }catch(e){}
+      res({lat,lng,address});
+    }, ()=>res(null), {enableHighAccuracy:true,timeout:8000,maximumAge:0});
+  });
+}
+
+function captureSelfie(loc){
+  return new Promise(async res=>{
+    const overlay=document.createElement('div');
+    overlay.className='cam-overlay';
+    overlay.innerHTML='<div class="cam-box"><div class="cam-title">Take a selfie to clock in</div><video id="camVid" autoplay playsinline></video><canvas id="camCanvas" style="display:none"></canvas><div class="cam-row"><button class="btn sec" id="camCancel">Cancel</button><button class="btn" id="camShot">Capture</button></div></div>';
+    document.body.appendChild(overlay);
+    let stream;
+    const cleanup=()=>{ if(stream) stream.getTracks().forEach(t=>t.stop()); overlay.remove(); };
+    try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'}}); document.getElementById('camVid').srcObject=stream; }
+    catch(e){ toast('Cannot open camera'); cleanup(); res(null); return; }
+    document.getElementById('camCancel').onclick=()=>{ cleanup(); res(null); };
+    document.getElementById('camShot').onclick=()=>{
+      const v=document.getElementById('camVid'), c=document.getElementById('camCanvas');
+      const w=v.videoWidth||640, h=v.videoHeight||480; c.width=w; c.height=h;
+      const ctx=c.getContext('2d'); ctx.drawImage(v,0,0,w,h);
+      const now=new Date();
+      const lines=[
+        now.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+'  '+now.toLocaleTimeString('en-GB'),
+        (ME.name||ME.username)+(MY_PLATE?('  ·  '+MY_PLATE):''),
+        loc?('GPS: '+loc.lat.toFixed(6)+', '+loc.lng.toFixed(6)):'GPS: n/a',
+        loc&&loc.address?loc.address:''
+      ].filter(Boolean);
+      const pad=Math.round(w*0.02), fs=Math.max(14,Math.round(w*0.030)), lineH=fs*1.35;
+      const boxH=lineH*lines.length+pad;
+      ctx.font=fs+'px Arial';
+      ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,h-boxH,w,boxH);
+      ctx.fillStyle='#fff'; ctx.textBaseline='top';
+      lines.forEach((ln,i)=>{ let t=ln; const maxW=w-pad*2; while(ctx.measureText(t).width>maxW&&t.length>10){t=t.slice(0,-4);} if(t!==ln)t+='…'; ctx.fillText(t,pad,h-boxH+pad/2+i*lineH); });
+      ctx.fillStyle='#e3c887'; ctx.font='bold '+fs+'px Arial'; ctx.fillText('GRANDPRIDE',pad,h-boxH-lineH);
+      const b64=c.toDataURL('image/jpeg',0.7); cleanup(); res(b64);
+    };
+  });
+}
+
+async function imgbbUpload(b64){
+  try{
+    const raw=b64.indexOf(',')>=0?b64.split(',')[1]:b64;
+    const form=new FormData(); form.append('image',raw);
+    const r=await fetch('https://api.imgbb.com/1/upload?key=e8dbe75e3933b7bf63be0253e1b122d6',{method:'POST',body:form});
+    const j=await r.json(); if(j&&j.data&&j.data.url) return j.data.url;
+  }catch(e){}
+  return null;
+}
+
+let PUNCHING=false;
+async function doClockPunch(){
+  if(PUNCHING) return; PUNCHING=true;
+  const btn=$('punchBtn'); const orig=btn.textContent; btn.disabled=true; btn.textContent='Getting location…';
+  try{
+    const loc=await getLocOnce();
+    btn.textContent='Opening camera…';
+    const photo=await captureSelfie(loc);
+    if(!photo){ toast('Photo needed to clock in'); return; }
+    btn.textContent='Saving…';
+    const photoUrl=await imgbbUpload(photo);   // store the watermarked selfie
+    const now=fmtTime(new Date()); const k=todayKey();
+    const rec=TODAY_REC||(TODAY_REC={ amIn:null,lunchOut:null,lunchIn:null,pmOut:null,leave:null,lateMins:0,otMins:0,status:'',offsite:{} });
+    if(!rec.offsite) rec.offsite={};
+    let punch='';
+    if(!rec.amIn){ rec.amIn=now; punch='Morning In'; }
+    else if(!rec.lunchOut){ rec.lunchOut=now; punch='Lunch Out'; }
+    else if(!rec.lunchIn){ rec.lunchIn=now; punch='Lunch In'; }
+    else if(!rec.pmOut){ rec.pmOut=now; punch='Evening Out'; }
+    else { toast('Already done for today'); return; }
+    rec._dateKey=k;
+    rec.offsite[punch]={ photo:photoUrl||'', lat:loc&&loc.lat, lng:loc&&loc.lng, address:loc&&loc.address, time:now };
+    // status: worked/OT calc (simple — full calc lives in the Hub; keep status readable)
+    rec.status = rec.pmOut ? 'Completed' : 'Working';
+    const period=payrollMonthChauffeur(k);
+    // write to gp_attendance
+    const up=await sb.from('gp_attendance').upsert({ id:ME.username+'|'+k, username:ME.username, date_key:k, rec:rec, period_month:period, updated_at:new Date().toISOString() },{onConflict:'id'});
+    if(up.error){ toast('Save failed: '+up.error.message); return; }
+    // push to Google Sheet (same payload shape the Hub uses)
+    try{
+      fetch(GS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},
+        body:JSON.stringify({ type:'punch', sheet:ME.name||ME.username, username:ME.username, name:ME.name||ME.username,
+          date:k, periodMonth:period, punch:punch, punchTime:now,
+          amIn:rec.amIn||'', lunchOut:rec.lunchOut||'', lunchIn:rec.lunchIn||'', pmOut:rec.pmOut||'',
+          status:rec.status||'', lateMins:rec.lateMins||0, otMins:rec.otMins||0, earlyMins:rec.earlyMins||0, leave:'',
+          isChauffeur:'Yes', assignedStart:'', offsite:'Yes', carPlate:MY_PLATE||'' }) });
+    }catch(e){}
+    const msg=punch==='Morning In'?'Clocked in ✓':(punch==='Evening Out'?'Clocked out ✓':(punch+' ✓'));
+    toast(msg+' — '+now);
+    renderAttendance();
+    // offer to post to WhatsApp group (step 3)
+    offerWhatsAppPunch(punch, now, photoUrl, loc);
+  } finally { PUNCHING=false; const b=$('punchBtn'); if(b){ b.disabled=false; renderAttendance(); } }
+}
+
+function offerWhatsAppPunch(punch, time, photoUrl, loc){
+  const map = loc?('https://maps.google.com/?q='+loc.lat+','+loc.lng):'';
+  const label = punch==='Morning In'?'🟢 Clocked IN':(punch==='Evening Out'?'🔴 Clocked OUT':('⏱ '+punch));
+  const msg = '*GRANDPRIDE CHAUFFEUR*\n'+label+'\n'+
+    '👤 '+(ME.name||ME.username)+'\n'+
+    (MY_PLATE?('🚗 '+MY_PLATE+'\n'):'')+
+    '🕐 '+time+' · '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'\n'+
+    (loc&&loc.address?('📍 '+loc.address.split(',').slice(0,3).join(',')+'\n'):'')+
+    (map?('🗺 '+map+'\n'):'')+
+    (photoUrl?('📸 '+photoUrl):'');
+  showModal_confirm(msg);
+}
+function showModal_confirm(msg){
+  const ov=document.createElement('div'); ov.className='cam-overlay';
+  ov.innerHTML='<div class="cam-box" style="max-width:420px"><div class="cam-title">Post to WhatsApp group?</div><div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;white-space:pre-wrap;color:var(--text);max-height:40vh;overflow:auto">'+esc(msg)+'</div><div class="cam-row"><button class="btn sec" id="waSkip">Skip</button><button class="btn" id="waSend">Open WhatsApp</button></div></div>';
+  document.body.appendChild(ov);
+  document.getElementById('waSkip').onclick=()=>ov.remove();
+  document.getElementById('waSend').onclick=()=>{ window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank'); ov.remove(); };
+}
 
 boot();
 </script>
