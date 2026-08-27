@@ -127,7 +127,7 @@ async function loadBoard(){
   $('daySub').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const box=$('board'); box.innerHTML='<div class="muted" style="text-align:center">Loading…</div>';
   // all chauffeurs
-  const cs=await sb.from('gp_staff').select('username,name,photo_url,chauffeur_status').eq('is_chauffeur',true).order('name');
+  const cs=await sb.from('gp_staff').select('username,name,photo_url,chauffeur_status,last_lat,last_lng,last_ping_at').eq('is_chauffeur',true).order('name');
   const chauffeurs=cs.data||[];
   if(!chauffeurs.length){ box.innerHTML='<div class="muted" style="text-align:center">No chauffeurs registered.</div>'; return; }
   const usernames=chauffeurs.map(c=>c.username);
@@ -153,6 +153,14 @@ async function loadBoard(){
     const order=['Evening Out','Lunch In','Lunch Out','Morning In'];
     if(rec.offsite){ for(const p of order){ if(rec.offsite[p]&&rec.offsite[p].photo){ proof=rec.offsite[p]; proofPunch=p; break; } } }
     const av=c.photo_url?('<img src="'+esc(c.photo_url)+'">'):esc((c.name||c.username||'?').charAt(0).toUpperCase());
+    // live location ping (while their app is open)
+    let liveLoc='';
+    if(c.last_lat&&c.last_lng&&c.last_ping_at){
+      const mins=Math.round((Date.now()-new Date(c.last_ping_at).getTime())/60000);
+      const fresh = mins<=5;
+      const ago = mins<=0?'just now':(mins+' min ago');
+      liveLoc=`<div class="row">${fresh?'🟢':'⚪'} Location: <a class="map" href="https://maps.google.com/?q=${c.last_lat},${c.last_lng}" target="_blank">map ›</a> <span class="muted">(${ago})</span></div>`;
+    }
     return `<div class="drv">
       <div class="drv-top">
         <div class="av">${av}</div>
@@ -168,6 +176,7 @@ async function loadBoard(){
       </div>
       ${rec.status?`<div class="row">Status: ${esc(rec.status)}</div>`:''}
       ${job?`<div class="row">Job: ${esc(job.customer_name||'')}${job.car_plate?(' · '+esc(job.car_plate)):''}</div>`:''}
+      ${liveLoc}
       ${proof?`<div class="selfie"><img src="${esc(proof.photo)}"> <span class="muted" style="font-size:12px">${esc(proofPunch)} · ${esc(proof.time||'')}${proof.address?(' · '+esc(proof.address.split(',').slice(0,2).join(','))):''}</span>${(proof.lat&&proof.lng)?` · <a class="map" href="https://maps.google.com/?q=${proof.lat},${proof.lng}" target="_blank">map ›</a>`:''}</div>`:''}
     </div>`;
   }).join('');

@@ -358,6 +358,7 @@ async function loadMyJobs(){
     const jobs=r.data||[];
     if(!jobs.length){ box.innerHTML='<div class="hint">No jobs assigned to you right now.</div>'; return; }
     box.innerHTML=jobs.map(renderJobCard).join('');
+    managePinging();
   }catch(e){ box.innerHTML='<div class="hint">Could not load jobs.</div>'; }
 }
 function renderJobCard(j){
@@ -389,9 +390,35 @@ async function setTrip(jobId, status){
     if(up.error){ toast('Failed: '+up.error.message); return; }
     const lbl=(TRIP_STEPS.find(s=>s.k===status)||{}).label||status;
     toast(lbl+' ✓');
+    sendPing();                 // update location on each trip action
+    managePinging();            // start/stop background pinging based on active trips
     loadMyJobs();
   }catch(e){ toast('Update failed'); }
 }
+
+/* ===== Live location pings (while app is open — web can't ping in background) =====
+   Sends the driver's current location to gp_staff so the HOD board shows a recent position. */
+let PING_TIMER=null;
+function sendPing(){
+  if(!navigator.geolocation || !ME) return;
+  navigator.geolocation.getCurrentPosition(p=>{
+    sb.from('gp_staff').update({ last_lat:p.coords.latitude, last_lng:p.coords.longitude, last_ping_at:new Date().toISOString() }).eq('username',ME.username).then(()=>{});
+  }, ()=>{}, {enableHighAccuracy:true,timeout:8000,maximumAge:30000});
+}
+function hasActiveTrip(){
+  // any job card currently showing an in-progress trip (not completed)
+  return !!document.querySelector('.trip-row button.active');
+}
+function managePinging(){
+  const active = hasActiveTrip();
+  if(active && !PING_TIMER && document.visibilityState==='visible'){
+    sendPing();
+    PING_TIMER=setInterval(()=>{ if(document.visibilityState==='visible') sendPing(); }, 120000); // every 2 min
+  } else if(!active && PING_TIMER){
+    clearInterval(PING_TIMER); PING_TIMER=null;
+  }
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') managePinging(); });
 
 // register the standalone chauffeur service worker (separate from the Hub)
 if('serviceWorker' in navigator){
