@@ -176,10 +176,36 @@ var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwcGj9D1K4UHrlBVc
 /* ---- Supabase REST ---- */
 async function sbUpsert(row){
   if(!CLOUD) return false;
-  const r = await fetch(sbBase()+'/rest/v1/gp_checklists?on_conflict=id', {
-    method:'POST', headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
-    body: JSON.stringify(row)
-  });
+  // Photos are stored as base64 in the row, which can make the payload many MB and hang the
+  // save on mobile data. If the row is too big, strip the heavy base64 photo/signature fields
+  // so the core checklist data (mileage, petrol, damage, customer, remark) still saves fast.
+  let payload=row;
+  try{
+    let sizeGuess=JSON.stringify(row).length;
+    if(sizeGuess>900000){   // ~0.9MB+ → strip heavy fields
+      payload=Object.assign({}, row);
+      const heavy=/_photos$|_defect_photos$|_interior_photos$|_stuff_photos$|_videos$|^intake_stuff_photos$|sig_customer$|sig_inspector$|^out_photos$|^in_photos$|^intake_photos$/;
+      Object.keys(payload).forEach(function(k){
+        if(heavy.test(k)){ payload[k] = Array.isArray(payload[k]) ? [] : (typeof payload[k]==='string'?'':payload[k]); }
+      });
+      window.__strippedPhotos=true;
+    } else { window.__strippedPhotos=false; }
+  }catch(e){ payload=row; }
+  // hard timeout so a slow upload can never freeze the UI
+  const ctrl = (typeof AbortController!=='undefined') ? new AbortController() : null;
+  const to = ctrl ? setTimeout(function(){ try{ctrl.abort();}catch(e){} }, 12000) : null;
+  let r;
+  try{
+    r = await fetch(sbBase()+'/rest/v1/gp_checklists?on_conflict=id', {
+      method:'POST', headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body: JSON.stringify(payload), signal: ctrl?ctrl.signal:undefined
+    });
+  }catch(e){
+    if(to) clearTimeout(to);
+    window.__lastSbError = (e&&e.name==='AbortError')?'save timed out (photos too large)':((e&&e.message)||String(e));
+    return false;
+  }
+  if(to) clearTimeout(to);
   if(!r.ok){
     let msg='';
     try{ msg=await r.text(); }catch(e){}
@@ -444,6 +470,11 @@ async function openReturn(id){
   STATE.current=r; STATE.stage='in';
   if(!r.in_date) STATE.current.in_date=todayISO();
   if(!r.in_time) STATE.current.in_time=nowTime();
+  // if there's a local draft for this checklist (unsaved work incl. signatures), offer to restore
+  var dr=loadDraftLocal(id);
+  if(dr && dr.rec && confirm('Found unsaved work on this phone for this checklist (incl. signatures). Restore it?')){
+    STATE.current=dr.rec; STATE.stage=dr.stage||'in';
+  }
   showForm();
 }
 
@@ -811,6 +842,7 @@ function showForm(){
   </div>
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+    <button class="btn sec" onclick="saveDraftButton()">💾 Save draft (offline)</button>
     <button class="btn" onclick="saveChecklist(false)">Save</button>
     ${(typeof jobParam==='function' && jobParam('job')) ? `<button class="btn ok" onclick="saveAndBack()"><i class="ti ti-check"></i> Save &amp; back to GP Jobs</button>` : ''}
     <button class="btn ok" id="genBtn" onclick="generateChecklist()">Generate PDF</button>
@@ -1160,11 +1192,10 @@ async function onVideoUpload(input){
       let ext=(file.name.match(/\.([a-z0-9]+)$/i)||[,''])[1]||'';
       if(!ext){ ext=((file.type||'').split('/')[1]||'mp4').replace('quicktime','mov'); }
       const ctype=file.type||'application/octet-stream';
-      const path='ci_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+'.'+ext;
-      const up=await fetch(sbBase()+'/storage/v1/object/checkins/vid/'+path,
-        {method:'POST', headers:sbHeaders({'Content-Type':ctype,'x-upsert':'true'}), body:file});
-      if(!up.ok){ let txt=''; try{ txt=await up.text(); }catch(e){} throw new Error(up.status+(txt?(' '+txt.slice(0,120)):'')); }
-      arr.push({url:sbBase()+'/storage/v1/object/public/checkins/vid/'+path});
+      const path='vid/ci_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+'.'+ext;
+      const up=await stUpload_(path, file, ctype);
+      if(!up.ok){ throw new Error(up.status+(up.text?(' '+up.text.slice(0,120)):'')); }
+      arr.push({url:sbBase()+'/storage/v1/object/public/checkins/'+path});
     }catch(e){ if(note) note.textContent='Video upload failed: '+(e.message||e); return; }
     done++;
   }
@@ -1308,7 +1339,22 @@ function readForm(){
   const si=getPad('padInspector'); if(si) a[st+'_sig_inspector']=si;
   const sc=getPad('padCustomer'); if(sc) a[st+'_sig_customer']=sc;
   if($('f_remark')!=null) a.remark=$('f_remark').value;
+  saveDraftLocal();   // keep a local copy (incl. signatures) so nothing is lost if the cloud save fails
   return a;
+}
+
+/* ===== LOCAL DRAFT (survives hang/close; signatures kept) ===== */
+function draftKey(){ return 'gp_chk_draft_'+((STATE.current&&STATE.current.id)||'new'); }
+function saveDraftLocal(){
+  try{ if(STATE.current) localStorage.setItem(draftKey(), JSON.stringify({ rec:STATE.current, stage:STATE.stage, ts:Date.now() })); }catch(e){}
+}
+function loadDraftLocal(id){
+  try{ const raw=localStorage.getItem('gp_chk_draft_'+id); if(!raw) return null; return JSON.parse(raw); }catch(e){ return null; }
+}
+function clearDraftLocal(){ try{ localStorage.removeItem(draftKey()); }catch(e){} }
+function saveDraftButton(){
+  readForm();          // this also calls saveDraftLocal()
+  toast('Draft saved on this phone ✓ — signatures kept');
 }
 
 /* ====== SAVE & GENERATE ====== */
@@ -1337,8 +1383,10 @@ function rowFor(a){
 async function saveChecklist(silent){
   readForm();
   window.__lastSbError='';
-  await maybeCreateFleetCar();          // new car → auto-add to fleet (+ intake mileage/owner)
-  const ok=await sbUpsert(rowFor(STATE.current));
+  try{ await maybeCreateFleetCar(); }catch(e){}   // fleet auto-add must never block the save
+  let ok=false;
+  try{ ok=await sbUpsert(rowFor(STATE.current)); }catch(e){ window.__lastSbError=(e&&e.message)||String(e); ok=false; }
+  if(ok && !window.__strippedPhotos){ try{ clearDraftLocal(); }catch(e){} }
   if(!silent) toast(ok?'Saved ✓':('Saved (cloud off) — '+(window.__lastSbError||'no response')));
   return ok;
 }
@@ -1418,6 +1466,17 @@ function dataUrlToBlob_(dataUrl){
   for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
   return new Blob([arr],{type:mime});
 }
+/* Clean storage upload — PUT + upsert, explicit headers (no application/json base),
+   returns {ok, status, text}. Avoids the content-type/duplicate 400s. */
+async function stUpload_(path, blob, contentType){
+  var tok=(typeof sbUserToken==='function' && sbUserToken()) || SB_KEY;
+  var url=sbBase()+'/storage/v1/object/checkins/'+path;
+  var r=await fetch(url,{ method:'PUT',
+    headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+tok, 'Content-Type':contentType||'image/jpeg', 'x-upsert':'true', 'cache-control':'3600' },
+    body:blob });
+  var txt=''; if(!r.ok){ try{ txt=await r.text(); }catch(e){} }
+  return { ok:r.ok, status:r.status, text:txt };
+}
 async function sendChecklistToGroup(){
   readForm();
   const a=STATE.current; const st=STATE.stage;
@@ -1445,8 +1504,7 @@ async function sendChecklistToGroup(){
     if(diagData){
       const dblob=dataUrlToBlob_(diagData);
       const dpath=token+'/diagram.jpg';
-      const dup=await fetch(sbBase()+'/storage/v1/object/checkins/'+dpath,
-        {method:'POST', headers:sbHeaders({'Content-Type':'image/jpeg','x-upsert':'true'}), body:dblob});
+      const dup=await stUpload_(dpath, dblob, 'image/jpeg');
       if(dup.ok) diagram_url=sbBase()+'/storage/v1/object/public/checkins/'+dpath;
     }
   }catch(e){}
@@ -1455,9 +1513,8 @@ async function sendChecklistToGroup(){
     try{
       const blob=dataUrlToBlob_(all[i].data);
       const path=token+'/'+stageLabel+'_'+String(i+1).padStart(2,'0')+'.jpg';
-      const up=await fetch(sbBase()+'/storage/v1/object/checkins/'+path,
-        {method:'POST', headers:sbHeaders({'Content-Type':'image/jpeg','x-upsert':'true'}), body:blob});
-      if(!up.ok) throw new Error('upload '+up.status);
+      const up=await stUpload_(path, blob, 'image/jpeg');
+      if(!up.ok) throw new Error(up.status+(up.text?(' '+up.text.slice(0,140)):''));
       uploaded.push({type:'photo',label:all[i].label||'',url:sbBase()+'/storage/v1/object/public/checkins/'+path});
     }catch(e){ toast('Upload error: '+(e.message||e)); return; }
   }
@@ -1477,8 +1534,7 @@ async function sendChecklistToGroup(){
       const thumb = await makeThumb_(srcData, 800, 0.6);
       const tblob = dataUrlToBlob_(thumb);
       const tpath = token+'/preview.jpg';
-      const tup = await fetch(sbBase()+'/storage/v1/object/checkins/'+tpath,
-        {method:'POST', headers:sbHeaders({'Content-Type':'image/jpeg','x-upsert':'true'}), body:tblob});
+      const tup = await stUpload_(tpath, tblob, 'image/jpeg');
       if(tup.ok) preview_thumb = sbBase()+'/storage/v1/object/public/checkins/'+tpath;
     }
   }catch(e){}
@@ -1564,9 +1620,18 @@ function backToJob(){
 }
 async function saveAndBack(){
   toast('Saving…');
-  const ok=await saveChecklist(true);
-  if(!ok){ toast('Save failed: '+(window.__lastSbError||'no response')); return; }
-  toast('Saved ✓ — returning to GP Jobs…');
+  let ok=false;
+  try{
+    // don't let a slow/failed network call trap the user on the page
+    ok = await Promise.race([
+      saveChecklist(true),
+      new Promise(function(res){ setTimeout(function(){ res('timeout'); }, 8000); })
+    ]);
+  }catch(e){ ok=false; window.__lastSbError=(e&&e.message)||String(e); }
+  if(ok==='timeout'){ toast('Saved locally — network slow, returning…'); }
+  else if(!ok){ toast('Save issue ('+(window.__lastSbError||'?')+') — returning anyway'); }
+  else if(window.__strippedPhotos){ toast('Saved ✓ (photos too large for record — use "Send to group" to upload photos)'); }
+  else { toast('Saved ✓ — returning to GP Jobs…'); }
   setTimeout(function(){ backToJob(); }, 900);
 }
 
