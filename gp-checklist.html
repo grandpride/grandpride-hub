@@ -144,7 +144,7 @@ var SB_KEY = (typeof SUPABASE_ANON_KEY!=='undefined' && SUPABASE_ANON_KEY) ||
 function sbBase(){ return (SB_URL||'').replace(/\/rest\/v1\/?$/,''); }
 
 /* ===== REMOTE CONFIG + AUTO-UPDATE (fix things live from Supabase, no redeploy) ===== */
-var APP_BUILD = 121;                 // bump this in the file when you deploy; Supabase app_version drives refresh
+var APP_BUILD = 123;                 // bump this in the file when you deploy; Supabase app_version drives refresh
 var GP_CFG = { checklist:{}, flags:{} };
 async function loadRemoteConfig(){
   try{
@@ -1210,21 +1210,78 @@ function rmStuffPhoto(i){
   STATE.current.intake_stuff_photos=arr; renderStuffPhotos();
 }
 /* ===== WALKAROUND VIDEO → WHATSAPP (not stored) ===== */
+/* Compress a video on-device before upload (avoids 413 "payload too large").
+   Re-renders the source video through a downscaled canvas and re-encodes with MediaRecorder.
+   Note: encodes in real time, so a 1-min clip takes ~1 min. Returns a Blob (webm) or null. */
+function compressVideo_(file, note){
+  return new Promise(function(resolve){
+    try{
+      if(typeof MediaRecorder==='undefined'){ resolve(null); return; }
+      const url=URL.createObjectURL(file);
+      const v=document.createElement('video');
+      v.muted=true; v.playsInline=true; v.src=url;
+      v.onloadedmetadata=function(){
+        const maxW = cfgChecklist('video_max_px', 854);   // ~480p width, live-tunable
+        let w=v.videoWidth, h=v.videoHeight;
+        if(!w||!h){ URL.revokeObjectURL(url); resolve(null); return; }
+        if(w>maxW){ h=Math.round(h*maxW/w); w=maxW; }
+        w-=w%2; h-=h%2;
+        const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
+        const ctx=canvas.getContext('2d');
+        const stream=canvas.captureStream(24);
+        // pick a supported codec
+        let mime='video/webm;codecs=vp8';
+        if(MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime='video/webm;codecs=vp9';
+        else if(!MediaRecorder.isTypeSupported(mime)) mime='video/webm';
+        const bitrate = cfgChecklist('video_bitrate', 1200000); // ~1.2 Mbps
+        let rec;
+        try{ rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:bitrate}); }
+        catch(e){ URL.revokeObjectURL(url); resolve(null); return; }
+        const chunks=[];
+        rec.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
+        rec.onstop=function(){ URL.revokeObjectURL(url); resolve(new Blob(chunks,{type:'video/webm'})); };
+        let drawing=true;
+        function draw(){ if(!drawing) return; ctx.drawImage(v,0,0,w,h); requestAnimationFrame(draw); }
+        v.onended=function(){ drawing=false; try{ rec.stop(); }catch(e){} };
+        v.onplay=function(){ draw(); };
+        rec.start(1000);
+        v.play().catch(function(){ drawing=false; try{rec.stop();}catch(e){} URL.revokeObjectURL(url); resolve(null); });
+        // safety cap: stop after 4 min of encoding
+        setTimeout(function(){ if(drawing){ drawing=false; try{rec.stop();}catch(e){} } }, 240000);
+      };
+      v.onerror=function(){ URL.revokeObjectURL(url); resolve(null); };
+    }catch(e){ resolve(null); }
+  });
+}
 async function onVideoUpload(input){
   const files=[...(input.files||[])];
   if(!files.length) return;
   const note=$('videoNote');
   const arr=(f('videos')||[]).slice();
+  const capMB = cfgChecklist('video_compress_over_mb', 12);   // compress anything over this
   let done=0;
-  for(const file of files){
-    if(note) note.textContent='Uploading video '+(done+1)+'/'+files.length+'… ('+Math.round(file.size/1048576)+'MB)';
+  for(let file of files){
+    const origMB=Math.round(file.size/1048576);
     try{
-      let ext=(file.name.match(/\.([a-z0-9]+)$/i)||[,''])[1]||'';
-      if(!ext){ ext=((file.type||'').split('/')[1]||'mp4').replace('quicktime','mov'); }
-      const ctype=file.type||'application/octet-stream';
+      let ext, ctype;
+      // compress large clips first to avoid the 413 size cap
+      if(origMB > capMB){
+        if(note) note.textContent='Compressing video '+(done+1)+'/'+files.length+' ('+origMB+'MB)… this runs in real time, please wait.';
+        const small=await compressVideo_(file, note);
+        if(small && small.size>0 && small.size<file.size){ file=small; ext='webm'; ctype='video/webm'; }
+      }
+      if(!ext){ ext=(file.name&&file.name.match(/\.([a-z0-9]+)$/i)||[,''])[1]||''; if(!ext){ ext=((file.type||'').split('/')[1]||'mp4').replace('quicktime','mov'); } }
+      if(!ctype){ ctype=file.type||'application/octet-stream'; }
+      const finalMB=Math.round(file.size/1048576);
+      if(note) note.textContent='Uploading video '+(done+1)+'/'+files.length+'… ('+finalMB+'MB)';
       const path='vid/ci_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)+'.'+ext;
       const up=await stUpload_(path, file, ctype);
-      if(!up.ok){ throw new Error(up.status+(up.text?(' '+up.text.slice(0,120)):'')); }
+      if(!up.ok){
+        if(String(up.status)==='413' || /too large|exceeded/i.test(up.text||'')){
+          throw new Error('still too large after compress — please record a shorter clip or send it manually in WhatsApp');
+        }
+        throw new Error(up.status+(up.text?(' '+up.text.slice(0,100)):''));
+      }
       arr.push({url:sbBase()+'/storage/v1/object/public/checkins/'+path});
     }catch(e){ if(note) note.textContent='Video upload failed: '+(e.message||e); return; }
     done++;
@@ -2002,22 +2059,37 @@ function prefillFromJob(){
   const leaseFrom=jobParam('lease_from'), leaseTo=jobParam('lease_to');
   const deposit=jobParam('deposit'), price=jobParam('price'), paid=jobParam('paid');
   if(mode==='delivery' || mode==='out'){
-    STATE.current=blankChecklist(); STATE.stage='out';
-    STATE.current.job_id=job;
-    STATE.current.customer_name=name; STATE.current.customer_contact=contact;
-    STATE.current.car_model=model; STATE.current.car_plate=plate;
-    STATE.current.lease_from=leaseFrom||''; STATE.current.lease_to=leaseTo||'';
-    STATE.current.deposit=deposit||''; STATE.current.leasing_price=price||'';
-    STATE.current.out_date=leaseFrom||STATE.current.out_date;
-    STATE.current.job_paid=(paid==='1');
-    // auto duration in days from lease_from -> lease_to
-    if(leaseFrom && leaseTo){
-      try{ const d1=new Date(leaseFrom), d2=new Date(leaseTo);
-        const days=Math.max(1,Math.round((d2-d1)/(1000*60*60*24)));
-        STATE.current.duration_days=days+' DAYS';
+    // try to reopen the EXISTING checklist for this job (so saved photos/signature aren't lost)
+    (async function(){
+      let existing=null;
+      try{
+        const r=await fetch(sbBase()+"/rest/v1/gp_checklists?job_id=eq."+encodeURIComponent(job)+"&select=*&order=created_at.desc&limit=1",{headers:sbHeaders()});
+        if(r.ok){ const rows=await r.json(); if(rows&&rows.length) existing=rows[0]; }
       }catch(e){}
-    }
-    showForm();
+      // also honour a local draft if it's newer/unsaved
+      if(existing){
+        var dr=loadDraftLocal(existing.id);
+        if(dr && dr.rec && confirm('Found unsaved work on this phone for this checklist (incl. signatures). Restore it?')){ existing=dr.rec; }
+        STATE.current=existing; STATE.stage='out';
+        showForm();
+      } else {
+        STATE.current=blankChecklist(); STATE.stage='out';
+        STATE.current.job_id=job;
+        STATE.current.customer_name=name; STATE.current.customer_contact=contact;
+        STATE.current.car_model=model; STATE.current.car_plate=plate;
+        STATE.current.lease_from=leaseFrom||''; STATE.current.lease_to=leaseTo||'';
+        STATE.current.deposit=deposit||''; STATE.current.leasing_price=price||'';
+        STATE.current.out_date=leaseFrom||STATE.current.out_date;
+        STATE.current.job_paid=(paid==='1');
+        if(leaseFrom && leaseTo){
+          try{ const d1=new Date(leaseFrom), d2=new Date(leaseTo);
+            const days=Math.max(1,Math.round((d2-d1)/(1000*60*60*24)));
+            STATE.current.duration_days=days+' DAYS';
+          }catch(e){}
+        }
+        showForm();
+      }
+    })();
     return true;
   }
   if(mode==='return' || mode==='in'){
