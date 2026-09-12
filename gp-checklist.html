@@ -142,6 +142,36 @@ var SB_URL = (typeof SUPABASE_URL!=='undefined' && SUPABASE_URL) || '';
 var SB_KEY = (typeof SUPABASE_ANON_KEY!=='undefined' && SUPABASE_ANON_KEY) ||
              (typeof SUPABASE_KEY!=='undefined' && SUPABASE_KEY) || '';
 function sbBase(){ return (SB_URL||'').replace(/\/rest\/v1\/?$/,''); }
+
+/* ===== REMOTE CONFIG + AUTO-UPDATE (fix things live from Supabase, no redeploy) ===== */
+var APP_BUILD = 121;                 // bump this in the file when you deploy; Supabase app_version drives refresh
+var GP_CFG = { checklist:{}, flags:{} };
+async function loadRemoteConfig(){
+  try{
+    var r = await fetch(sbBase()+'/rest/v1/gp_app_config?select=key,value', {headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    if(!r.ok) return;
+    var rows = await r.json(); var map={};
+    (rows||[]).forEach(function(x){ map[x.key]=x.value; });
+    if(map.checklist) GP_CFG.checklist=map.checklist;
+    if(map.flags) GP_CFG.flags=map.flags;
+    // auto-update: if Supabase says a newer version exists, clear caches + reload
+    var av = map.app_version||{};
+    var latest = parseInt(av.version,10)||0;
+    if(av.force_refresh || latest>APP_BUILD){
+      // avoid refresh loops: only refresh once per version
+      var seen = sessionStorage.getItem('gp_refreshed_for');
+      if(seen !== String(latest)){
+        sessionStorage.setItem('gp_refreshed_for', String(latest));
+        try{ if('caches' in window){ var ks=await caches.keys(); await Promise.all(ks.map(function(k){return caches.delete(k);})); } }catch(e){}
+        try{ if(navigator.serviceWorker){ var regs=await navigator.serviceWorker.getRegistrations(); regs.forEach(function(rg){rg.update();}); } }catch(e){}
+        location.reload(true);
+        return;
+      }
+    }
+  }catch(e){}
+}
+function cfgChecklist(k, dflt){ var v=(GP_CFG.checklist||{})[k]; return (v===undefined||v===null)?dflt:v; }
+loadRemoteConfig();
 /* Read the Hub's logged-in Supabase session token so RLS (authenticated-only) allows writes.
    Falls back to the anon key if no session is found. */
 function sbUserToken(){
@@ -1471,7 +1501,8 @@ function dataUrlToBlob_(dataUrl){
 async function stUpload_(path, blob, contentType){
   var tok=(typeof sbUserToken==='function' && sbUserToken()) || SB_KEY;
   var url=sbBase()+'/storage/v1/object/checkins/'+path;
-  var r=await fetch(url,{ method:'PUT',
+  var method = cfgChecklist('upload_method','PUT');   // live-switchable from Supabase if PUT ever misbehaves
+  var r=await fetch(url,{ method:method,
     headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+tok, 'Content-Type':contentType||'image/jpeg', 'x-upsert':'true', 'cache-control':'3600' },
     body:blob });
   var txt=''; if(!r.ok){ try{ txt=await r.text(); }catch(e){} }
