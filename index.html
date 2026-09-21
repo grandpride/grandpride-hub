@@ -164,10 +164,6 @@
     font-size:13px;letter-spacing:1px;color:var(--gold-soft);text-transform:uppercase}
   .sec-head::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(201,162,75,.4),transparent)}
   .sec-head:first-child{margin-top:0}
-  /* workflow step badge on tiles that are part of a sequence */
-  .tile .flowstep{position:absolute;top:6px;left:6px;background:var(--gold);color:#1c1810;font-size:11px;font-weight:800;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:2}
-  .tile .flowarr{position:absolute;bottom:6px;right:8px;color:var(--gold-soft);font-size:15px;opacity:.7;z-index:2}
-  .flow-hint{grid-column:1/-1;font-size:12px;color:var(--muted);margin:2px 2px 8px;display:flex;align-items:center;gap:6px}
 
   /* ============ INNER APP VIEW ============ */
   .app-view-head{
@@ -313,14 +309,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-<div id="bootSplash" style="position:fixed;inset:0;z-index:9999;background:#0b0b0b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px">
-  <div id="bootCrest" style="width:72px;height:72px"></div>
-  <div style="width:26px;height:26px;border:3px solid rgba(201,162,75,.25);border-top-color:#c9a94e;border-radius:50%;animation:bootspin .8s linear infinite"></div>
-</div>
-<style>@keyframes bootspin{to{transform:rotate(360deg)}}</style>
 
 <!-- ============ LOGIN ============ -->
-<div id="loginScreen" class="screen">
+<div id="loginScreen" class="screen active">
   <div class="login-card">
     <div class="crest" id="loginCrest"></div>
     <div class="brand-name display">Grandpride</div>
@@ -461,7 +452,6 @@
 /* The apps shown in the circular menu. Add/remove here as you build them. */
 /* Each app: svg = line icon now; logo = optional image URL you can add later (overrides svg) */
 const ICONS = {
-  marketing:'<svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
   attendance:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   joborder:'<svg viewBox="0 0 24 24"><path d="M4 7h16v12H4z"/><path d="M9 7V5h6v2"/><path d="M4 12h16"/></svg>',
   academy:'<svg viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M7 10v5c0 1 2.5 2 5 2s5-1 5-2v-5"/><path d="M21 8v5"/></svg>',
@@ -489,7 +479,6 @@ const APPS = [
   { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules', section:'Tools' },
   { id:'reminders',  label:'Reminders',  svg:ICONS.reminders,  logo:'', cat:'modules', section:'Tools' },
   { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'daily-task-log.html' },
-  { id:'marketing',  label:'Marketing Analysis', svg:ICONS.marketing, logo:'', cat:'modules', section:'Tools', link:'gp-marketing.html' },
   { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'staff-manager.html', adminOnly:true },
   { id:'minigames',  label:'Minigames', svg:ICONS.minigames, logo:'', cat:'modules', section:'Minigames', link:'gp-minigames.html' },
   { id:'joborder',   label:'Job Order',  svg:ICONS.joborder,   logo:'', cat:'grandlab', link:'grandlab_jobcard.html' },
@@ -498,15 +487,14 @@ const APPS = [
   { id:'stock',      label:'Stock Report', svg:ICONS.stock,    logo:'', cat:'grandlab', link:'stock-report.html' },
   { id:'mia',        label:'MIA - Sales Assistant', svg:ICONS.mia,        logo:'', cat:'grandlab', extUrl:'https://grandlab-mia.vercel.app' },
   { id:'jobboard',   label:'Job Board',  svg:ICONS.jobboard,   logo:'', cat:'grandlab', extUrl:'https://grandlab-board.jimmykuek94.workers.dev' },
-  { id:'gpjobs',      label:'GP Jobs',               svg:ICONS.gpbooking,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-jobs.html', flow:1 },
-  { id:'gpagreement', label:'GP Agreement',          svg:ICONS.gpagreement, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-agreement.html', flow:2 },
-  { id:'gpchecklist', label:'GP Checklist',          svg:ICONS.gpchecklist, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-checklist.html', flow:3 },
-  { id:'gpdeposit',   label:'GP Deposit Return',     svg:ICONS.gpdeposit,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-deposit-return.html', flow:4 },
-  { id:'gpbooking',   label:'GP Booking (old)',      svg:ICONS.gpbooking,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-booking.html' },
+  { id:'gpbooking',   label:'GP Booking',            svg:ICONS.gpbooking,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-booking.html' },
   { id:'gpappt',      label:'GP Appointment',        svg:ICONS.gpappt,      logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-appointment.html' },
+  { id:'gpagreement', label:'GP Agreement',          svg:ICONS.gpagreement, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-agreement.html' },
+  { id:'gpchecklist', label:'GP Checklist',          svg:ICONS.gpchecklist, logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-checklist.html' },
+  { id:'gpdeposit',   label:'GP Deposit Return',     svg:ICONS.gpdeposit,   logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-deposit-return.html' },
   { id:'gprecord',    label:'GP Record Summary',     svg:ICONS.gprecord,    logo:'', cat:'grandpride', section:'GP Car Rental', link:'gp-record-summary.html' },
   { id:'gpdaily',     label:'GP Daily Update',       svg:ICONS.gpdaily,     logo:'', cat:'grandpride', section:'GP Vehicle Status', link:'gp-daily-update.html' },
-  { id:'gpfleet',     label:'GP Vehicle Fleet',      svg:ICONS.gpfleet,     logo:'', cat:'grandpride', section:'GP Vehicle Status', link:'gp-fleet.html' },
+  { id:'gpfleet',     label:'GP Vehicle Fleet',      svg:ICONS.gpfleet,     logo:'', cat:'grandpride', section:'GP Vehicle Status', link:'gp-vehicle-fleet.html' },
   { id:'gpuse',       label:'GP Vehicle Use Log',    svg:ICONS.gpuse,       logo:'', cat:'grandpride', section:'GP Vehicle Status', link:'gp-vehicle-use.html' },
   { id:'gpchauffeur', label:'GP Chauffeur',          svg:ICONS.gpchauffeur, logo:'', cat:'grandpride', section:'GP Vehicle Status', link:'gp-chauffeur.html' },
   { id:'roro',        label:'RORO - Sales Assistant', svg:ICONS.roro,       logo:'', cat:'grandpride', section:'GP Sales', soon:true },
@@ -641,13 +629,23 @@ async function pullHubDataFromCloud(){
   // leave
   const lv = await SUPA.all('gp_leave');
   if(lv.ok){ lv.data.forEach(row=>{ DB.leaveReqs[row.username] = Array.isArray(row.rec)?row.rec:(row.rec?row.rec:[]); }); }
-  // attendance
-  const at = await SUPA.all('gp_attendance');
-  if(at.ok){
-    at.data.forEach(row=>{
+  // attendance — fetch RECENT only (last 120 days). The full table has grown past the
+  // 1000-row default cap, which was truncating today's fresh punches on reload.
+  try{
+    const cutoff = new Date(Date.now()-120*24*60*60*1000).toISOString().slice(0,10);
+    let atRows = [];
+    if(sb){
+      const q = await sb.from('gp_attendance').select('username,date_key,rec').gte('date_key', cutoff).limit(5000);
+      if(!q.error && q.data) atRows = q.data;
+    }
+    if(!atRows.length){ const at = await SUPA.all('gp_attendance'); if(at.ok) atRows = at.data; }
+    atRows.forEach(row=>{
       if(!DB.attendance[row.username]) DB.attendance[row.username]={};
       DB.attendance[row.username][row.date_key] = row.rec || {};
     });
+  }catch(e){
+    const at = await SUPA.all('gp_attendance');
+    if(at.ok){ at.data.forEach(row=>{ if(!DB.attendance[row.username]) DB.attendance[row.username]={}; DB.attendance[row.username][row.date_key] = row.rec || {}; }); }
   }
   // assignments
   const asg = await SUPA.all('gp_assign');
@@ -885,12 +883,10 @@ async function tryAutoLogin(){
     try{ await pullHubDataFromCloud(); }catch(e){ console.warn('pullHubData failed', e); }
     renderHub();
     show('hubScreen');
-    hideBootSplash();
     maybeShowPushBanner();
     return true;
   }catch(e){ return false; }
 }
-function hideBootSplash(){ const s=document.getElementById('bootSplash'); if(s){ s.style.opacity='0'; s.style.transition='opacity .25s'; setTimeout(()=>{ s.style.display='none'; },260); } }
 
 
 /* ================= NAV ================= */
@@ -971,13 +967,6 @@ function renderTiles(cat){
       head.textContent = app.section;
       grid.appendChild(head);
       lastSection = app.section;
-      // if this section has a numbered workflow, show a hint line
-      if(APPS.some(a=>a.cat===cat && a.section===app.section && a.flow)){
-        const hint=document.createElement('div');
-        hint.className='flow-hint';
-        hint.innerHTML='<span style="color:var(--gold)">➊→➍</span> Follow the steps in order';
-        grid.appendChild(hint);
-      }
     }
     const allowed = current.apps.includes(app.id) || current.role==='Admin' || app.id==='reminders' || app.id==='minigames';
     if(!allowed) lockedCount++;
@@ -986,12 +975,8 @@ function renderTiles(cat){
     const iconHtml = app.logo
       ? `<img src="${app.logo}" alt="" style="width:40px;height:40px;object-fit:contain">`
       : app.svg;
-    const flowBadge = app.flow ? `<div class="flowstep">${app.flow}</div>` : '';
-    const maxFlow = Math.max(0,...APPS.filter(a=>a.cat===cat && a.section===app.section && a.flow).map(a=>a.flow));
-    const flowArr = (app.flow && app.flow<maxFlow) ? `<div class="flowarr">→</div>` : '';
     tile.innerHTML = `
       ${allowed?'':'<div class="lock">🔒</div>'}
-      ${flowBadge}${flowArr}
       <div class="ic">${iconHtml}</div>
       <div class="lb">${app.label}</div>`;
     if(allowed){ tile.addEventListener('click',()=>openApp(app)); }
@@ -1617,21 +1602,6 @@ function chauffeurCfg(username){
   const c = (DB.chauffeurCfg && DB.chauffeurCfg[username]) || {};
   return { workHours:+c.workHours||10, lunchHours:+c.lunchHours||1.5, normalRate:+c.normalRate||0, otRate:+c.otRate||0 };
 }
-/* Which attendance day is 'active' for this user right now.
-   If yesterday has an open clock-in (in, not out) and today hasn't started,
-   we stay on yesterday so an after-midnight clock-out completes that shift.
-   Works for 6am staff and 8am chauffeurs alike (no fixed time cutoff). */
-function activeAttKey(username){
-  username = username || (current && current.username);
-  const k = todayKey();
-  if(!username || !DB.attendance || !DB.attendance[username]) return k;
-  const y=new Date(); y.setDate(y.getDate()-1);
-  const yk=todayKey(y);
-  const yrec=DB.attendance[username][yk];
-  const trec=DB.attendance[username][k];
-  if(yrec && yrec.amIn && !yrec.pmOut && !(trec && trec.amIn)) return yk;
-  return k;
-}
 function todayKey(d=new Date()){
   // use LOCAL date parts (toISOString uses UTC which rolls back a day before 08:00 in +08:00)
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
@@ -1742,7 +1712,7 @@ function recomputeDay(username, rec){
       am = asgStart;
     }
     if(pm==null){ rec.otMins=0; rec.workMins=0; rec.status='Working'; return rec; }
-    let span = pm - am; if(span<0 || rec.overnight) span += 24*60;
+    let span = pm - am; if(span<0) span += 24*60;
     let lunch = (lo!=null && li!=null) ? (li-lo<0?(li-lo+24*60):(li-lo)) : Math.round(cfg.lunchHours*60);
     let worked = Math.max(0, span - lunch);
     rec.workMins = worked;
@@ -1755,7 +1725,6 @@ function recomputeDay(username, rec){
     const wh=(worked/60).toFixed(1), oth=(ot/60).toFixed(1);
     let st = dow===0 ? ('Sunday OT '+wh+'h') : (ot>0 ? (wh+'h ('+oth+'h OT)') : (wh+'h'));
     if(rec.lateMins>0) st += ' · Late '+rec.lateMins+'m';
-    if(pm < am || rec.overnight) st += ' · Overnight';   // clocked out next day
     rec.status = st;
     return rec;
   }
@@ -1766,22 +1735,9 @@ function recomputeDay(username, rec){
   if(am!=null) late += morningLate(am);
   late += lunchLate(lo, li);
   const entitled = !!(DB.otStaff && DB.otStaff[username]);
-  const overnight = !!rec.overnight || (pm!=null && am!=null && pm < am);
-  // for an overnight shift, compute OT from total hours worked across midnight,
-  // not from the clock-out time of day (which would look tiny/early otherwise)
-  let ot;
-  if(overnight && pm!=null && am!=null){
-    let span = pm - am; if(span<0 || rec.overnight) span += 24*60;
-    const lunch = (lo!=null && li!=null) ? Math.max(0, (li-lo<0?li-lo+24*60:li-lo)) : 0;
-    const worked = Math.max(0, span - lunch);
-    // standard day ~9h (8h + 1h lunch already removed) → OT beyond 8h worked
-    ot = Math.max(0, worked - 8*60);
-    rec.workMins = worked;
-  } else {
-    ot = otMinutes(pm, entitled);
-  }
-  // early = clocked out before 6:30pm (only when they HAVE clocked out) — never for overnight
-  const early = overnight ? 0 : earlyMinutes(pm);
+  const ot = otMinutes(pm, entitled);
+  // early = clocked out before 6:30pm (only when they HAVE clocked out)
+  const early = earlyMinutes(pm);
   rec.lateMins = late;
   rec.otMins = ot;
   rec.earlyMins = early;
@@ -1795,7 +1751,6 @@ function recomputeDay(username, rec){
   if(late>0) parts.push(late>=60 ? ('Late '+(late/60)+' hr'+(late>60?'s':'')) : ('Late '+late+' min'));
   if(early>0) parts.push(early>=60 ? ('Early '+(early/60)+' hr'+(early>60?'s':'')) : ('Early '+early+' min'));
   if(ot>0) parts.push('OT '+fmtLate(ot));
-  if(overnight) parts.push('Overnight');   // clocked out next day
   rec.status = parts.length ? parts.join(' · ') : 'On Time';
   return rec;
 }
@@ -1840,16 +1795,11 @@ function renderAttendance(){
 function renderAttClock(){
   const wrap=document.getElementById('attBody');
   const day=new Date().getDay(); // 0 Sun
+  const k=todayKey();
   if(!DB.attendance[current.username]) DB.attendance[current.username]={};
-  // overnight: if yesterday's shift is still open, stay on it so the worker
-  // clocks OUT to yesterday instead of starting a new day.
-  const k=activeAttKey(current.username);
-  const overnightOpen=(k!==todayKey());
   const rec = DB.attendance[current.username][k] || {};
-  const dateStr = overnightOpen
-    ? ('Shift from '+new Date(k).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+' — still open')
-    : new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
-  if(day===0 && !isChauffeur(current.username) && !overnightOpen){
+  const dateStr = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  if(day===0 && !isChauffeur(current.username)){
     wrap.innerHTML = `
       <div class="clock-time" id="liveClock">--:--</div>
       <div class="clock-date">${dateStr} — Day Off</div>
@@ -2048,9 +1998,17 @@ function getLocOnce(){
   });
 }
 
-function finishPunch(photo, loc){
+async function finishPunch(photo, loc){
   const recs = DB.attendance[current.username] || (DB.attendance[current.username]={});
-  const k = activeAttKey(current.username);
+  const k = todayKey();
+  // pull the authoritative today record from the DB first, so a stale local cache
+  // (e.g. after reopening the app) can't reset an existing clock-in / wrong-sequence punch
+  try{
+    if(sb){
+      const q = await sb.from('gp_attendance').select('rec').eq('id', current.username+'|'+k).maybeSingle();
+      if(!q.error && q.data && q.data.rec){ recs[k] = q.data.rec; }
+    }
+  }catch(e){}
   const now = fmtTime(new Date());
   let rec = recs[k] || (recs[k]={ amIn:null,lunchOut:null,lunchIn:null,pmOut:null,leave:null,lateMins:0,otMins:0,status:'',offsite:{} });
   rec._dateKey = k;
@@ -2059,13 +2017,7 @@ function finishPunch(photo, loc){
   if(!rec.amIn){ rec.amIn=now; punch='Morning In'; toast('Clocked in — '+now); }
   else if(!rec.lunchOut){ rec.lunchOut=now; punch='Lunch Out'; toast('Lunch out — '+now); }
   else if(!rec.lunchIn){ rec.lunchIn=now; punch='Lunch In'; toast('Welcome back — '+now); }
-  else if(!rec.pmOut){
-    rec.pmOut=now; punch='Evening Out'; toast('Clocked out — '+now);
-    // If we're clocking out on a LATER calendar date than the shift's date,
-    // this shift crossed midnight — flag it so hours/OT compute correctly
-    // regardless of whether the clock-time looks earlier or later.
-    if(k !== todayKey()) rec.overnight = true;
-  }
+  else if(!rec.pmOut){ rec.pmOut=now; punch='Evening Out'; toast('Clocked out — '+now); }
   if(photo){ rec.offsite[punch]={photo, lat:loc&&loc.lat, lng:loc&&loc.lng, dist:loc?Math.round(loc.dist):null, address:loc&&loc.address, time:now}; }
   recomputeDay(current.username, rec);
   // Notify the people this staff reports to — all punches
@@ -2252,7 +2204,10 @@ function renderAttRecord(){
   // sessions/devices (or that didn't persist locally) always show here.
   if(useCloud && SUPA.isReady() && !renderAttRecord._refreshing){
     renderAttRecord._refreshing = true;
-    SUPA.all('gp_attendance').then(at=>{
+    const _refresh = sb
+      ? sb.from('gp_attendance').select('username,date_key,rec').eq('username',current.username).limit(2000).then(q=>({ok:!q.error, data:q.data||[]}))
+      : SUPA.all('gp_attendance');
+    Promise.resolve(_refresh).then(at=>{
       renderAttRecord._refreshing = false;
       if(at.ok){
         let changed=false;
@@ -2333,9 +2288,9 @@ function renderAttSummary(){
   Object.keys(recs).forEach(k=>{
     const r=recs[k];
     if(k.startsWith(yr)){
-      if(r.leave==='AL') alUsed += (r.halfLeave?0.5:1);
-      else if(r.leave==='MC') mcUsed += (r.halfLeave?0.5:1);
-      else if(r.leave==='EL') elUsed += (r.halfLeave?0.5:1);
+      if(r.leave==='AL') alUsed++;
+      else if(r.leave==='MC') mcUsed++;
+      else if(r.leave==='EL') elUsed++;
     }
     if(inPayrollPeriod(k, period)){
       if(r.leave==='Absent') absent++;
@@ -2463,15 +2418,8 @@ function renderAttLeave(){
         <option value="Paternity">Paternity Leave</option>
         <option value="Unpaid">Unpaid Leave</option>
       </select>
-      <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
         <label class="small" style="color:var(--grey)"><input type="checkbox" id="lvRangeChk"> Date range</label>
-        <label class="small" style="color:var(--grey)"><input type="checkbox" id="lvHalfChk"> Half day (½)</label>
-      </div>
-      <div class="ded-row" id="lvHalfWhichRow" style="display:none"><span>Which half</span>
-        <select class="att-input" style="margin:0;width:160px" id="lvHalfWhich">
-          <option value="AM">Morning (AM)</option>
-          <option value="PM">Afternoon (PM)</option>
-        </select>
       </div>
       <div class="ded-row"><span id="lvFromLbl">Date</span><input class="att-input" style="margin:0;width:160px" id="lvFrom" type="date" value="${todayKey()}"></div>
       <div class="ded-row" id="lvToRow" style="display:none"><span>To</span><input class="att-input" style="margin:0;width:160px" id="lvTo" type="date" value="${todayKey()}"></div>
@@ -2489,13 +2437,8 @@ function renderAttLeave(){
   // wiring
   const typeSel=document.getElementById('lvType');
   const rangeChk=document.getElementById('lvRangeChk');
-  const halfChk=document.getElementById('lvHalfChk');
   const fromEl=document.getElementById('lvFrom'), toEl=document.getElementById('lvTo');
   const updDays=()=>{
-    if(halfChk && halfChk.checked){
-      document.getElementById('lvDays').textContent = '½ day (0.5) — deducts half from your leave';
-      return;
-    }
     const f=fromEl.value, t=rangeChk.checked?toEl.value:fromEl.value;
     const n=countLeaveDays(f,t);
     document.getElementById('lvDays').textContent = n>0 ? (n+' working day'+(n>1?'s':'')+' (excludes Sundays)') : '';
@@ -2503,14 +2446,6 @@ function renderAttLeave(){
   const updType=()=>{
     document.getElementById('lvMcBox').style.display = typeSel.value==='MC'?'block':'none';
   };
-  if(halfChk) halfChk.addEventListener('change',()=>{
-    const on=halfChk.checked;
-    document.getElementById('lvHalfWhichRow').style.display = on?'flex':'none';
-    // half day is single-day only — turn off range and disable it
-    if(on){ rangeChk.checked=false; document.getElementById('lvToRow').style.display='none'; document.getElementById('lvFromLbl').textContent='Date'; }
-    rangeChk.disabled = on;
-    updDays();
-  });
   rangeChk.addEventListener('change',()=>{
     document.getElementById('lvToRow').style.display=rangeChk.checked?'flex':'none';
     document.getElementById('lvFromLbl').textContent=rangeChk.checked?'From':'Date';
@@ -2611,17 +2546,14 @@ function getSignature(who){
 async function submitLeave(){
   attData();
   const type=document.getElementById('lvType').value;
-  const halfEl=document.getElementById('lvHalfChk');
-  const isHalf = halfEl && halfEl.checked;
-  const halfWhich = isHalf ? (document.getElementById('lvHalfWhich').value||'AM') : '';
-  const rangeOn=!isHalf && document.getElementById('lvRangeChk').checked;
+  const rangeOn=document.getElementById('lvRangeChk').checked;
   const from=document.getElementById('lvFrom').value;
   const to=rangeOn?document.getElementById('lvTo').value:from;
   const reason=document.getElementById('lvReason').value.trim();
   if(!from){ toast('Pick a date'); return; }
   if(rangeOn && (!to || new Date(to)<new Date(from))){ toast('End date must be after start'); return; }
   if(!reason){ toast('Please enter a reason'); return; }
-  const days = isHalf ? 0.5 : countLeaveDays(from,to);
+  const days=countLeaveDays(from,to);
   if(days<=0){ toast('No working days selected'); return; }
   if(current.role!=='Admin'){
     const ent=leaveEntitlement(DB.joinDates && DB.joinDates[current.username], DB.confirmedDates && DB.confirmedDates[current.username]);
@@ -2638,7 +2570,7 @@ async function submitLeave(){
   const sig = await getSignature(current.name+' (Staff)');
   if(!sig){ toast('Signature required to submit'); return; }
   if(!DB.leaveReqs[current.username]) DB.leaveReqs[current.username]=[];
-  DB.leaveReqs[current.username].unshift({ from, to, days, type, reason, status:'Pending', proof, submitted:todayKey(), staffSig:sig, half:isHalf?halfWhich:'' });
+  DB.leaveReqs[current.username].unshift({ from, to, days, type, reason, status:'Pending', proof, submitted:todayKey(), staffSig:sig });
   // Notify the people this staff reports to that a leave application needs review
   notifySupervisors(current.username,
     '📋 Leave application — ' + current.name,
@@ -2691,8 +2623,7 @@ async function setLeaveStatus(ref, status){
           const ex = DB.attendance[uname][k] || {};
           DB.attendance[uname][k]={
             amIn:ex.amIn||null, lunchOut:ex.lunchOut||null, lunchIn:ex.lunchIn||null, pmOut:ex.pmOut||null,
-            status:r.type + (r.half?(' ½'+r.half):''), lateMins:ex.lateMins||0, otMins:ex.otMins||0, leave:r.type, _dateKey:k,
-            halfLeave: r.half || ''
+            status:r.type, lateMins:ex.lateMins||0, otMins:ex.otMins||0, leave:r.type, _dateKey:k
           };
           // send a dedicated leave-day row to the staff's sheet tab
           syncAttendance(uname, k, DB.attendance[uname][k], {punch:'Leave ('+r.type+')', time:''});
@@ -3085,21 +3016,6 @@ async function syncAllAttendanceToSheet(){
   const url = DB.attSettings && DB.attSettings.gsUrl;
   if(!url){ toast('Set the Sheets URL first'); return; }
   attData();
-  // Pull the COMPLETE attendance history straight from Supabase first, so the
-  // sync isn't limited to whatever happens to be in local memory. This is what
-  // guarantees every staff's every date gets pushed (fixes missing dates).
-  toast('Loading all records from cloud…');
-  if(useCloud && SUPA.isReady()){
-    try{
-      const at = await SUPA.all('gp_attendance');
-      if(at.ok){
-        at.data.forEach(row=>{
-          if(!DB.attendance[row.username]) DB.attendance[row.username]={};
-          DB.attendance[row.username][row.date_key] = row.rec || {};
-        });
-      }
-    }catch(e){ console.warn('cloud pull for sync failed', e); }
-  }
   let count=0, staff=0;
   const usernames=Object.keys(DB.attendance||{});
   if(!usernames.length){ toast('No records to sync'); return; }
@@ -3113,9 +3029,8 @@ async function syncAllAttendanceToSheet(){
       try{
         await syncAttendance(username, dateKey, rec, null);
         count++;
-        // wait longer so each locked sheet-write commits before the next fires
-        // (prevents rows being dropped during a big backfill)
-        await new Promise(r=>setTimeout(r, 400));
+        // small delay so we don't flood the Apps Script
+        await new Promise(r=>setTimeout(r, 120));
       }catch(e){ console.warn('backfill failed', username, dateKey, e); }
     }
   }
@@ -3143,7 +3058,7 @@ async function syncAttendance(username, dateKey, rec, ev){
         body: JSON.stringify({
           type:'punch', sheet: name, username, name, date:dateKey, periodMonth: payrollMonth(dateKey, username),
           punch: ev&&ev.punch ? ev.punch : '', punchTime: ev&&ev.time ? ev.time : '',
-          amIn:rec.amIn||'', lunchOut:rec.lunchOut||'', lunchIn:rec.lunchIn||'', pmOut:(rec.pmOut||'')+(rec.overnight&&rec.pmOut?' (+1)':''),
+          amIn:rec.amIn||'', lunchOut:rec.lunchOut||'', lunchIn:rec.lunchIn||'', pmOut:rec.pmOut||'',
           status:rec.status||'', lateMins:rec.lateMins||0, otMins:rec.otMins||0, earlyMins:rec.earlyMins||0, leave:rec.leave||'',
           // chauffeur extras (blank for normal staff)
           isChauffeur: chauffeur ? 'Yes' : '',
@@ -3281,8 +3196,6 @@ function toast(msg){
 
 /* ================= INIT ================= */
 async function init(){
-  // show logo in the boot splash immediately (LOGO const is defined up top)
-  try{ const bc0=document.getElementById('bootCrest'); if(bc0 && typeof LOGO!=='undefined') bc0.innerHTML='<img src="'+LOGO+'" alt="" style="width:72px;height:72px;object-fit:contain">'; }catch(e){}
   // connect to Supabase (shared helper). Google Sheets sync still runs separately.
   try{
     useCloud = await SUPA.init();
@@ -3321,7 +3234,6 @@ async function init(){
 
   // ---- bind all buttons here (preview sandboxes strip inline onclick) ----
   const lc=document.getElementById('loginCrest'); if(lc) lc.innerHTML = `<img src="${LOGO}" alt="Grandpride">`;
-  const bc=document.getElementById('bootCrest'); if(bc) bc.innerHTML = `<img src="${LOGO}" alt="" style="width:72px;height:72px;object-fit:contain">`;
   const bind=(id,fn)=>{ const e=document.getElementById(id); if(e) e.addEventListener('click',fn); };
   bind('btnEnter', doLogin);
   bind('btnLogout', logout);
@@ -3350,15 +3262,10 @@ async function init(){
 
   // Invite / password-recovery links must set a password FIRST (before auto-login)
   const landed = await handleInviteLanding();
-  if(landed){ hideBootSplash(); return; } // stop here — show set-password screen, don't auto-login
+  if(landed) return; // stop here — show set-password screen, don't auto-login
 
   // Remembered device: restore Supabase Auth session if still valid
-  const loggedIn = await tryAutoLogin();
-  if(!loggedIn){
-    // not logged in — now reveal the login screen and hide the splash
-    show('loginScreen');
-    hideBootSplash();
-  }
+  await tryAutoLogin();
 }
 init();
 </script><script>
