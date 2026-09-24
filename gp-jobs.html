@@ -534,6 +534,10 @@ function editCustomer(id){
     <input id="c_idno" value="${v(isco?'company_reg':'nric')}">
     <label>Address</label>
     <textarea id="c_address">${v('address')}</textarea>
+    <div class="row2">
+      <div><label>Usual pickup</label><input id="c_pickup" value="${v('pickup_address')}"></div>
+      <div><label>Usual drop-off</label><input id="c_dropoff" value="${v('dropoff_address')}"></div>
+    </div>
     <label><input type="checkbox" id="c_returning" ${c.is_returning?'checked':''} style="width:auto;display:inline;margin-right:6px">Returning customer</label>
     <button class="btn" style="margin-top:14px" onclick="saveCustomer(${id?("'"+id+"'"):'null'})">Save customer</button>
     ${id?`<button class="btn danger" style="margin-top:8px" onclick="delCustomer('${id}')">Delete</button>`:''}
@@ -551,7 +555,10 @@ async function saveCustomer(id){
   const row={
     cust_type:$('c_type').value, name, contact:$('c_contact').value||null, email:$('c_email').value||null,
     nric: co?null:(($('c_idno').value||'').toUpperCase()||null), company_reg: co?(($('c_idno').value||'').toUpperCase()||null):null,
-    address:($('c_address').value||'').toUpperCase()||null, is_returning:$('c_returning').checked, updated_at:new Date().toISOString()
+    address:($('c_address').value||'').toUpperCase()||null,
+    pickup_address:(($('c_pickup')&&$('c_pickup').value)||'').trim()||null,
+    dropoff_address:(($('c_dropoff')&&$('c_dropoff').value)||'').trim()||null,
+    is_returning:$('c_returning').checked, updated_at:new Date().toISOString()
   };
   let res;
   if(id){ res=await sb.from('gp_customers').update(row).eq('id',id); }
@@ -591,6 +598,9 @@ function filterCustPick(){
 function chooseCustomer(id){
   const c=CUSTOMERS.find(x=>x.id===id);
   JOB_DRAFT.customer_id=c.id; JOB_DRAFT.customer_name=c.name; JOB_DRAFT.customer_contact=c.contact||'';
+  // prefill the usual delivery points, but never overwrite something already typed
+  if(!JOB_DRAFT.pickup_location && c.pickup_address) JOB_DRAFT.pickup_location=c.pickup_address;
+  if(!JOB_DRAFT.dropoff_location && c.dropoff_address) JOB_DRAFT.dropoff_location=c.dropoff_address;
   reopenJobForm();
 }
 function quickAddCustomer(){
@@ -601,12 +611,22 @@ function quickAddCustomer(){
     <select id="qc_type"><option value="individual">Individual</option><option value="company">Company</option></select>
     <label>Name</label><input id="qc_name" autofocus>
     <label>Contact</label><input id="qc_contact" inputmode="tel">
+    <label>NRIC / Passport / SSM</label><input id="qc_idno" placeholder="Needed for the leasing agreement">
+    <label>Address</label><textarea id="qc_address" placeholder="Needed for the leasing agreement"></textarea>
+    <label>Usual pickup address</label><input id="qc_pickup" placeholder="Optional \u2014 prefills new jobs">
+    <label>Usual drop-off address</label><input id="qc_dropoff" placeholder="Optional \u2014 prefills new jobs">
     <button class="btn" style="margin-top:14px" onclick="saveQuickCustomer()">Add + use</button>
   `);
 }
 async function saveQuickCustomer(){
   const name=$('qc_name').value.trim().toUpperCase(); if(!name){ toast('Name required'); return; }
-  const row={cust_type:$('qc_type').value,name,contact:$('qc_contact').value||null};
+  const co=$('qc_type').value==='company';
+  const idno=(($('qc_idno')&&$('qc_idno').value)||'').trim().toUpperCase()||null;
+  const row={cust_type:$('qc_type').value,name,contact:$('qc_contact').value||null,
+    nric: co?null:idno, company_reg: co?idno:null,
+    address: (($('qc_address')&&$('qc_address').value)||'').trim().toUpperCase()||null,
+    pickup_address: (($('qc_pickup')&&$('qc_pickup').value)||'').trim()||null,
+    dropoff_address: (($('qc_dropoff')&&$('qc_dropoff').value)||'').trim()||null};
   const res=await sb.from('gp_customers').insert(row).select().single();
   if(res.error){ toast('Failed: '+res.error.message); return; }
   CUSTOMERS.push(res.data);
@@ -712,6 +732,8 @@ function confirmNewCustomer(){
     <p class="muted" style="font-size:13px;margin:0 0 10px">Not found in your list. Add as a new customer?</p>
     <label>Name</label><input id="pc_name" value="${esc(p.name||'')}">
     <label>Contact</label><input id="pc_contact" value="${esc(p.contact||'')}">
+    <label>NRIC / Passport</label><input id="pc_idno" placeholder="Needed for the leasing agreement">
+    <label>Address</label><textarea id="pc_address" placeholder="Needed for the leasing agreement"></textarea>
     <button class="btn" style="margin-top:12px" onclick="savePastedCustomer()"><i class="ti ti-user-plus"></i> Add + use</button>
     <button class="btn sec" style="margin-top:8px" onclick="jobForm()">Skip — I'll choose</button>
   `);
@@ -719,7 +741,9 @@ function confirmNewCustomer(){
 async function savePastedCustomer(){
   const name=($('pc_name').value||'').trim().toUpperCase(); if(!name){ toast('Name required'); return; }
   const contact=($('pc_contact').value||'').trim()||null;
-  const row={cust_type:'individual',name,contact};
+  const row={cust_type:'individual',name,contact,
+    nric: (($('pc_idno')&&$('pc_idno').value)||'').trim().toUpperCase()||null,
+    address: (($('pc_address')&&$('pc_address').value)||'').trim().toUpperCase()||null};
   const res=await sb.from('gp_customers').insert(row).select().single();
   if(res.error){ toast('Failed: '+res.error.message); return; }
   CUSTOMERS.push(res.data);
@@ -1189,6 +1213,19 @@ function agreementCard(j){
   </div>`;
 }
 async function genAgreement(id, force){
+  // Catch blanks BEFORE the PDF exists — afterwards the copy is already in the group.
+  const _j = JOBS.find(x=>x.id===id);
+  const _c = _j && CUSTOMERS.find(x=>x.id===_j.customer_id);
+  if(_c){
+    const gaps=[];
+    if(!_c.nric && !_c.company_reg) gaps.push('\u2022 NRIC / Passport / SSM');
+    if(!_c.address) gaps.push('\u2022 Address');
+    if(gaps.length){
+      if(confirm('Missing for '+_c.name+':\n\n'+gaps.join('\n')+'\n\nThese will print BLANK on the agreement.\n\nFill them in now? (Cancel to generate anyway)')){
+        editCustomer(_c.id); return;
+      }
+    }
+  }
   if(force && !confirm('Generate a REPLACEMENT agreement for this job?\n\nThe previous PDF stays in the Telegram group \u2014 make sure nobody signs the wrong copy.')) return;
   const btn=document.getElementById('agrBtn_'+id);
   if(btn){ if(btn.disabled) return; btn.disabled=true; btn.textContent='Generating\u2026'; }
