@@ -954,8 +954,19 @@ async function saveJob(){
     if(res.data) jobId=res.data.id;
   }
   if(res.error){ toast('Save failed: '+res.error.message); return; }
+  const wasNew = !j.id;
   toast(j.id?'Job saved ✓':'Job created ✓');
   closeModal(); await loadAll();
+  /* A new car job almost always needs its agreement straight away, so offer it
+     here rather than making ops find the job again. The job row has to exist
+     first — that's what the agreement is keyed to. */
+  if(wasNew && jobId && serviceHasCar(sv)){
+    const nj = JOBS.find(x=>x.id===jobId);
+    if(nj && !nj.agreement_at && confirm('Job created ✓\n\nGenerate the leasing agreement now?')){
+      await genAgreement(jobId,false); return;
+    }
+    if(nj) openJob(jobId);
+  }
 }
 async function cancelJob(id){
   if(!confirm('Cancel this job?')) return;
