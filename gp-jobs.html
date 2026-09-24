@@ -770,6 +770,23 @@ const NO_CAR_SERVICES=['bodyguard','hire_driver'];
 function serviceHasCar(sv){ return (SERVICE_FIELDS[sv]||[]).includes('car'); }
 
 /* one field -> HTML snippet. j is the draft. */
+/* Auto-fill grand total (price + deposit) and day count (end - start).
+   Either field stops auto-updating the moment someone types in it, and an
+   existing saved value counts as typed so editing a job never rewrites it. */
+function autoJob(){
+  const el=id=>document.getElementById(id);
+  const n=v=>{ const x=parseFloat(String(v||'').replace(/[^0-9.]/g,'')); return isNaN(x)?0:x; };
+  const tot=el('j_total');
+  if(tot && tot.dataset.manual!=='1'){
+    const t=n(el('j_price')&&el('j_price').value)+n(el('j_deposit')&&el('j_deposit').value);
+    tot.value = t ? String(t) : '';
+  }
+  const days=el('j_days'), sd=el('j_start_date'), ed=el('j_end_date');
+  if(days && days.dataset.manual!=='1' && sd && ed && sd.value && ed.value){
+    const diff=Math.round((new Date(ed.value)-new Date(sd.value))/86400000);
+    if(diff>0) days.value=String(diff);
+  }
+}
 function fieldHtml(key,j){
   const drvOpts=`<option value="">— none —</option>`+DRIVERS.map(d=>`<option value="${esc(d.username)}" ${j.driver_username===d.username?'selected':''}>${esc(d.name)}</option>`).join('');
   const subMonths=['12','24','36','48','60'];
@@ -794,20 +811,20 @@ function fieldHtml(key,j){
           <div class="hint" style="margin-top:4px">New car will be auto-added to Fleet on save. You can edit full details later in Fleet.</div>
         </div>`;
     }
-    case 'dates': return `<div class="row2"><div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div><div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div></div><div class="row2"><div><label>End date</label><input type="date" id="j_end_date" value="${esc(j.end_date||'')}"></div><div><label>End time</label><input type="time" id="j_end_time" value="${esc(to24(j.end_time)||'')}"></div></div>`;
+    case 'dates': return `<div class="row2"><div><label>Start date</label><input type="date" id="j_start_date" onchange="autoJob()" value="${esc(j.start_date||'')}"></div><div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div></div><div class="row2"><div><label>End date</label><input type="date" id="j_end_date" onchange="autoJob()" value="${esc(j.end_date||'')}"></div><div><label>End time</label><input type="time" id="j_end_time" value="${esc(to24(j.end_time)||'')}"></div></div>`;
     case 'start_dt': return `<div class="row2"><div><label>Start date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}"></div><div><label>Start time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}"></div></div>`;
     case 'pickup_date': return `<label>Pickup date</label><input type="date" id="j_start_date" value="${esc(j.start_date||'')}">`;
     case 'pickup_time': return `<label>Pickup time</label><input type="time" id="j_start_time" value="${esc(to24(j.start_time)||'')}">`;
     case 'driver': return `<label>Assigned driver</label><select id="j_driver">${drvOpts}</select>`;
-    case 'price': return `<label>Price (RM)</label><input id="j_price" inputmode="decimal" value="${esc(j.price||'')}">`;
-    case 'rate': return `<label>Rate (RM)</label><input id="j_price" inputmode="decimal" value="${esc(j.price||'')}">`;
-    case 'deposit': return `<label>Deposit (RM)${key==='deposit'?' <span class="muted">(optional)</span>':''}</label><input id="j_deposit" inputmode="decimal" value="${esc(j.deposit_amount||'')}">`;
-    case 'grand_total': return `<label>Grand total (RM)</label><input id="j_total" inputmode="decimal" value="${esc(j.grand_total||'')}">`;
+    case 'price': return `<label>Price (RM)</label><input id="j_price" inputmode="decimal" oninput="autoJob()" value="${esc(j.price||'')}">`;
+    case 'rate': return `<label>Rate (RM)</label><input id="j_price" inputmode="decimal" oninput="autoJob()" value="${esc(j.price||'')}">`;
+    case 'deposit': return `<label>Deposit (RM)${key==='deposit'?' <span class="muted">(optional)</span>':''}</label><input id="j_deposit" inputmode="decimal" oninput="autoJob()" value="${esc(j.deposit_amount||'')}">`;
+    case 'grand_total': return `<label>Grand total (RM) <span class="muted">(auto)</span></label><input id="j_total" inputmode="decimal" oninput="this.dataset.manual='1'" ${j.grand_total?'data-manual="1"':''} value="${esc(j.grand_total||'')}">`;
     case 'invoice': return `<label>Invoice to</label><input id="j_invoice" value="${esc(j.invoice_to||'')}">`;
     case 'ot_rate': return `<label>OT rate (RM/hr)</label><input id="j_ot" inputmode="decimal" value="${esc(j.ot_rate||'')}">`;
     case 'ot_hour': return `<label>OT per hour rate (RM/hr)</label><input id="j_ot" inputmode="decimal" value="${esc(j.ot_rate||'')}">`;
     case 'duration': return `<label>Duration (hours)</label><input id="j_hours" inputmode="decimal" value="${esc(j.duration_hours||'')}">`;
-    case 'days': return `<label>How many days</label><input id="j_days" inputmode="decimal" value="${esc(j.rental_days||'')}">`;
+    case 'days': return `<label>How many days <span class="muted">(auto)</span></label><input id="j_days" inputmode="decimal" oninput="this.dataset.manual='1'" ${j.rental_days?'data-manual="1"':''} value="${esc(j.rental_days||'')}">`;
     case 'mileage': return `<label>Mileage given (km)</label><input id="j_mileage" inputmode="decimal" value="${esc(j.mileage_given||'')}">`;
     case 'perkm': return `<label>Per km exceed (RM)</label><input id="j_perkm" inputmode="decimal" value="${esc(j.per_km_exceed||'')}">`;
     case 'pickup_loc': return `<label>Pickup location</label><input id="j_pickup_loc" value="${esc(j.pickup_location||'')}">`;
@@ -849,11 +866,52 @@ function jobFieldsHtml(sv,j){ return (SERVICE_FIELDS[sv]||SERVICE_FIELDS.rental)
 function onServiceChange(){
   const sv=$('j_service').value; JOB_DRAFT.service_type=sv;
   $('jobFields').innerHTML=jobFieldsHtml(sv,JOB_DRAFT);
+  autoJob();
 }
 function toggleOtherMonths(selId,otherId){ const s=$(selId),o=$(otherId); if(!s||!o)return; o.style.display=(s.value==='other')?'block':'none'; }
 function togglePickupMode(){ const m=$('j_pickup_mode'); const b=$('deliverBox'); if(m&&b) b.style.display=(m.value==='deliver')?'block':'none'; }
-function onFleetSelect(){ const sel=$('j_fleet'); const box=$('manualCarBox'); if(sel&&box) box.style.display=(sel.value==='__manual__')?'block':'none'; }
+function onFleetSelect(){ const sel=$('j_fleet'); const box=$('manualCarBox'); if(sel&&box) box.style.display=(sel.value==='__manual__')?'block':'none';
+  const ag=document.getElementById('agrFields'); if(ag) ag.innerHTML=agreementFieldsHtml(); }
 
+/* ===== Agreement details =====
+   The leasing agreement pulls from three tables: the job, the customer
+   (NRIC + address) and the fleet car (chassis, engine, year, value).
+   The job form only ever asked about the job, which is why agreements came
+   out with blanks. These inputs write back to gp_customers / gp_fleet on
+   save, so each one is keyed once and reused for every future job. */
+function agreementFieldsHtml(){
+  const j=JOB_DRAFT;
+  if(!serviceHasCar(j.service_type||'rental')) return '';
+  const c=CUSTOMERS.find(x=>x.id===j.customer_id);
+  const sel=document.getElementById('j_fleet');
+  const fid=(sel&&sel.value&&sel.value!=='__manual__')?sel.value:j.fleet_id;
+  const car=FLEET.find(f=>f.id===fid);
+  if(!c && !car) return '';
+  const ok='<span style="color:var(--green)">\u2713</span>';
+  let h='<div class="card" style="padding:11px;margin-top:12px;border-left:3px solid var(--amber)">'
+      + '<h3 style="margin:0 0 4px">Agreement details</h3>'
+      + '<div class="hint" style="margin-bottom:8px">Needed on the leasing agreement. Keyed once \u2014 saved to the customer and the car.</div>';
+  if(c){
+    const isco=c.cust_type==='company';
+    h+=`<label>${isco?'Company reg (SSM)':'NRIC / Passport'} ${(c.nric||c.company_reg)?ok:''}</label>
+        <input id="ag_idno" value="${esc(c.nric||c.company_reg||'')}">
+        <label>Address ${c.address?ok:''}</label>
+        <textarea id="ag_address">${esc(c.address||'')}</textarea>`;
+  }
+  if(car){
+    h+=`<div class="row2">
+          <div><label>Chassis no ${car.chassis_no?ok:''}</label><input id="ag_chassis" value="${esc(car.chassis_no||'')}" style="text-transform:uppercase"></div>
+          <div><label>Engine no ${car.engine_no?ok:''}</label><input id="ag_engine" value="${esc(car.engine_no||'')}" style="text-transform:uppercase"></div>
+        </div>
+        <div class="row2">
+          <div><label>Year ${car.year?ok:''}</label><input id="ag_year" inputmode="decimal" value="${esc(car.year||'')}"></div>
+          <div><label>Vehicle value (RM) ${car.market_value?ok:''}</label><input id="ag_value" inputmode="decimal" value="${esc(car.market_value||'')}"></div>
+        </div>`;
+  } else if(c){
+    h+='<div class="hint">Pick a car from the fleet to key its chassis and engine number.</div>';
+  }
+  return h+'</div>';
+}
 function jobForm(){
   const j=JOB_DRAFT;
   const sv=j.service_type||'rental';
@@ -870,9 +928,11 @@ function jobForm(){
     <label>Service</label>
     <select id="j_service" onchange="onServiceChange()">${svcOpts}</select>
     <div id="jobFields">${jobFieldsHtml(sv,j)}</div>
+    <div id="agrFields">${agreementFieldsHtml()}</div>
     <button class="btn" style="margin-top:14px" onclick="saveJob()">${j.id?'Save changes':'Create job'}</button>
     ${j.id?`<button class="btn danger" style="margin-top:8px" onclick="cancelJob('${j.id}')">Cancel this job</button>`:''}
   `);
+  setTimeout(autoJob,0);
 }
 async function saveJob(){
   const j=JOB_DRAFT;
@@ -954,6 +1014,34 @@ async function saveJob(){
     if(res.data) jobId=res.data.id;
   }
   if(res.error){ toast('Save failed: '+res.error.message); return; }
+
+  /* Push the agreement fields back to where they belong. Best-effort: the job
+     is already saved, so a failure here must not look like the job failed. */
+  try{
+    const gval=id=>{ const e=document.getElementById(id); return e?String(e.value||'').trim():''; };
+    const cid=j.customer_id;
+    if(cid && document.getElementById('ag_idno')){
+      const c=CUSTOMERS.find(x=>x.id===cid)||{};
+      const idno=gval('ag_idno').toUpperCase(), addr=gval('ag_address').toUpperCase();
+      const cu={};
+      if(idno && idno!==(c.nric||c.company_reg||'')) (c.cust_type==='company')?cu.company_reg=idno:cu.nric=idno;
+      if(addr && addr!==(c.address||'')) cu.address=addr;
+      if(Object.keys(cu).length){ cu.updated_at=new Date().toISOString(); await sb.from('gp_customers').update(cu).eq('id',cid); }
+    }
+    const fid=carResolved.fleet_id;
+    if(fid && document.getElementById('ag_chassis')){
+      const f=FLEET.find(x=>x.id===fid)||{};
+      const fu={};
+      const ch=gval('ag_chassis').toUpperCase(), en=gval('ag_engine').toUpperCase();
+      const yr=gval('ag_year'), mv=gval('ag_value').replace(/[^0-9.]/g,'');
+      if(ch && ch!==(f.chassis_no||'')) fu.chassis_no=ch;
+      if(en && en!==(f.engine_no||'')) fu.engine_no=en;
+      if(yr && String(yr)!==String(f.year||'')) fu.year=yr;
+      if(mv && Number(mv)!==Number(f.market_value||0)) fu.market_value=Number(mv);
+      if(Object.keys(fu).length){ await sb.from('gp_fleet').update(fu).eq('id',fid); Object.assign(f,fu); }
+    }
+  }catch(e){ console.error('agreement field save', e); }
+
   const wasNew = !j.id;
   toast(j.id?'Job saved ✓':'Job created ✓');
   closeModal(); await loadAll();
