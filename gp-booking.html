@@ -272,8 +272,8 @@ document.addEventListener('input', function(e){
     try{ el.setSelectionRange(s,en); }catch(_){}
   }
 }, true);
-var SUPABASE_URL = "https://iefevjkeckysdluzazeq.supabase.co";
-var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+var SUPABASE_URL = "https://gpdb.grandlab.com.my";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss";
 function sbBase(){ return SUPABASE_URL.replace(/\/rest\/v1\/?$/,''); }
 function sbHeaders(extra){ return Object.assign({'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY}, extra||{}); }
 var CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY);

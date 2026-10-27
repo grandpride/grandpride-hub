@@ -5,8 +5,8 @@
    Google Sheets sync stays as-is; this ADDS live cloud sync.
    ============================================================ */
 
-var SUPABASE_URL = "https://iefevjkeckysdluzazeq.supabase.co";
-var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+var SUPABASE_URL = "https://gpdb.grandlab.com.my";
+var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss";
 
 /* Capture invite/recovery type from the URL hash IMMEDIATELY, before the
    supabase-js client loads and scrubs the hash. The link looks like:
