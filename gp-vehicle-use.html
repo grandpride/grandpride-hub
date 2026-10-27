@@ -197,8 +197,8 @@ a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
   </div>
 
 <script>
-var SB_URL="https://iefevjkeckysdluzazeq.supabase.co";
-var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllZmV2amtlY2t5c2RsdXphemVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwODI1MTMsImV4cCI6MjA5NjY1ODUxM30.xVqifxHta7rPtxf0hh1C4_rexhwWQhaiOxEzVr_oM5k";
+var SB_URL="https://gpdb.grandlab.com.my";
+var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss";
 function sbH(extra){ return Object.assign({'Content-Type':'application/json','apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}, extra||{}); }
 var $=function(id){return document.getElementById(id);};
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
@@ -358,7 +358,7 @@ async function renderReport(){
 }
 
 /* ===== push to GP Operation (reuses Hub push function) ===== */
-var PUSH_FN_URL='https://iefevjkeckysdluzazeq.supabase.co/functions/v1/push-send';
+var PUSH_FN_URL='https://gpdb.grandlab.com.my/functions/v1/push-send';
 // Google Apps Script Web App URL for the Vehicle Use Log sheet (set after you deploy it)
 var USE_SHEET_URL='https://script.google.com/macros/s/AKfycbxqLh1rKK9i00UozzRvUnFIQYZbv-IARiEcqyUrKsWeyQkXhHLQ7zOisxPfpPibGCw/exec';
 function sheetPush(rec){
