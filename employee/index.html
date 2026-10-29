@@ -33,9 +33,9 @@ input,select,textarea{font-family:inherit;font-size:15px}
 .center{text-align:center}
 
 /* ---------- screens ---------- */
-.screen{display:none;min-height:100vh;min-height:100dvh}
+.screen{display:none;min-height:100vh;min-height:var(--appH,100dvh)}
 .screen.active{display:block}
-.auth-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px 18px}
+.auth-wrap{min-height:100vh;min-height:var(--appH,100dvh);display:flex;align-items:center;justify-content:center;padding:24px 18px}
 .auth-card{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:28px 22px;box-shadow:var(--shadow)}
 .crest{width:76px;height:76px;margin:0 auto 12px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;padding:0;overflow:hidden;box-shadow:0 0 0 4px var(--gold-soft)}
 .crest img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
@@ -76,7 +76,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .role-card small{color:var(--muted);font-size:11.5px;line-height:1.35;display:block;margin-top:4px}
 
 /* ---------- app shell ---------- */
-#sApp.active{display:flex;flex-direction:column;height:100vh;height:100dvh}
+#sApp.active{display:flex;flex-direction:column;height:100vh;height:var(--appH,100dvh)}
 .view-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(16px + var(--safe-t)) 18px calc(110px + var(--safe-b))}
 .view{max-width:520px;margin:0 auto}
 .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -266,6 +266,39 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .geo-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .banner{display:flex;align-items:center;gap:10px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:14px;padding:11px 12px;margin-bottom:12px;font-size:12.5px}
 .banner b{flex:1;font-weight:600}
+/* v1.2 — notices, birthdays, team calendar, report */
+.notice{background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.notice b{display:block;font-size:14px}
+.notice p{font-size:13px;color:var(--ink2);margin-top:4px;white-space:pre-wrap;word-break:break-word}
+.notice small{display:block;color:var(--muted);font-size:11px;margin-top:6px}
+.notice .new{display:inline-block;background:var(--gold);color:var(--ink);font-size:9.5px;font-weight:800;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px;letter-spacing:.4px}
+.notice.clip p{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.bday{display:flex;align-items:center;gap:10px;background:linear-gradient(120deg,var(--gold-soft),#fff);border:1px solid var(--gold-l);border-radius:14px;padding:11px 12px;margin-bottom:10px;font-size:13px}
+.bday .e{font-size:22px;line-height:1}
+.bday b{display:block}
+.bday small{color:var(--muted);font-size:11.5px}
+.offrow{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:10px;width:100%;text-align:left}
+.offrow .av{display:flex}
+.offrow .av span{width:28px;height:28px;border-radius:50%;background:var(--ink);color:var(--gold-l);font-size:10.5px;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden;border:2px solid #fff;margin-left:-8px}
+.offrow .av span:first-child{margin-left:0}
+.offrow .av img{width:100%;height:100%;object-fit:cover}
+.offrow .tx{flex:1;font-size:12.5px;font-weight:600;min-width:0}
+.offrow .tx small{display:block;color:var(--muted);font-weight:500;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.offrow .go{color:var(--gold-d);font-weight:800}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal button{aspect-ratio:1/1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:var(--ink);position:relative;min-width:0}
+.cal button.x{visibility:hidden}
+.cal button.sun{color:#c5bdae;background:#faf8f3}
+.cal button.today{border-color:var(--gold);border-width:2px}
+.cal button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.cal button i{font-style:normal;font-size:9.5px;font-weight:800;margin-top:1px;background:var(--gold-soft);color:var(--gold-d);border-radius:6px;padding:0 5px;line-height:14px}
+.cal button.on i{background:var(--gold);color:var(--ink)}
+.cal button i.p{background:#fff;border:1px dashed var(--warn);color:var(--warn)}
+.rpt-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.rpt-scroll .tbl td,.rpt-scroll .tbl th{white-space:nowrap}
+.switch{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;margin-bottom:12px}
+.switch input{width:22px;height:22px;accent-color:var(--gold-d)}
 </style>
 </head>
 <body>
@@ -419,13 +452,26 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 <div class="toast" id="toast"></div>
 
 <script>
+/* Android Chrome "Desktop site" mode ignores the viewport tag and lays the page out ~980px wide,
+   so everything looks tiny. Detect it on touch phones and zoom the page back to phone size. */
+(function fitDesktopMode(){
+  function fit(){
+    const de=document.documentElement;
+    const touch=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+    const sw=screen.width||0, iw=window.innerWidth||0;
+    if(touch && sw && sw<=820 && iw>sw*1.3){
+      const z=iw/sw; de.style.zoom=z; de.style.setProperty('--appH',(window.innerHeight/z)+'px'); window.__gpZoom=z;
+    } else { de.style.zoom=''; de.style.removeProperty('--appH'); window.__gpZoom=0; }
+  }
+  fit(); window.addEventListener('resize',fit); window.addEventListener('orientationchange',()=>setTimeout(fit,300));
+})();
 /* =====================================================================
    GRANDPRIDE EMPLOYEE SYSTEM  —  single-file PWA
    ---------------------------------------------------------------------
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 6;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 8;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -491,6 +537,10 @@ const ICON = {
   plus:'<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   grid:'<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg>',
   left:'<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>',
+  mega:'<svg viewBox="0 0 24 24"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><circle cx="8" cy="14.5" r="1"/><circle cx="12" cy="14.5" r="1"/><circle cx="16" cy="14.5" r="1"/><circle cx="8" cy="18" r="1"/></svg>',
+  report:'<svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 17v-3M12 17v-6M16 17v-2"/></svg>',
+  claim:'<svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg>',
   right:'<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>'
 };
 
@@ -543,7 +593,7 @@ window.addEventListener('online', ()=>flushQueue());
 /* ============================ state ============================ */
 let ME = null;             // gp_staff row
 let STAFF = [];            // all gp_staff rows (small table)
-let SET = { geo:null, managers:{}, approver:DEFAULT_APPROVER, appcfg:{version:1}, hr:{} };
+let SET = { geo:null, managers:{}, approver:DEFAULT_APPROVER, appcfg:{version:1}, hr:{}, rem:null };
 let TODAY = null;          // today's attendance rec
 let TODAY_ASSIGN = null;   // chauffeur assignment today
 let GEO = null;            // last location fix {lat,lng,acc,dist,inside}
@@ -999,7 +1049,7 @@ function renderPending(row){
 /* ============================ ENTER APP ============================ */
 async function loadSettings(){
   try{
-    const r=await sb.from('gp_settings').select('id,data').in('id',['attendance_geo','managers','emp_signup_approver','emp_app_config','emp_hr']);
+    const r=await sb.from('gp_settings').select('id,data').in('id',['attendance_geo','managers','emp_signup_approver','emp_app_config','emp_hr','emp_reminders']);
     (r.data||[]).forEach(row=>{
       const d=row.data||{};
       if(row.id==='attendance_geo') SET.geo=d;
@@ -1007,6 +1057,7 @@ async function loadSettings(){
       if(row.id==='emp_signup_approver' && d.username) SET.approver=d.username;
       if(row.id==='emp_app_config') SET.appcfg=d;
       if(row.id==='emp_hr') SET.hr=d;
+      if(row.id==='emp_reminders') SET.rem=d;
     });
   }catch(e){}
 }
@@ -1027,7 +1078,7 @@ async function versionCheck(){
 }
 async function loadStaff(){
   try{
-    const cols='username,name,email,role,company,title,reports_to,is_chauffeur,photo_url,phone,auth_id,birthday';
+    const cols='username,name,email,role,company,title,reports_to,is_chauffeur,photo_url,phone,auth_id,birthday,can_post_notice';
     let r=await sb.from('gp_staff').select(cols+',profile').order('name');
     if(r.error) r=await sb.from('gp_staff').select(cols).order('name');   // v1.1 SQL not run yet
     if(r.data) STAFF=r.data;
@@ -1077,17 +1128,19 @@ async function enterApp(){
   versionCheck();
   // refresh ME from staff list (fresh copy)
   ME = STAFF.find(s=>s.username===ME.username) || ME;
-  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle()]);
+  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices()]);
   flushQueue();
   show('sApp');
   switchView('home');
+  if(window.__gpZoom && !lsGet('gpemp_dsk_tip',false)){ lsSet('gpemp_dsk_tip',true); setTimeout(()=>toast('Tip: in Chrome ⋮ menu, untick "Desktop site" for the best view',6000),1500); }
+  loadAllLeave().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
   locate().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
   if('Notification' in window && Notification.permission==='granted') enablePush(true);
 }
 document.addEventListener('visibilitychange', async ()=>{
   if(document.visibilityState!=='visible' || !ME || !$('sApp').classList.contains('active')) return;
   versionCheck(); flushQueue();
-  await loadToday(); if(CUR_VIEW==='home') renderHome();
+  await Promise.all([loadToday(), loadNotices()]); if(CUR_VIEW==='home') renderHome();
 });
 
 /* ============================ APP NAV ============================ */
@@ -1176,7 +1229,7 @@ function renderHome(){
     +'<button class="iconbtn" onclick="switchView(\'profile\')">'+ICON.grid+'</button></div>'
     +'<div class="hello">Hi <b>'+esc((ME.name||'').split(' ')[0])+'</b></div>'
     +'<div class="hello-sub">'+esc(ME.title||ME.role||'')+(ME.company?' · '+esc(ME.company):'')+(ch&&!/chauffeur/i.test(ME.title||'')?' · Chauffeur':'')+'</div>'
-    + pushBanner + alerts
+    + pushBanner + alerts + birthdayHtml()
     +'<div class="sec-title">Attendance <small>'+(ch?'Calendar month':'Cycle 24th–23rd')+'</small></div>'
     +'<div class="hero">'
       +'<div class="hero-time" id="liveClock">'+fmtTime(new Date())+'</div>'
@@ -1194,6 +1247,8 @@ function renderHome(){
     +(geoOutside()?'<div class="card" style="margin-top:12px"><h4>Outside the office zone</h4><p class="small muted" style="margin:-4px 0 10px">You are '+Math.round(GEO.dist)+' m from the office (allowed '+(+(SET.geo.radius)||150)+' m + GPS accuracy ±'+Math.round(GEO.acc||0)+' m). Move closer, then check again.</p><div class="geo-map" id="geoMap"></div><div class="geo-legend"><span><i style="background:#3b82f6"></i>You</span><span><i style="background:#b08a37"></i>Office zone</span></div><button class="btn ghost" style="margin-top:10px" onclick="refreshLoc()">↻ Check my location again</button></div>':'')
     +'<div style="height:12px"></div>'+attStrip(true)
     +(r.lunchOut?'<p class="muted small center" style="margin-top:8px">Lunch '+esc(r.lunchOut)+(r.lunchIn?' – '+esc(r.lunchIn):' (on break)')+'</p>':'')
+    + homeOffHtml()
+    + homeNoticesHtml()
     +'<div class="sec-title">Today\'s Tasks <small><button class="linkbtn" onclick="switchView(\'tasks\')">See all</button></small></div>'
     + tasksHtml
     +(ch?'<a class="menu-item" href="../gp-chauffeur.html" style="text-decoration:none;margin-top:6px"><span class="mi">'+ICON.car+'</span><span class="mt">My Chauffeur Jobs<small>Job sheet &amp; trip status</small></span><span class="ma">'+ICON.arrow+'</span></a>':'');
@@ -1456,7 +1511,7 @@ function renderLeave(){
       +(r.status==='Pending'?'<button class="btn sm ghost" onclick="cancelLeave('+i+')">Cancel</button>':'')+'</div></div>').join(''):'<div class="empty">No leave applied yet.</div>';
 
   $('vLeave').innerHTML=
-    '<div class="page-head"><h2>Leave</h2><button class="btn sm gold" onclick="openApplyLeave()">+ Apply</button></div>'
+    '<div class="page-head"><h2>Leave</h2><div style="display:flex;gap:8px"><button class="btn sm ghost" onclick="openTeamCal()">📅 Team</button><button class="btn sm gold" onclick="openApplyLeave()">+ Apply</button></div></div>'
     +(()=>{ const y=MY_LEAVE.filter(r=>String(r.from||r.date||'').slice(0,4)===yr); const c=st=>y.filter(r=>(r.status||'Pending')===st).length;
         return sumStrip('This year', [[c('Approved'),'Approved'],[c('Rejected'),'Rejected'],[c('Pending'),'Pending'],[y.length,'Total']]); })()
     +'<div class="card"><h4>Balance '+yr+'</h4>'
@@ -1617,8 +1672,12 @@ function renderProfile(){
     + menuItem('history','Punch History','Your clock-in records','openHistory()')
     + menuItem('hrs','Time Tracking','Weekly in-time & working hours','openTimeTracking()')
     + menuItem('leave','Leave Management','Apply, balance, approvals',"switchView('leave')")
+    + menuItem('cal','Team Calendar','Who is on leave',"openTeamCal()")
+    + menuItem('mega','Notice Board','Announcements & birthdays','openNotices()', unseenNotices().length?'<span class="cnt">'+unseenNotices().length+'</span>':'')
+    + menuItem('claim','Claims','Submit & track claims (GL Claim)','openClaims()')
     + menuItem('pay','Payroll','Worked days, late, OT per cycle','openPayroll(undefined,null)')
     + (isLeader()?menuItem('team','Employees','Your team today ('+myTeam().length+')','openEmployees()'):'')
+    + (canReport()?menuItem('report','Monthly Report','Attendance summary · Excel / PDF','openReport()'):'')
     + (isApprover()?menuItem('adduser','New Staff Sign-ups','Approve new joiners','openApprovals()', PENDING_SIGNUPS.length?'<span class="cnt">'+PENDING_SIGNUPS.length+'</span>':''):'')
     + (canSettings()?menuItem('gear','Settings','Approver, office location, app version','openSettings()'):'')
     + (ch?'<a class="menu-item" href="../gp-chauffeur.html" style="text-decoration:none"><span class="mi">'+ICON.car+'</span><span class="mt">Chauffeur Jobs<small>Opens the chauffeur app</small></span><span class="ma">'+ICON.arrow+'</span></a>':'')
@@ -1904,6 +1963,11 @@ function openSettings(){
       +'<div class="btn-row"><label class="fld"><span>Latitude</span><input class="inp" id="stLat" value="'+esc(g.lat||'')+'"></label><label class="fld"><span>Longitude</span><input class="inp" id="stLng" value="'+esc(g.lng||'')+'"></label></div>'
       +'<label class="fld"><span>Radius (m)</span><input class="inp" id="stRad" type="number" value="'+esc(g.radius||150)+'"></label>'
       +'<div class="btn-row"><button class="btn ghost" onclick="useHere()">📍 Use my location</button><button class="btn" onclick="saveGeo()">Save</button></div></div>'
+    +(()=>{ const rm=Object.assign({enabled:true,morning:'09:10',lunchMins:65}, SET.rem||{});
+      return '<div class="card"><h4>Punch reminders</h4><p class="small muted" style="margin-bottom:10px">Sent by the server (Mon–Sat, not on leave / Sundays). Staff only — chauffeurs are not reminded.</p>'
+      +'<label class="switch"><span>Reminders on</span><input type="checkbox" id="rmOn" '+(rm.enabled!==false?'checked':'')+'></label>'
+      +'<div class="btn-row"><label class="fld"><span>Not clocked in by</span><input class="inp" id="rmAm" type="time" value="'+esc(rm.morning)+'"></label><label class="fld"><span>Lunch longer than (min)</span><input class="inp" id="rmLunch" type="number" value="'+esc(rm.lunchMins)+'"></label></div>'
+      +'<button class="btn" onclick="saveReminders()">Save reminders</button></div>'; })()
     +'<div class="card"><h4>App version (auto-update)</h4><p class="small muted" style="margin-bottom:10px">This phone runs build <b>'+APP_BUILD+'</b>. Server version: <b>'+(SET.appcfg.version||1)+'</b>. After you upload a new build to GitHub, tap below so every phone reloads it.</p>'
       +'<button class="btn gold" onclick="bumpVersion()">Force everyone to update</button></div>');
 }
@@ -1931,6 +1995,271 @@ async function bumpVersion(){
   const r=await sb.from('gp_settings').upsert({id:'emp_app_config',data,updated_at:new Date().toISOString()},{onConflict:'id'});
   if(r.error){ toast('Failed: '+r.error.message); return; }
   SET.appcfg=data; toast('Server version → '+target); openSettings();
+}
+async function saveReminders(){
+  const d={ enabled:$('rmOn').checked, morning:$('rmAm').value||'09:10', lunchMins:Math.max(45,parseInt($('rmLunch').value)||65) };
+  const r=await sb.from('gp_settings').upsert({id:'emp_reminders',data:d,updated_at:new Date().toISOString()},{onConflict:'id'});
+  if(r.error){ toast('Failed: '+r.error.message); return; }
+  SET.rem=d; toast('Reminders saved ✓');
+}
+
+/* =====================================================================
+   v1.2 — NOTICE BOARD · BIRTHDAYS · TEAM CALENDAR · MONTHLY REPORT · CLAIMS
+   ===================================================================== */
+const CLAIM_URL_DEFAULT='https://app.grandlab.com.my/gl-claim.html';
+let NOTICES=[];          // gp_announce (shared with the Hub notifications page)
+let ALL_LEAVE=null;      // username -> rec[]  (whole gp_leave table, small; loaded lazily)
+const canPostNotice = () => !!ME && (ME.role==='Admin' || ME.can_post_notice===true || ME.can_post_notice==='true');
+
+/* ---------- Notice board ---------- */
+async function loadNotices(){
+  try{ const r=await sb.from('gp_announce').select('id,title,body,by_name,date_key,created_at').order('created_at',{ascending:false}).limit(30); if(!r.error) NOTICES=r.data||[]; }catch(e){}
+}
+function noticeTime(n){ return n.created_at ? new Date(n.created_at).getTime() : (n.date_key?keyToDate(n.date_key).getTime():0); }
+function unseenNotices(){ const seen=+lsGet('gpemp_notice_seen',0)||0; return NOTICES.filter(n=>noticeTime(n)>seen); }
+function noticeHtml(n, clip, canDel){
+  const isNew=noticeTime(n)>(+lsGet('gpemp_notice_seen',0)||0);
+  const when=n.created_at?new Date(n.created_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):(n.date_key?niceDate(n.date_key):'');
+  return '<div class="notice'+(clip?' clip':'')+'"'+(clip?' onclick="openNotices()"':'')+'><b>📢 '+esc(n.title||'Announcement')+(isNew?'<span class="new">NEW</span>':'')+'</b><p>'+esc(n.body||'')+'</p>'
+    +'<small>'+esc(n.by_name||'')+(when?' · '+when:'')+(canDel?' · <button class="linkbtn" style="font-size:11px;color:var(--bad)" onclick="event.stopPropagation();deleteNotice(\''+esc(n.id)+'\')">Remove</button>':'')+'</small></div>';
+}
+function birthdaysOn(md){ return STAFF.filter(s=>s.username!=='admin' && s.birthday && String(s.birthday).slice(5,10)===md); }
+function birthdayHtml(){
+  const tk=todayKey(), tm=addDays(tk,1); let h='';
+  birthdaysOn(tk.slice(5)).forEach(s=>{ h+='<div class="bday"><span class="e">🎂</span><div><b>'+(s.username===ME.username?'Happy Birthday to you, '+esc((s.name||'').split(' ')[0])+'!':'Happy Birthday '+esc(s.name)+'!')+'</b><small>'+(s.username===ME.username?'Have a great day from all of us 🎉':'Wish them a great day')+'</small></div></div>'; });
+  if(canPostNotice()) birthdaysOn(tm.slice(5)).filter(s=>s.username!==ME.username).forEach(s=>{ h+='<div class="bday"><span class="e">🎁</span><div><b>'+esc(s.name)+'\'s birthday is tomorrow</b><small>Prepare the birthday cake 🎂</small></div></div>'; });
+  return h;
+}
+function homeNoticesHtml(){
+  const recent=NOTICES.filter(n=>Date.now()-noticeTime(n)<21*864e5).slice(0,2);
+  const nNew=unseenNotices().length;
+  if(!recent.length && !canPostNotice()) return '';
+  return '<div class="sec-title">Notice Board <small><button class="linkbtn" onclick="openNotices()">'+(nNew?nNew+' new · ':'')+'See all</button></small></div>'
+    +(recent.length?recent.map(n=>noticeHtml(n,true,false)).join(''):'<div class="empty" style="padding:12px">No recent notices.</div>');
+}
+async function openNotices(){
+  const can=canPostNotice();
+  openSub('Notice Board','<div class="spinner" style="margin-top:30px"></div>', can?'<button class="btn sm gold" onclick="openPostNotice()">+ Post</button>':'');
+  await loadNotices();
+  const bd=birthdayHtml();
+  $('subBody').innerHTML=(bd?'<div class="sec-title" style="margin-top:4px">Birthdays</div>'+bd:'')
+    +'<div class="sec-title" style="margin-top:'+(bd?'20px':'4px')+'">Announcements <small>'+NOTICES.length+'</small></div>'
+    +(NOTICES.length?NOTICES.map(n=>noticeHtml(n,false,can)).join(''):'<div class="empty">No announcements yet.</div>')
+    +upcomingBirthdaysHtml();
+  if(NOTICES.length) lsSet('gpemp_notice_seen', noticeTime(NOTICES[0]));
+  updateBadges();
+}
+function upcomingBirthdaysHtml(){
+  const tk=todayKey(), list=[];
+  for(let i=1;i<=30;i++){ const k=addDays(tk,i); birthdaysOn(k.slice(5)).forEach(s=>list.push({s,k})); }
+  if(!list.length) return '';
+  return '<div class="sec-title">Upcoming birthdays <small>next 30 days</small></div><div class="card">'
+    +list.map(({s,k})=>'<div class="row"><div class="l"><b>'+esc(s.name)+'</b><small>'+esc(s.title||s.role||'')+'</small></div><span class="pill gold">'+niceDate(k,{day:'numeric',month:'short'})+'</span></div>').join('')+'</div>';
+}
+function openPostNotice(){
+  if(!canPostNotice()){ toast('Only admin / reception can post notices'); return; }
+  openSheet('<h3>Post a notice</h3>'
+    +'<label class="fld"><span>Title</span><input class="inp" id="anT" maxlength="80" placeholder="e.g. Office closed Friday"></label>'
+    +'<label class="fld"><span>Details</span><textarea class="inp" id="anB" maxlength="1000" placeholder="What everyone should know"></textarea></label>'
+    +'<label class="switch"><span>Send a notification to everyone</span><input type="checkbox" id="anPush" checked></label>'
+    +'<button class="btn gold" id="anGo">Post notice</button>');
+  $('anGo').onclick=async()=>{
+    const title=$('anT').value.trim()||'Announcement', body=$('anB').value.trim();
+    if(!body){ toast('Write the notice details'); return; }
+    $('anGo').disabled=true;
+    const row={ id:'an'+Date.now(), title, body, by_name:ME.name, date_key:todayKey(), created_at:new Date().toISOString() };
+    const r=await sb.from('gp_announce').insert(row);
+    if(r.error){ $('anGo').disabled=false; toast('Post failed: '+r.error.message,4000); return; }
+    if($('anPush').checked) pushNotify('📢 '+title, body.slice(0,180), 'all');
+    closeSheet(); toast('Notice posted ✓'); openNotices();
+  };
+}
+async function deleteNotice(id){
+  if(!confirm('Remove this notice for everyone?')) return;
+  const r=await sb.from('gp_announce').delete().eq('id',id);
+  if(r.error){ toast('Failed: '+r.error.message); return; }
+  NOTICES=NOTICES.filter(n=>n.id!==id); toast('Removed'); openNotices();
+}
+
+/* ---------- Team calendar (who is off) ---------- */
+async function loadAllLeave(force){
+  if(ALL_LEAVE && !force) return ALL_LEAVE;
+  const m={};
+  try{ const r=await sb.from('gp_leave').select('username,rec').limit(500); (r.data||[]).forEach(x=>{ if(x.username) m[x.username]=Array.isArray(x.rec)?x.rec:[]; }); }catch(e){}
+  if(ME) m[ME.username]=MY_LEAVE;
+  ALL_LEAVE=m; return m;
+}
+/* leaders/approvers see type + pending; everyone else sees only approved "Leave" (no reasons, no types) */
+function canSeeLeaveDetail(u){ return u===ME.username || canSettings() || myTeam().some(s=>s.username===u); }
+function offOn(k, scope){
+  const out=[]; if(!ALL_LEAVE || isSunday(k)) return out;
+  Object.keys(ALL_LEAVE).forEach(u=>{
+    const s=staffByU(u); if(!s || u==='admin') return;
+    if(scope==='co' && ME.company && s.company && s.company!==ME.company) return;
+    (ALL_LEAVE[u]||[]).forEach(r=>{
+      const st=r.status||'Pending'; if(st==='Rejected'||st==='Cancelled') return;
+      const f=r.from||r.date, t=r.to||f; if(!f || k<f || k>t) return;
+      const detail=canSeeLeaveDetail(u);
+      if(st!=='Approved' && !detail) return;
+      out.push({ s, r, pending:st!=='Approved', detail });
+    });
+  });
+  return out.sort((a,b)=>String(a.s.name).localeCompare(String(b.s.name)));
+}
+function offLabel(o){ return (o.detail?(o.r.type||'Leave'):'On leave')+(o.r.half?' · ½ '+halfTag(o.r):'')+(o.pending?' · pending':''); }
+function homeOffHtml(){
+  if(!ALL_LEAVE) return '';
+  const tk=todayKey(), offs=offOn(tk,'co');
+  const av=offs.slice(0,4).map(o=>'<span>'+avatarHtml(o.s.name,o.s.photo_url)+'</span>').join('');
+  return '<button class="offrow" onclick="openTeamCal()">'+(offs.length?'<span class="av">'+av+'</span>':'<span class="mi" style="width:30px;height:30px;border-radius:10px;background:var(--gold-soft);display:flex;align-items:center;justify-content:center">'+ICON.leave.replace('<svg','<svg style="width:16px;height:16px;stroke:var(--gold-d);fill:none;stroke-width:1.8"')+'</span>')
+    +'<span class="tx">'+(offs.length?offs.length+' off today':'Everyone is in today')+'<small>'+(offs.length?offs.map(o=>esc((o.s.name||'').split(' ')[0])+(o.r.half?' (½)':'')).join(', '):'Team calendar')+'</small></span><span class="go">›</span></button>';
+}
+let CAL={ m:null, sel:null, scope:'co' };
+async function openTeamCal(dir){
+  if(!dir){ CAL.m=todayKey().slice(0,7); CAL.sel=todayKey(); }
+  else { const d=keyToDate(CAL.m+'-01'); d.setMonth(d.getMonth()+dir); CAL.m=todayKey(d).slice(0,7); CAL.sel=(todayKey().slice(0,7)===CAL.m)?todayKey():CAL.m+'-01'; }
+  if(!$('subpage').classList.contains('open') || $('subTitle').textContent!=='Team Calendar') openSub('Team Calendar','<div class="spinner" style="margin-top:30px"></div>');
+  await loadAllLeave(!dir);
+  renderTeamCal();
+}
+function renderTeamCal(){
+  const first=keyToDate(CAL.m+'-01'), y=first.getFullYear(), mo=first.getMonth(), nDays=new Date(y,mo+1,0).getDate(), lead=(first.getDay()+6)%7, tk=todayKey();
+  let cells=''; for(let i=0;i<lead;i++) cells+='<button class="x" tabindex="-1"></button>';
+  for(let d=1;d<=nDays;d++){
+    const k=CAL.m+'-'+pad2(d), offs=offOn(k,CAL.scope), ap=offs.filter(o=>!o.pending).length, pe=offs.length-ap;
+    cells+='<button class="'+(isSunday(k)?'sun ':'')+(k===tk?'today ':'')+(k===CAL.sel?'on':'')+'" onclick="CAL.sel=\''+k+'\';renderTeamCal()">'+d+(ap?'<i>'+ap+'</i>':(pe?'<i class="p">'+pe+'</i>':''))+'</button>';
+  }
+  const offs=offOn(CAL.sel,CAL.scope);
+  const list=offs.length?offs.map(o=>'<div class="row"><div class="l" style="display:flex;gap:10px;align-items:center"><span class="avatar" style="width:34px;height:34px;font-size:12px;box-shadow:none;border:none">'+avatarHtml(o.s.name,o.s.photo_url)+'</span><span><b>'+esc(o.s.name)+'</b><small>'+esc(o.s.title||o.s.role||'')+'</small></span></div><span class="pill '+(o.pending?'warn':'gold')+'">'+esc(offLabel(o))+'</span></div>').join('')
+    :'<div class="empty" style="padding:14px">'+(isSunday(CAL.sel)?'Sunday — workshop closed':'Nobody on leave 👍')+'</div>';
+  // next 14 days summary
+  let up=''; for(let i=1;i<=14;i++){ const k=addDays(tk,i); const o=offOn(k,CAL.scope).filter(x=>!x.pending); if(o.length) up+='<div class="row"><div class="l"><b>'+niceDate(k)+'</b><small>'+o.map(x=>esc(x.s.name)+(x.r.half?' (½ '+halfTag(x.r)+')':'')).join(', ')+'</small></div><span class="pill grey">'+o.length+'</span></div>'; }
+  const nav='<div class="month-row"><button class="iconbtn" onclick="openTeamCal(-1)">'+ICON.left+'</button><b>'+first.toLocaleDateString('en-GB',{month:'long',year:'numeric'})+'</b><button class="iconbtn" onclick="openTeamCal(1)">'+ICON.right+'</button></div>';
+  const seg=ME.company?'<div class="seg"><button class="'+(CAL.scope==='co'?'on':'')+'" onclick="CAL.scope=\'co\';renderTeamCal()">'+esc(ME.company)+'</button><button class="'+(CAL.scope==='all'?'on':'')+'" onclick="CAL.scope=\'all\';renderTeamCal()">Everyone</button></div>':'';
+  $('subBody').innerHTML=seg+nav
+    +'<div class="card" style="padding:12px"><div class="cal-head">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(x=>'<span>'+x+'</span>').join('')+'</div><div class="cal">'+cells+'</div>'
+    +'<p class="small muted" style="margin-top:8px">Number = people on leave'+(isLeader()?' · dashed = pending approval':'')+'. Tap a day.</p></div>'
+    +'<div class="sec-title" style="margin-top:6px">'+niceDate(CAL.sel,{weekday:'long',day:'numeric',month:'short'})+' <small>'+offs.length+' off</small></div><div class="card">'+list+'</div>'
+    +(CAL.m===tk.slice(0,7)&&up?'<div class="sec-title">Next 14 days</div><div class="card">'+up+'</div>':'');
+}
+
+/* ---------- Monthly attendance report (leaders → team, approver/admin → everyone) ---------- */
+let RPT={ month:null, scope:'team', data:null };
+const canReport = () => isLeader() || canSettings();
+function rptPeople(){
+  if(RPT.scope==='all' && canSettings()) return STAFF.filter(s=>s.username!=='admin');
+  const t=myTeam(); return t;
+}
+function monthShift(m, dir){ const d=keyToDate(m+'-01'); d.setMonth(d.getMonth()+dir); return todayKey(d).slice(0,7); }
+async function loadAttBulk(users, start, end){
+  const out=[]; const step=1000;
+  for(let i=0;i<users.length;i+=40){
+    const chunk=users.slice(i,i+40);
+    for(let from=0; from<20000; from+=step){
+      const r=await sb.from('gp_attendance').select('username,date_key,rec').in('username',chunk).gte('date_key',start).lte('date_key',end).order('date_key').order('username').range(from, from+step-1);
+      if(r.error) throw r.error;
+      out.push(...(r.data||[]));
+      if(!r.data || r.data.length<step) break;
+    }
+  }
+  return out;
+}
+async function openReport(dir){
+  if(!canReport()){ toast('Managers only'); return; }
+  if(!dir){ RPT.month=cycleFor(todayKey(),false).month; RPT.scope=canSettings()?'all':'team'; }
+  else RPT.month=monthShift(RPT.month, dir);
+  openSub('Monthly Report','<div class="spinner" style="margin-top:30px"></div>');
+  await buildReport();
+}
+function rptScope(sc){ RPT.scope=sc; openSub('Monthly Report','<div class="spinner" style="margin-top:30px"></div>'); buildReport(); }
+async function buildReport(){
+  const people=rptPeople(), m=RPT.month;
+  const sc=cycleFor(m+'-15',false), cc=cycleFor(m+'-15',true);
+  const start=sc.start<cc.start?sc.start:cc.start, end=sc.end>cc.end?sc.end:cc.end;
+  let rows=[];
+  try{ rows=people.length?await loadAttBulk(people.map(s=>s.username), start, end):[]; }
+  catch(e){ $('subBody').innerHTML='<div class="empty">Could not load: '+esc(e.message||e)+'</div>'; return; }
+  const by={}; rows.forEach(x=>{ (by[x.username]=by[x.username]||[]).push(x); });
+  const list=people.map(s=>{
+    const ch=isChauffeur(s), cyc=ch?cc:sc;
+    const mine=(by[s.username]||[]).filter(x=>x.date_key>=cyc.start&&x.date_key<=cyc.end);
+    return { s, ch, cyc, rows:mine, sum:summarize(mine, cyc, ch), ot:ch||!!hrOf(s.username).ot };
+  }).sort((a,b)=>String(a.s.company||'').localeCompare(String(b.s.company||''))||String(a.s.name).localeCompare(String(b.s.name)));
+  RPT.data={ month:m, sc, cc, list };
+  const tot=list.reduce((a,x)=>{ a.w+=x.sum.worked; a.l+=x.sum.lateDays; a.n+=x.sum.noRec; a.v+=x.sum.leave; return a; },{w:0,l:0,n:0,v:0});
+  const mName=keyToDate(m+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const nav='<div class="month-row"><button class="iconbtn" onclick="openReport(-1)">'+ICON.left+'</button><div class="center"><b>'+mName+'</b><div class="small muted">Staff '+niceDate(sc.start,{day:'numeric',month:'short'})+' – '+niceDate(sc.end,{day:'numeric',month:'short'})+' · Chauffeurs calendar month</div></div><button class="iconbtn" onclick="openReport(1)" '+(sc.start>todayKey()?'disabled style="opacity:.3"':'')+'>'+ICON.right+'</button></div>';
+  const seg=(canSettings()&&myTeam().length)?'<div class="seg"><button class="'+(RPT.scope==='all'?'on':'')+'" onclick="rptScope(\'all\')">Everyone</button><button class="'+(RPT.scope==='team'?'on':'')+'" onclick="rptScope(\'team\')">My team</button></div>':'';
+  const tbl='<div class="card" style="padding:10px"><div class="rpt-scroll"><table class="tbl"><tr><th>Name</th><th>Worked</th><th>Late</th><th>Late total</th><th>Early</th><th>OT</th><th>Leave</th><th>No rec</th></tr>'
+    +list.map(x=>'<tr onclick="closeSub();openPayroll(undefined,\''+esc(x.s.username)+'\')" style="cursor:pointer"><td><b>'+esc(x.s.name)+'</b>'+(x.ch?' <span class="pill grey" style="padding:1px 6px;font-size:9.5px">CH</span>':'')+'</td><td>'+x.sum.worked+'</td><td>'+(x.sum.lateDays||'')+'</td><td>'+(x.sum.late?fmtMins(x.sum.late):'')+'</td><td>'+(x.sum.early?fmtMins(x.sum.early):'')+'</td><td>'+(x.ot&&x.sum.ot?fmtMins(x.sum.ot):'')+'</td><td>'+(x.sum.leave||'')+'</td><td'+(x.sum.noRec?' style="color:var(--bad);font-weight:700"':'')+'>'+(x.sum.noRec||'')+'</td></tr>').join('')
+    +'</table></div></div>';
+  $('subBody').innerHTML=seg+nav
+    +sumStrip(list.length+' people',[[tot.w,'Days worked'],[tot.l,'Late days'],[tot.v,'Leave'],[tot.n,'No record']])
+    +'<div class="btn-row" style="margin-bottom:12px"><button class="btn gold" onclick="exportReportXlsx()">⬇ Excel</button><button class="btn ghost" onclick="printReport()">🖨 Print / PDF</button></div>'
+    +(list.length?tbl:'<div class="empty">Nobody in this report.</div>')
+    +'<p class="small muted center">Tap a name for the daily breakdown.</p>';
+}
+function rptSummaryAoa(){
+  const D=RPT.data, types=['AL','MC','EL','Unpaid','Maternity','Paternity'];
+  const head=['Name','Username','Company','Job title','Type','Period from','Period to','Days worked','Late days','Late (min)','Early out (min)','OT (min)','Leave days',...types.map(t=>t+' days'),'No record','Hours worked'];
+  const body=D.list.map(x=>[x.s.name,x.s.username,x.s.company||'',x.s.title||x.s.role||'',x.ch?'Chauffeur':'Staff',x.cyc.start,x.cyc.end,x.sum.worked,x.sum.lateDays,Math.round(x.sum.late),Math.round(x.sum.early),x.ot?Math.round(x.sum.ot):'',x.sum.leave,...types.map(t=>x.sum.byType[t]||0),x.sum.noRec,+(x.sum.workMins/60).toFixed(2)]);
+  return [head,...body];
+}
+function rptDetailAoa(){
+  const D=RPT.data, head=['Date','Day','Name','Username','In','Lunch out','Lunch in','Out','Late (min)','Early (min)','OT (min)','Worked (h)','Status','Leave'];
+  const out=[head];
+  D.list.forEach(x=>x.sum.days.filter(d=>!d.future).forEach(d=>{
+    const r=d.r||{};
+    out.push([d.k, keyToDate(d.k).toLocaleDateString('en-GB',{weekday:'short'}), x.s.name, x.s.username, r.amIn||'', r.lunchOut||'', r.lunchIn||'', r.pmOut||'',
+      r.lateMins||'', r.earlyMins||'', x.ot?(r.otMins||''):'', r.workMins?+(r.workMins/60).toFixed(2):'',
+      r.leave?'':(r.amIn?(r.status||''):(d.sun&&!x.ch?'Sunday':'No record')), r.leave||(r.halfLeave?r.halfLeave.type+' ½'+r.halfLeave.half:'')]);
+  }));
+  return out;
+}
+let _xlsx=null;
+function loadXlsx(){
+  if(window.XLSX) return Promise.resolve(true);
+  if(_xlsx) return _xlsx;
+  _xlsx=new Promise(res=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; s.onload=()=>res(!!window.XLSX); s.onerror=()=>{ _xlsx=null; res(false); }; document.head.appendChild(s); });
+  return _xlsx;
+}
+async function exportReportXlsx(){
+  if(!RPT.data) return;
+  toast('Preparing Excel…',5000);
+  if(!await loadXlsx()){ toast('Could not load Excel tool — check internet'); return; }
+  const wb=XLSX.utils.book_new();
+  const s1=XLSX.utils.aoa_to_sheet(rptSummaryAoa()); s1['!cols']=[{wch:24},{wch:12},{wch:12},{wch:24},{wch:10},{wch:11},{wch:11}].concat(Array(15).fill({wch:10}));
+  const s2=XLSX.utils.aoa_to_sheet(rptDetailAoa()); s2['!cols']=[{wch:11},{wch:6},{wch:24},{wch:12}].concat(Array(10).fill({wch:10}));
+  XLSX.utils.book_append_sheet(wb, s1, 'Summary'); XLSX.utils.book_append_sheet(wb, s2, 'Daily detail');
+  const name='Grandpride-Attendance-'+RPT.data.month+(RPT.scope==='team'?'-team':'')+'.xlsx';
+  const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const ios=/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  try{
+    const file=new File([blob], name, {type:blob.type});
+    if(ios && navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:name}); return; }
+  }catch(e){ if(e && e.name==='AbortError') return; }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  toast('Excel downloaded ✓');
+}
+function printReport(){
+  if(!RPT.data) return;
+  const D=RPT.data, aoa=rptSummaryAoa(), mName=keyToDate(D.month+'-01').toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  const cols=[0,2,4,7,8,9,10,11,12,19];   // name, company, type, worked, late days, late, early, OT, leave, no record
+  const w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print'); return; }
+  w.document.write('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Attendance '+esc(D.month)+'</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#111}h1{font-size:18px;margin:0;letter-spacing:1px}.h{border-bottom:3px solid #c9a24b;padding-bottom:10px;margin-bottom:14px}.h p{margin:4px 0 0;color:#666;font-size:12px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#141210;color:#e3c887;text-align:left;padding:7px 6px;font-size:10.5px;text-transform:uppercase}td{padding:6px;border-bottom:1px solid #ddd}tr:nth-child(even) td{background:#faf8f3}td.n{text-align:right}.np{margin-top:20px;text-align:center}@media print{.np{display:none}body{margin:10mm}}</style></head><body>'
+    +'<div class="h"><h1>GRANDPRIDE &amp; GRANDLAB — ATTENDANCE REPORT</h1><p>'+esc(mName)+' · Staff '+esc(D.sc.start)+' to '+esc(D.sc.end)+' · Chauffeurs '+esc(D.cc.start)+' to '+esc(D.cc.end)+' · generated '+new Date().toLocaleString('en-GB')+' by '+esc(ME.name)+'</p></div>'
+    +'<table><tr>'+cols.map(i=>'<th>'+esc(aoa[0][i])+'</th>').join('')+'</tr>'
+    +aoa.slice(1).map(r=>'<tr>'+cols.map((i,j)=>'<td'+(j>2?' class="n"':'')+'>'+esc(r[i]===0?'':r[i])+'</td>').join('')+'</tr>').join('')+'</table>'
+    +'<div class="np"><button onclick="window.print()" style="padding:10px 22px;background:#c9a24b;border:none;border-radius:8px;font-weight:bold">Print / Save PDF</button> <button onclick="window.close()" style="padding:10px 22px;background:#333;color:#fff;border:none;border-radius:8px;font-weight:bold">Close</button></div></body></html>');
+  w.document.close();
+}
+
+/* ---------- Claims (GL Claim — separate app with its own login) ---------- */
+function openClaims(){
+  const url=(SET.appcfg&&SET.appcfg.flags&&SET.appcfg.flags.claimUrl)||CLAIM_URL_DEFAULT;
+  const w=window.open(url,'_blank'); if(!w) location.href=url;
 }
 
 boot();
