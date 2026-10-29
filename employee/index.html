@@ -417,7 +417,7 @@ textarea.inp{resize:vertical;min-height:80px}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 2;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 3;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -426,7 +426,8 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI
 const GS_URL = 'https://script.google.com/macros/s/AKfycbx0Gwt-lJu8xSoWL_rva48PCBw1yvsYL5sqIj3XJxfpnMqe60kJWN1p5PWxJNFyqFA/exec';
 const IMGBB_KEY = 'e8dbe75e3933b7bf63be0253e1b122d6';
 const PUSH_FN_URL = SB_URL + '/functions/v1/push-send';
-const VAPID_PUBLIC = 'BHzXvr8rz0hZW02TKa68JiTNbc9uo0h4McAZ9DdOdo9gyqGSGkg6tfZsappyUK146_PQviRx9JBcoANY0uIUPhs';
+// public half of the self-hosted server's VAPID key (gpdb.grandlab.com.my push-send). Old cloud key was BHzXvr8rz0hZ…
+const VAPID_PUBLIC = 'BH9iSn1XcLP6XM2P5rF3BXS_Lv7UVtzdbPYzmWYqXOJGCi4apS3n94qosfUJloTZbeJ-OZjiH5TB0EITOy6fO4M';
 const DEFAULT_APPROVER = 'jimmy';
 const TITLE_PRESETS = {
   Grandpride:['Operation Executive','Finance','Admin','Receptionist','Business Development','Videographer','Chauffeur'],
@@ -759,6 +760,14 @@ async function enablePush(silent){
     if(perm!=='granted') return false;
     const reg=await navigator.serviceWorker.ready;
     let sub=await reg.pushManager.getSubscription();
+    // a subscription made with an OLD server key can never receive pushes -> replace it
+    if(sub){
+      try{
+        const k=sub.options&&sub.options.applicationServerKey;
+        const cur=k?btoa(String.fromCharCode(...new Uint8Array(k))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''):'';
+        if(cur && cur!==VAPID_PUBLIC){ await sub.unsubscribe(); sub=null; }
+      }catch(e){}
+    }
     if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:vapidToUint8(VAPID_PUBLIC)});
     const id='ps'+Math.abs(sub.endpoint.split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0));
     await sb.from('gp_push_subs').upsert({id, username:ME.username, sub:JSON.parse(JSON.stringify(sub)), updated_at:new Date().toISOString()},{onConflict:'id'});
