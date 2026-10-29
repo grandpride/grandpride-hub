@@ -4,7 +4,7 @@
    can NEVER replace the Hub's sw.js (scope ./ of the repo root).
    Bump CACHE on each deploy (same number as APP_BUILD).
    ============================================================ */
-const CACHE = 'gp-employee-v12';
+const CACHE = 'gp-employee-v13';
 const CORE = ['./', './index.html', './manifest.webmanifest', '../icon-192.png', '../icon-512.png'];
 
 self.addEventListener('install', e => {
