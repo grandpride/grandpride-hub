@@ -412,10 +412,9 @@
     <p>Internal Hub</p>
   </div>
   <div class="hub-tabs">
-    <div class="hub-tab on" id="tabModules">Modules</div>
-    <div class="hub-tab" id="tabGrandpride">Grandpride</div>
+    <!-- Modules + Notices tabs removed 2026-10 — those modules now live in the Employee app -->
+    <div class="hub-tab on" id="tabGrandpride">Grandpride</div>
     <div class="hub-tab" id="tabGrandlab">Grandlab</div>
-    <div class="hub-tab" id="tabNotif">Notices ↗</div>
   </div>
   <div class="grid" id="grid"></div>
   <div class="grid-note" id="gridNote"></div>
@@ -473,8 +472,8 @@ const APPS = [
   // { id:'reminders',  label:'Tasks & Reminders', svg:ICONS.reminders, logo:'', cat:'modules', section:'Tools', link:'employee/?open=tasks' },
   // { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'employee/?open=daylog' },
   // { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'employee/?open=staff', adminOnly:true },
-  // --- end hidden modules ---
-  { id:'minigames',  label:'Minigames', svg:ICONS.minigames, logo:'', cat:'modules', section:'Minigames', link:'gp-minigames.html' },
+  // { id:'minigames',  label:'Minigames', svg:ICONS.minigames, logo:'', cat:'modules', section:'Minigames', link:'gp-minigames.html' },
+  // --- end hidden modules (whole 'modules' category + Modules tab retired) ---
   { id:'joborder',   label:'Job Order',  svg:ICONS.joborder,   logo:'', cat:'grandlab', link:'grandlab_jobcard.html' },
   { id:'stock',      label:'Stock Report', svg:ICONS.stock,    logo:'', cat:'grandlab', link:'stock-report.html' },
   { id:'mia',        label:'MIA - Sales Assistant', svg:ICONS.mia,        logo:'', cat:'grandlab', extUrl:'https://grandlab-mia.vercel.app' },
@@ -807,7 +806,7 @@ function show(id){
 function goHub(){ renderHub(); show('hubScreen'); }
 
 /* ================= HUB RENDER ================= */
-let currentHubTab = 'modules';
+let currentHubTab = 'grandpride';   // was 'modules' — Modules tab retired, open on Grandpride
 
 async function uploadMyPhoto(input){
   var f=input.files&&input.files[0]; if(!f) return;
@@ -1022,10 +1021,8 @@ async function init(){
   bind('btnLogout', logout);
   bind('adminGear', ()=>{ window.location.href='employee/?open=staff'; });   // Admin → Staff Manager in the Employee app
   bind('btnBackApp', goHub);
-  bind('tabModules', ()=>switchHubTab('modules'));
   bind('tabGrandpride', ()=>switchHubTab('grandpride'));
   bind('tabGrandlab', ()=>switchHubTab('grandlab'));
-  bind('tabNotif', ()=>switchHubTab('notif'));
 
   const pw=document.getElementById('liPass');
   if(pw) pw.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
