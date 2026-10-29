@@ -3337,9 +3337,16 @@ async function enablePush(){
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     // Server move (Oct 2026) gave a new VAPID key: drop a subscription made with an old key, then subscribe fresh.
-    if(sub && sub.options && sub.options.applicationServerKey){
-      const have = new Uint8Array(sub.options.applicationServerKey), want = vapidToUint8(VAPID_PUBLIC);
-      if(have.length !== want.length || have.some((b,i)=>b!==want[i])){ try{ await sub.unsubscribe(); }catch(_e){} sub = null; }
+    // iPhone Safari does not expose sub.options.applicationServerKey, so also remember the key this
+    // device subscribed with and force ONE fresh subscription when it differs.
+    if(sub){
+      let stale = true;
+      try{ stale = localStorage.getItem('gphub_vapid') !== VAPID_PUBLIC; }catch(_e){}
+      if(sub.options && sub.options.applicationServerKey){
+        const have = new Uint8Array(sub.options.applicationServerKey), want = vapidToUint8(VAPID_PUBLIC);
+        stale = have.length !== want.length || have.some((b,i)=>b!==want[i]);
+      }
+      if(stale){ try{ await sub.unsubscribe(); }catch(_e){} sub = null; }
     }
     if(!sub){
       sub = await reg.pushManager.subscribe({
@@ -3355,6 +3362,7 @@ async function enablePush(){
         sub: JSON.parse(JSON.stringify(sub)),
         updated_at: new Date().toISOString()
       }, 'id');
+      try{ localStorage.setItem('gphub_vapid', VAPID_PUBLIC); }catch(_e){}
     }
     return true;
   }catch(e){ console.warn('push setup failed', e); return false; }
