@@ -11,6 +11,7 @@
 --             once in the last 14 days (skips resigned/unused accounts), and only if
 --             2+ people have already clocked in today (public-holiday guard).
 --    lunch:   Lunch Out but no Lunch In after <lunchMins> (default 65) minutes.
+--    evening: clocked in but no Punch Out by <evening> (20:00); OT-entitled staff at <eveningOt> (22:00).
 -- =====================================================================
 
 create table if not exists public.gp_emp_reminder_log (
@@ -23,7 +24,7 @@ create table if not exists public.gp_emp_reminder_log (
 alter table public.gp_emp_reminder_log enable row level security;   -- no policies: server only
 
 insert into public.gp_settings (id, data, updated_at)
-values ('emp_reminders', '{"enabled":true,"morning":"09:10","lunchMins":65}'::jsonb, now())
+values ('emp_reminders', '{"enabled":true,"morning":"09:10","lunchMins":65,"evening":"20:00","eveningOt":"22:00"}'::jsonb, now())
 on conflict (id) do nothing;
 
 create or replace function public.gp_emp_punch_reminders(p_dry boolean default false)
@@ -48,10 +49,15 @@ declare
   ins     int;
   lo      int;
   r       record;
+  ev      int;
+  evot    int;
+  hr      jsonb := coalesce((select data from public.gp_settings where id = 'emp_hr'), '{}'::jsonb);
 begin
   if coalesce((cfg->>'enabled')::boolean, true) = false then return 0; end if;
   if extract(isodow from kl) = 7 then return 0; end if;               -- Sunday: closed
   am  := split_part(amtxt, ':', 1)::int * 60 + coalesce(nullif(split_part(amtxt, ':', 2), '')::int, 0);
+  ev   := split_part(coalesce(nullif(cfg->>'evening', ''), '20:00'), ':', 1)::int * 60 + coalesce(nullif(split_part(coalesce(nullif(cfg->>'evening', ''), '20:00'), ':', 2), '')::int, 0);
+  evot := split_part(coalesce(nullif(cfg->>'eveningOt', ''), '22:00'), ':', 1)::int * 60 + coalesce(nullif(split_part(coalesce(nullif(cfg->>'eveningOt', ''), '22:00'), ':', 2), '')::int, 0);
   hdr := jsonb_build_object('Content-Type', 'application/json', 'apikey', anon, 'Authorization', 'Bearer ' || anon);
 
   if not p_dry then
@@ -82,7 +88,8 @@ begin
                             where l.username = s.username
                               and coalesce(e->>'status', 'Pending') in ('Approved', 'Pending')
                               and coalesce(e->>'from', e->>'date') <= k
-                              and coalesce(e->>'to', e->>'from', e->>'date') >= k)
+                              and coalesce(e->>'to', e->>'from', e->>'date') >= k
+                              and (jsonb_typeof(e->'dates') is distinct from 'array' or e->'dates' ? k))
            and not exists (select 1 from public.gp_emp_reminder_log g
                             where g.username = s.username and g.date_key = k and g.kind = 'morning')
       loop
@@ -139,6 +146,39 @@ begin
     end loop;
   end if;
 
+  -- 3) Evening: still clocked in (forgot Punch Out) -------------------
+  --    normal staff at <evening> (20:00); OT-entitled staff later at <eveningOt> (22:00)
+  if nowm >= least(ev, evot) and nowm < greatest(ev, evot) + 120 then
+    for r in
+      select s.username, s.name, a.rec->>'amIn' as ain,
+             coalesce(hr->s.username->>'ot', '') = 'true' as ot
+        from public.gp_attendance a
+        join public.gp_staff s on s.username = a.username
+       where a.date_key = k
+         and coalesce(s.is_chauffeur, false) = false
+         and coalesce(a.rec->>'amIn', '') <> ''
+         and coalesce(a.rec->>'pmOut', '') = ''
+         and exists (select 1 from public.gp_push_subs p where p.username = s.username)
+         and not exists (select 1 from public.gp_emp_reminder_log g
+                          where g.username = s.username and g.date_key = k and g.kind = 'evening')
+    loop
+      if nowm < (case when r.ot then evot else ev end) or nowm >= (case when r.ot then evot else ev end) + 120 then continue; end if;
+      if p_dry then n := n + 1; continue; end if;
+      insert into public.gp_emp_reminder_log(username, date_key, kind) values (r.username, k, 'evening')
+      on conflict do nothing;
+      get diagnostics ins = row_count;
+      if ins > 0 then
+        perform net.http_post(
+          url := url,
+          body := jsonb_build_object('title', '🌙 Forgot to punch out?',
+                  'body', 'You clocked in at ' || r.ain || ' and haven''t punched out yet. Tap to punch out.',
+                  'target', r.username),
+          headers := hdr);
+        n := n + 1;
+      end if;
+    end loop;
+  end if;
+
   return n;
 end;
 $fn$;
@@ -146,9 +186,9 @@ $fn$;
 -- only the server (cron / postgres) may run it — not the public API
 revoke all on function public.gp_emp_punch_reminders(boolean) from public, anon, authenticated;
 
--- every 5 minutes, 08:00–17:55 Malaysia time (= 00:00–09:55 UTC), Mon–Sat
+-- every 5 minutes, 08:00–23:55 Malaysia time (= 00:00–15:55 UTC), Mon–Sat
 select cron.unschedule(jobid) from cron.job where jobname = 'gp-emp-punch-reminders';
-select cron.schedule('gp-emp-punch-reminders', '*/5 0-9 * * 1-6', 'select public.gp_emp_punch_reminders()');
+select cron.schedule('gp-emp-punch-reminders', '*/5 0-15 * * 1-6', 'select public.gp_emp_punch_reminders()');
 
 -- check:   select public.gp_emp_punch_reminders(true);   -- dry run: how many WOULD be reminded right now
 --          select * from public.gp_emp_reminder_log order by sent_at desc limit 20;
