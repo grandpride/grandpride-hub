@@ -492,7 +492,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 10;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 11;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -627,7 +627,9 @@ let CUR_VIEW = 'home';
 let clockTimer = null;
 
 const isChauffeur = s => !!(s && (s.is_chauffeur===true || s.is_chauffeur==='true'));
-const staffByU = u => STAFF.find(s=>s.username===u);
+let ALL_STAFF = [];        // every gp_staff row incl. resigned (for names in history)
+const isGone = s => !!(s && s.resigned_at && String(s.resigned_at) <= todayKey());   // resigned & last day reached
+const staffByU = u => STAFF.find(s=>s.username===u) || ALL_STAFF.find(s=>s.username===u);
 const nameOf = u => (staffByU(u)||{}).name || u;
 function reportsToMe(s){
   if(!ME || !s || s.username===ME.username) return false;
@@ -898,6 +900,7 @@ async function afterAuthInner(){
       if(r.data&&r.data.length){ prof=r.data[0]; if(!prof.auth_id){ sb.from('gp_staff').update({auth_id:user.id}).eq('username',prof.username).then(()=>{}); } }
     }
   }catch(e){}
+  if(prof && isGone(prof)){ await sb.auth.signOut(); show('sLogin'); const e=$('liErr'); if(e) e.textContent='This account is no longer active (resigned). Contact your manager.'; return; }
   if(prof){ ME=prof; await enterApp(); return; }
   // 2) not staff yet -> sign-up request?
   const s=await sb.from('gp_emp_signups').select('*').eq('id',user.id).maybeSingle();
@@ -1102,10 +1105,11 @@ async function versionCheck(){
 }
 async function loadStaff(){
   try{
-    const cols='username,name,email,role,company,title,reports_to,is_chauffeur,photo_url,phone,auth_id,birthday,can_post_notice';
+    const cols='username,name,email,role,company,title,reports_to,is_chauffeur,photo_url,phone,auth_id,birthday,can_post_notice,resigned_at,resigned_note';
     let r=await sb.from('gp_staff').select(cols+',profile').order('name');
     if(r.error) r=await sb.from('gp_staff').select(cols).order('name');   // v1.1 SQL not run yet
-    if(r.data) STAFF=r.data;
+    if(r.error) r=await sb.from('gp_staff').select(cols.replace(',resigned_at,resigned_note','')).order('name');
+    if(r.data){ ALL_STAFF=r.data; STAFF=r.data.filter(x=>!isGone(x)); }
   }catch(e){}
 }
 async function loadToday(){
@@ -1920,8 +1924,12 @@ async function openEmployees(all){
     return '<button class="menu-item" onclick="openEmployee(\''+esc(s.username)+'\')"><span class="avatar" style="width:40px;height:40px;font-size:14px;box-shadow:none;border:none">'+avatarHtml(s.name,s.photo_url)+'</span><span class="mt">'+esc(s.name)+(isLeadRole(s)&&s.role!=='Admin'?' <span class="pill gold" style="padding:1px 7px;font-size:9.5px">'+esc(s.role)+'</span>':'')+'<small>'+esc(s.title||s.role||'')+(isChauffeur(s)&&!/chauffeur/i.test(s.title||'')?' · Chauffeur':'')+'</small></span>'+pill+'</button>';
   }).join('');
   const seg=canSettings()?'<div class="seg"><button class="'+(!EMP_ALL?'on':'')+'" onclick="openEmployees(false)">My team</button><button class="'+(EMP_ALL?'on':'')+'" onclick="openEmployees(true)">Everyone</button></div>':'';
+  const goneList=(canSettings()&&EMP_ALL)?ALL_STAFF.filter(x=>x.username!=='admin'&&isGone(x)):[];
+  const leaving=(canSettings()&&EMP_ALL)?STAFF.filter(x=>x.resigned_at&&!isGone(x)):[];
+  const goneHtml=(leaving.length||goneList.length)?'<div class="sec-title">Resigned <small>'+goneList.length+(leaving.length?' · '+leaving.length+' leaving soon':'')+'</small></div>'
+    +leaving.concat(goneList).map(x=>'<button class="menu-item" style="opacity:.75" onclick="openEmployee(\''+esc(x.username)+'\')"><span class="avatar" style="width:40px;height:40px;font-size:14px;box-shadow:none;border:none;filter:grayscale(1)">'+avatarHtml(x.name,x.photo_url)+'</span><span class="mt">'+esc(x.name)+'<small>'+(isGone(x)?'Last day ':'Leaving ')+niceDate(x.resigned_at,{day:'numeric',month:'short',year:'numeric'})+'</small></span><span class="pill '+(isGone(x)?'bad':'warn')+'">'+(isGone(x)?'Resigned':'Leaving')+'</span></button>').join(''):'';
   $('subBody').innerHTML=seg+'<div class="tiles" style="margin-bottom:14px"><div class="tile ok"><b>'+inN+'</b><span>Clocked in</span></div><div class="tile bad"><b>'+lateN+'</b><span>Late</span></div><div class="tile"><b>'+leaveN+'</b><span>On leave</span></div></div>'
-    +(rows||'<div class="empty">Nobody reports to you yet.</div>');
+    +(rows||'<div class="empty">Nobody reports to you yet.</div>')+goneHtml;
 }
 function openEmployee(u){
   const s=staffByU(u); if(!s) return; const hr=hrOf(u); const canHr=canSettings();
@@ -1935,10 +1943,38 @@ function openEmployee(u){
       +'<label class="fld"><span>Confirmed (probation ended)</span><input class="inp" type="date" id="hrConf" value="'+esc(hr.confirmed||'')+'"></label>'
       +'<label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-bottom:12px"><input type="checkbox" id="hrOt" '+(hr.ot?'checked':'')+'> OT entitled (after 7pm)</label>'
       +'<button class="btn" onclick="saveHr(\''+esc(u)+'\')">Save HR</button></div>':'')
-    +(canSettings()&&s.username!=='admin'?posCardHtml(s):'')
+    +(canSettings()&&s.username!=='admin'&&!isGone(s)?posCardHtml(s):'')
+    +(canSettings()&&s.username!=='admin'&&s.username!==ME.username?resignCardHtml(s):'')
     +'<button class="btn gold" onclick="closeSheet();openPayroll(undefined,\''+esc(u)+'\')">View payroll cycle</button>');
-  if(canSettings()&&s.username!=='admin') bindPosCard(s);
+  if(canSettings()&&s.username!=='admin'&&!isGone(s)) bindPosCard(s);
 }
+/* ---------- Resigned staff (approver / Admin): blocks login on the last day, keeps all history ---------- */
+function resignCardHtml(s){
+  if(s.resigned_at){
+    const gone=isGone(s);
+    return '<div class="card"><h4>Employment status</h4><p style="margin-bottom:10px"><span class="pill '+(gone?'bad':'warn')+'">'+(gone?'Resigned':'Leaving')+'</span> &nbsp;Last day <b>'+niceDate(s.resigned_at,{day:'numeric',month:'short',year:'numeric'})+'</b>'+(s.resigned_note?'<br><span class="small muted">'+esc(s.resigned_note)+'</span>':'')+'</p>'
+      +'<p class="small muted" style="margin-bottom:10px">'+(gone?'Login blocked in every app. Attendance, leave &amp; payroll history are kept.':'Login will be blocked automatically after the last day.')+'</p>'
+      +'<button class="btn ghost" onclick="setResigned(\''+esc(s.username)+'\',null)">Re-activate '+esc((s.name||'').split(' ')[0])+'</button></div>';
+  }
+  return '<div class="card"><h4>Employment status</h4><p class="small muted" style="margin-bottom:10px">Staff resigned? Set the last working day — they\'re removed from teams, reminders &amp; lists and can\'t log in any more. History is kept.</p>'
+    +'<label class="fld"><span>Last working day</span><input class="inp" type="date" id="rsDate" value="'+todayKey()+'"></label>'
+    +'<label class="fld"><span>Note (optional)</span><input class="inp" id="rsNote" maxlength="120" placeholder="e.g. Resigned, notice served"></label>'
+    +'<button class="btn danger" onclick="setResigned(\''+esc(s.username)+'\',$(\'rsDate\').value)">Mark as resigned</button></div>';
+}
+async function setResigned(u, date){
+  const s=staffByU(u); if(!s) return;
+  if(date===''){ toast('Pick the last working day'); return; }
+  const msg=date?('Mark '+s.name+' as resigned (last day '+niceDate(date,{day:'numeric',month:'short',year:'numeric'})+')?'+(date<=todayKey()?' Their login is blocked right away.':'')):('Re-activate '+s.name+'? Their login works again.');
+  if(!confirm(msg)) return;
+  const note=date&&$('rsNote')?$('rsNote').value.trim():null;
+  const r=await sb.rpc('gp_emp_set_resigned',{p_username:u, p_date:date||null, p_note:note||null});
+  if(r.error){ toast('Failed: '+r.error.message,4000); return; }
+  s.resigned_at=date||null; s.resigned_note=note||null;
+  STAFF=ALL_STAFF.filter(x=>!isGone(x));
+  toast(r.data==='active'?s.name+' re-activated ✓':r.data==='scheduled'?'Saved — blocked after '+niceDate(date,{day:'numeric',month:'short'}):s.name+' marked resigned ✓',3500);
+  closeSheet(); await loadLeave(); if($('subTitle').textContent==='Employees') openEmployees();
+}
+
 /* ---------- Position (Staff / HOD / Manager) + who reports to them — approver / Admin only ---------- */
 let POS_TEAM=new Set();
 const reportsDirect = (x, u) => parseReports(x.reports_to).map(String).indexOf(u)>=0;
@@ -2263,7 +2299,7 @@ function renderTeamCal(){
 let RPT={ month:null, scope:'team', data:null };
 const canReport = () => isLeader() || canSettings();
 function rptPeople(){
-  if(RPT.scope==='all' && canSettings()) return STAFF.filter(s=>s.username!=='admin');
+  if(RPT.scope==='all' && canSettings()){ const st=cycleFor(RPT.month+'-15',false).start; return ALL_STAFF.filter(s=>s.username!=='admin' && !(s.resigned_at && String(s.resigned_at)<st)); }
   const t=myTeam(); return t;
 }
 function monthShift(m, dir){ const d=keyToDate(m+'-01'); d.setMonth(d.getMonth()+dir); return todayKey(d).slice(0,7); }

@@ -136,6 +136,9 @@ var SUPA = (function(){
       var u = await currentAuthUser(); if(!u) return null;
       var r = await client.from('gp_staff').select('*').eq('auth_id', u.id).limit(1);
       if(r.error || !r.data || !r.data.length) return null;
+      // resigned staff (last working day reached) are treated as having no profile -> signed out
+      var rs = r.data[0].resigned_at;
+      if(rs){ var d=new Date(), t=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); if(String(rs)<=t) return null; }
       return r.data[0];
     }catch(e){ return null; }
   }
