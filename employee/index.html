@@ -24,7 +24,8 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{font-family:'Plus Jakarta Sans',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45;overflow-x:hidden}
-button{font-family:inherit;cursor:pointer}
+button{font-family:inherit;cursor:pointer;color:inherit}
+.day{color:var(--ink)}
 input,select,textarea{font-family:inherit;font-size:15px}
 .hidden{display:none!important}
 .muted{color:var(--muted)}
@@ -46,6 +47,10 @@ input,select,textarea{font-family:inherit;font-size:15px}
 .inp{width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--ink);outline:none}
 .inp:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
 textarea.inp{resize:vertical;min-height:80px}
+/* iPhone: date/time inputs have a fixed intrinsic width + centred text -> overflow. Tame them. */
+input.inp[type=date],input.inp[type=datetime-local],input.inp[type=time]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;text-align:left;min-height:48px}
+input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
+.btn-row .fld,.fld{min-width:0}
 .btn{width:100%;padding:14px;border:none;border-radius:14px;font-weight:700;font-size:14.5px;letter-spacing:.3px;background:var(--ink);color:#fff;transition:transform .12s,opacity .12s}
 .btn:active{transform:scale(.98)}
 .btn:disabled{opacity:.55}
@@ -420,7 +425,7 @@ textarea.inp{resize:vertical;min-height:80px}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 5;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 6;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
