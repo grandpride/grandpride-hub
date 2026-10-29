@@ -467,10 +467,13 @@ const ICONS = {
   gpchauffeur:'<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M9 7h6"/></svg>',
 };
 const APPS = [
-  { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules', section:'Tools', link:'employee/' },  // now the standalone Employee app (old in-Hub attendance below is unused — delete during restructure)
-  { id:'reminders',  label:'Tasks & Reminders', svg:ICONS.reminders, logo:'', cat:'modules', section:'Tools', link:'employee/?open=tasks' },  // same gp_reminders data, now in the Employee app
-  { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'employee/?open=daylog' },  // now inside the Employee app (old daily-task-log.html kept as backup)
-  { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'employee/?open=staff', adminOnly:true },  // Staff Manager now lives in the Employee app (old staff-manager.html kept as backup),
+  // --- MOVED TO STANDALONE GRANDPRIDE EMPLOYEE SYSTEM PWA (hidden 2026-10, code kept as backup) ---
+  // All four now live inside employee/ — hidden from the Hub grid per restructure. Reopen a tile by uncommenting.
+  // { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules', section:'Tools', link:'employee/' },
+  // { id:'reminders',  label:'Tasks & Reminders', svg:ICONS.reminders, logo:'', cat:'modules', section:'Tools', link:'employee/?open=tasks' },
+  // { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'employee/?open=daylog' },
+  // { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'employee/?open=staff', adminOnly:true },
+  // --- end hidden modules ---
   { id:'minigames',  label:'Minigames', svg:ICONS.minigames, logo:'', cat:'modules', section:'Minigames', link:'gp-minigames.html' },
   { id:'joborder',   label:'Job Order',  svg:ICONS.joborder,   logo:'', cat:'grandlab', link:'grandlab_jobcard.html' },
   { id:'stock',      label:'Stock Report', svg:ICONS.stock,    logo:'', cat:'grandlab', link:'stock-report.html' },
