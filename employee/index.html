@@ -417,7 +417,7 @@ textarea.inp{resize:vertical;min-height:80px}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 3;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 4;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -760,18 +760,22 @@ async function enablePush(silent){
     if(perm!=='granted') return false;
     const reg=await navigator.serviceWorker.ready;
     let sub=await reg.pushManager.getSubscription();
-    // a subscription made with an OLD server key can never receive pushes -> replace it
+    // a subscription made with an OLD server key can never receive pushes -> replace it.
+    // iPhone Safari can't report which key a subscription used, so remember the key we
+    // subscribed with on this device and force ONE fresh subscription when it changes.
     if(sub){
+      let stale = lsGet('gpemp_vapid','')!==VAPID_PUBLIC;
       try{
         const k=sub.options&&sub.options.applicationServerKey;
-        const cur=k?btoa(String.fromCharCode(...new Uint8Array(k))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''):'';
-        if(cur && cur!==VAPID_PUBLIC){ await sub.unsubscribe(); sub=null; }
+        if(k){ const cur=btoa(String.fromCharCode(...new Uint8Array(k))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); stale = cur!==VAPID_PUBLIC; }
       }catch(e){}
+      if(stale){ try{ await sub.unsubscribe(); }catch(e){} sub=null; }
     }
     if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:vapidToUint8(VAPID_PUBLIC)});
     const id='ps'+Math.abs(sub.endpoint.split('').reduce((a,c)=>((a<<5)-a+c.charCodeAt(0))|0,0));
-    await sb.from('gp_push_subs').upsert({id, username:ME.username, sub:JSON.parse(JSON.stringify(sub)), updated_at:new Date().toISOString()},{onConflict:'id'});
-    return true;
+    const up=await sb.from('gp_push_subs').upsert({id, username:ME.username, sub:JSON.parse(JSON.stringify(sub)), updated_at:new Date().toISOString()},{onConflict:'id'});
+    if(!up.error) lsSet('gpemp_vapid', VAPID_PUBLIC);
+    return !up.error;
   }catch(e){ console.warn('push',e); return false; }
 }
 
