@@ -477,10 +477,13 @@ const ICONS = {
   gpchauffeur:'<svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M9 7h6"/></svg>',
 };
 const APPS = [
-  { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules', section:'Tools', link:'employee/' },  // now the standalone Employee app (old in-Hub attendance below is unused — delete during restructure)
-  { id:'reminders',  label:'Reminders',  svg:ICONS.reminders,  logo:'', cat:'modules', section:'Tools' },
-  { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'daily-task-log.html' },
-  { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'employee/?open=staff', adminOnly:true },  // Staff Manager now lives in the Employee app (old staff-manager.html kept as backup),
+  // --- MOVED TO STANDALONE GRANDPRIDE EMPLOYEE SYSTEM PWA (hidden 2026-10, code kept as backup) ---
+  // attendance + staff manager now live in employee/ ; reminders + daily task log retired from Hub.
+  // { id:'attendance', label:'Attendance', svg:ICONS.attendance, logo:'', cat:'modules', section:'Tools', link:'employee/' },
+  // { id:'reminders',  label:'Reminders',  svg:ICONS.reminders,  logo:'', cat:'modules', section:'Tools' },
+  // { id:'tasklog',    label:'Daily Task Log', svg:ICONS.tasklog, logo:'', cat:'modules', section:'Tools', link:'daily-task-log.html' },
+  // { id:'staffmgr',   label:'Staff Manager', svg:ICONS.staffmgr, logo:'', cat:'modules', section:'Tools', link:'employee/?open=staff', adminOnly:true },
+  // --- end hidden modules ---
   { id:'minigames',  label:'Minigames', svg:ICONS.minigames, logo:'', cat:'modules', section:'Minigames', link:'gp-minigames.html' },
   { id:'joborder',   label:'Job Order',  svg:ICONS.joborder,   logo:'', cat:'grandlab', link:'grandlab_jobcard.html' },
   { id:'academy',    label:'Academy',    svg:ICONS.academy,    logo:'', cat:'grandlab' },
