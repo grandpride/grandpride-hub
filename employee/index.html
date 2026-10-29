@@ -300,6 +300,13 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;margin-bottom:12px}
 .switch input{width:22px;height:22px;accent-color:var(--gold-d)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.dl-lab{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:4px 0 6px}
+.dl-lab em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:600}
+.dl-item{display:flex;gap:6px;margin-bottom:6px}
+.dl-item .inp{padding:10px 12px}
+.dl-x{width:38px;flex:0 0 38px;border:1.5px solid var(--line);background:#fff;border-radius:10px;font-size:18px;color:var(--muted)}
+.dl-ul{margin:0 0 10px 18px;font-size:13px}
+.dl-ul li{margin-bottom:3px}
 .pj-card{display:block;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 14px;margin-bottom:10px;color:var(--ink)}
 .pj-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .pj-top b{font-size:14px;min-width:0}
@@ -492,7 +499,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 13;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 14;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -1156,16 +1163,17 @@ async function enterApp(){
   versionCheck();
   // refresh ME from staff list (fresh copy)
   ME = STAFF.find(s=>s.username===ME.username) || ME;
-  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices(), loadProjects()]);
+  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices(), loadProjects(), loadDayLog()]);
   flushQueue();
   show('sApp');
   switchView('home');
-  // deep links from the Hub tiles: ?open=staff | tasks | notices
+  // deep links from the Hub tiles: ?open=staff | tasks | notices | daylog
   try{ const o=new URLSearchParams(location.search).get('open');
     if(o){ history.replaceState(null,'',location.pathname);
       if(o==='staff' && canSettings()) setTimeout(openStaffAdmin,300);
       else if(o==='tasks') switchView('tasks');
-      else if(o==='notices') setTimeout(openNotices,300); } }catch(e){}
+      else if(o==='notices') setTimeout(openNotices,300);
+      else if(o==='daylog') setTimeout(openDayLog,300); } }catch(e){}
   if(window.__gpZoom && !lsGet('gpemp_dsk_tip',false)){ lsSet('gpemp_dsk_tip',true); setTimeout(()=>toast('Tip: in Chrome ⋮ menu, untick "Desktop site" for the best view',6000),1500); }
   loadAllLeave().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
   locate().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
@@ -1174,6 +1182,7 @@ async function enterApp(){
 document.addEventListener('visibilitychange', async ()=>{
   if(document.visibilityState!=='visible' || !ME || !$('sApp').classList.contains('active')) return;
   versionCheck(); flushQueue();
+  if(DL && DL.date_key!==todayKey()){ DL=null; await loadDayLog(); }
   await Promise.all([loadToday(), loadNotices()]); if(CUR_VIEW==='home') renderHome();
 });
 
@@ -1282,6 +1291,7 @@ function renderHome(){
     +'<div style="height:12px"></div>'+attStrip(true)
     +(r.lunchOut?'<p class="muted small center" style="margin-top:8px">Lunch '+esc(r.lunchOut)+(r.lunchIn?' – '+esc(r.lunchIn):' (on break)')+'</p>':'')
     + homeOffHtml()
+    + homeDayLogHtml()
     + homeProjectsHtml()
     + homeNoticesHtml()
     +'<div class="sec-title">Today\'s Tasks <small><button class="linkbtn" onclick="switchView(\'tasks\')">See all</button></small></div>'
@@ -1393,6 +1403,7 @@ async function finishPunch(rec, punch, photo, loc){
   if(T) notifySupervisors(ME, T[0], T[1]);
   toast(saved ? ({ 'Morning In':'Clocked in ✓ ','Evening Out':'Clocked out ✓ '}[punch]||punch+' ✓ ')+now : 'No internet — saved on phone, will sync', 2800);
   renderHome();
+  if(punch==='Evening Out') setTimeout(eodPrompt, 1200);
 }
 
 /* watermarked selfie (date/time + name + GPS + address) */
@@ -1453,7 +1464,7 @@ function renderTasks(){
   let dayTasks=list.filter(t=>dueKey(t)===TK.day);
   if(TK.day===tk && TK.filter!=='done'){ const over=list.filter(t=>dueKey(t)<tk && t.status!=='done'); dayTasks=[...over,...dayTasks]; }
   $('vTasks').innerHTML=
-    '<div class="page-head"><h2>My Tasks</h2><button class="btn sm gold" onclick="openNewTask()">+ Add Task</button></div>'
+    '<div class="page-head"><h2>My Tasks</h2><div style="display:flex;gap:8px">'+(canTaskLog()?'<button class="btn sm ghost" onclick="openDayLog()">📝 Daily Log</button>':'')+'<button class="btn sm gold" onclick="openNewTask()">+ Add Task</button></div></div>'
     +taskStrip()
     +'<div class="month-row"><b>'+keyToDate(TK.day).toLocaleDateString('en-GB',{month:'long',year:'numeric'})+'</b>'
       +'<div style="display:flex;gap:6px"><button class="iconbtn" style="width:36px;height:36px" onclick="TK.week=addDays(TK.week,-7);TK.day=TK.week;renderTasks()">'+ICON.left+'</button>'
@@ -1733,6 +1744,8 @@ function renderProfile(){
     + menuItem('hrs','Time Tracking','Weekly in-time & working hours','openTimeTracking()')
     + menuItem('leave','Leave Management','Apply, balance, approvals',"switchView('leave')")
     + menuItem('cal','Team Calendar','Who is on leave',"openTeamCal()")
+    + (canTaskLog()?menuItem('edit','Daily Task Log','Plan, updates & end-of-day report','openDayLog()'):'')
+    + (isLeader()||isMgmt()?menuItem('report','Team Daily Logs','Who planned & reported today'+(isMgmt()?' · Secret Box':''),'openTeamLogs()'):'')
     + menuItem('mega','Notice Board','Announcements & birthdays','openNotices()', unseenNotices().length?'<span class="cnt">'+unseenNotices().length+'</span>':'')
     + menuItem('claim','Claims','Submit & track claims (GL Claim)','openClaims()')
     + menuItem('pay','Payroll','Worked days, late, OT per cycle','openPayroll(undefined,null)')
@@ -2678,6 +2691,208 @@ async function inviteStaffLogin(s){
   const res=await callInvite({ email:s.email, username:s.username, name:s.name, role:s.role||'Staff', existing:true });
   if(!res.ok){ toast('Invite failed: '+res.error,4500); return; }
   toast('Invite sent to '+s.email+' ✓',3500); closeSheet(); await loadStaff(); renderStaffAdmin();
+}
+
+/* ---------- Daily Task Log (replaces daily-task-log.html; same Sheet + WhatsApp output) ---------- */
+const DTL_SHEET='https://script.google.com/macros/s/AKfycbzu9ikbwwoEj8mjF6BJCEGmeAH55Y_lczWcp_Q-NlvGTD5WYsjpwNbiCmhsNO3mgq4/exec';
+const DTL_ST=[['done','✅ Done'],['progress','🔄 In Progress'],['pending','⏳ Pending']];
+const DTL_TXT={done:'✅ Done',progress:'🔄 In Progress',pending:'⏳ Pending'};
+const canTaskLog = () => !!ME && !isChauffeur(ME) && (ME.role==='Admin' || smApps(ME).indexOf('tasklog')>=0);
+const isMgmt = () => !!ME && (isLeadRole(ME) || isApprover());
+let DL=null;            // {date_key, data, planned_at, submitted_at, carried}
+let DL_TIMER=null;
+const dlEmpty = () => ({ pending:[], today:[], updates:[], resolved:[], improve:'', remark:'' });
+const dlNorm = d => Object.assign(dlEmpty(), d||{});
+async function loadDayLog(){
+  if(!canTaskLog()) return;
+  const k=todayKey();
+  try{
+    const r=await sb.from('gp_emp_daylog').select('*').eq('id',ME.username+'|'+k).maybeSingle();
+    if(r.data){ DL={ date_key:k, data:dlNorm(r.data.data), planned_at:r.data.planned_at, submitted_at:r.data.submitted_at }; return; }
+    // new day: carry forward unfinished work from the latest previous log
+    const p=await sb.from('gp_emp_daylog').select('date_key,data').eq('username',ME.username).lt('date_key',k).order('date_key',{ascending:false}).limit(1);
+    const prev=p.data&&p.data[0]?dlNorm(p.data[0].data):null;
+    const d=dlEmpty(); let carried=0;
+    if(prev){
+      const res=prev.resolved.map(x=>String(x).trim().toLowerCase());
+      const c=[];
+      prev.updates.forEach(u=>{ if((u.status==='progress'||u.status==='pending')&&u.task) c.push(String(u.task).trim()); });
+      prev.today.concat(prev.pending).forEach(t=>{ t=String(t||'').trim(); if(t && res.indexOf(t.toLowerCase())<0) c.push(t); });
+      const done=new Set(prev.updates.filter(u=>u.status==='done'&&u.task).map(u=>String(u.task).trim().toLowerCase()));
+      d.pending=[...new Set(c.filter(x=>x && !done.has(x.toLowerCase())))]; carried=d.pending.length;
+    }
+    const draft=lsGet('gpemp_dl_'+k,null);
+    DL={ date_key:k, data:draft?dlNorm(draft):d, planned_at:null, submitted_at:null, carried, fromPrev:prev?p.data[0].date_key:null };
+  }catch(e){ DL={ date_key:k, data:dlNorm(lsGet('gpemp_dl_'+k,null)), planned_at:null, submitted_at:null }; }
+}
+function homeDayLogHtml(){
+  if(!canTaskLog() || !DL || isSunday(todayKey())) return '';
+  const d=DL.data, plan=d.today.filter(Boolean).length, ups=d.updates.filter(u=>u.task).length;
+  const st = DL.submitted_at ? '<span class="pill ok">Report sent</span>' : (plan>=3 ? '<span class="pill gold">Planned</span>' : '<span class="pill warn">Plan '+plan+'/3</span>');
+  return '<button class="offrow" onclick="openDayLog()"><span class="mi" style="width:30px;height:30px;border-radius:10px;background:var(--gold-soft);display:flex;align-items:center;justify-content:center">📝</span>'
+    +'<span class="tx">Daily Task Log<small>'+plan+' planned · '+ups+' update'+(ups===1?'':'s')+(DL.submitted_at?' · sent '+new Date(DL.submitted_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):' · end-of-day before 7PM')+'</small></span>'+st+'</button>';
+}
+function dlSaveSoon(){
+  if(!DL) return; lsSet('gpemp_dl_'+DL.date_key, DL.data);
+  clearTimeout(DL_TIMER); DL_TIMER=setTimeout(dlSave, 1200);
+  const s=$('dlSaved'); if(s) s.textContent='Saving…';
+}
+async function dlSave(extra){
+  if(!DL) return false;
+  const d=DL.data, now=new Date().toISOString();
+  if(!DL.planned_at && d.today.filter(Boolean).length) DL.planned_at=now;
+  const row=Object.assign({ id:ME.username+'|'+DL.date_key, username:ME.username, date_key:DL.date_key,
+    data:{ pending:d.pending.filter(Boolean), today:d.today.filter(Boolean), updates:d.updates.filter(u=>u.task||u.time), resolved:d.resolved.filter(Boolean), improve:d.improve||'', remark:d.remark||'' },
+    planned_at:DL.planned_at, submitted_at:DL.submitted_at, updated_at:now }, extra||{});
+  const ok=await safeUpsert('gp_emp_daylog', row, 'id');
+  const s=$('dlSaved'); if(s) s.textContent=ok?'Saved ✓':'Saved on phone — will sync';
+  return ok;
+}
+function openDayLog(){
+  if(!canTaskLog()){ toast('Daily Task Log not enabled for you — ask admin'); return; }
+  if(!DL){ loadDayLog().then(openDayLog); return; }
+  openSub('Daily Task Log', '', '<span class="small muted" id="dlSaved"></span>');
+  renderDayLog();
+}
+function dlList(key, ph, hide){
+  const arr=DL.data[key];
+  return '<div class="dl-list" data-key="'+key+'">'+arr.map((v,i)=>(hide&&String(v).trim()&&hide.has(String(v).trim().toLowerCase()))?'':'<div class="dl-item"><input class="inp" data-i="'+i+'" value="'+esc(v)+'" placeholder="'+esc(ph)+'"><button type="button" class="dl-x" data-x="'+i+'" aria-label="Remove">×</button></div>').join('')+'</div>'
+    +'<button type="button" class="linkbtn" style="margin:2px 0 10px" onclick="dlAdd(\''+key+'\')">+ Add</button>';
+}
+function dlAdd(key, val){ DL.data[key].push(val||''); dlSaveSoon(); renderDayLog(); setTimeout(()=>{ const l=document.querySelectorAll('.dl-list[data-key="'+key+'"] input'); if(l.length && !val) l[l.length-1].focus(); },50); }
+function renderDayLog(){
+  const d=DL.data, k=DL.date_key, sent=!!DL.submitted_at;
+  while(d.today.length<3) d.today.push('');
+  if(!d.updates.length) d.updates.push({time:'',duration:'',task:'',status:''});
+  const planned=new Set(d.today.concat(d.pending).map(x=>String(x).trim().toLowerCase()).filter(Boolean));
+  const sugg=myOpenTasks().map(t=>t.title).filter(t=>t && !planned.has(String(t).trim().toLowerCase())).slice(0,8);
+  const resolvedSet=new Set(d.resolved.map(x=>String(x).trim().toLowerCase()));
+  const resolvable=[...new Set(d.pending.concat(d.today).concat(d.updates.map(u=>u.task)).map(x=>String(x||'').trim()).filter(Boolean))];
+  const h=(n,e,t,sub)=>'<div class="sec-title" style="margin-top:'+(n===1?'4':'18')+'px"><span>'+e+' '+n+'. '+t+'</span><small>'+sub+'</small></div>';
+  $('subBody').innerHTML=
+    '<div class="card" style="padding:12px 14px"><div class="row"><span class="muted">Date</span><b>'+niceDate(k,{weekday:'long',day:'numeric',month:'short',year:'numeric'})+'</b></div>'
+    +'<div class="row"><span class="muted">Name</span><b>'+esc(ME.name)+'</b></div><div class="row"><span class="muted">Position</span><b>'+esc(ME.title||ME.role||'')+(ME.company?' · '+esc(ME.company):'')+'</b></div></div>'
+    +(sent?'<div class="banner"><b>End-of-day report sent at '+new Date(DL.submitted_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'. You can still edit and send again.</b></div>':'')
+    +h(1,'🌅','Morning Planning','before 10AM')
+    +'<div class="card"><span class="dl-lab">Pending task <em>— carried forward'+(DL.carried?' ('+DL.carried+' from '+niceDate(DL.fromPrev,{day:'numeric',month:'short'})+')':'')+'</em></span>'+dlList('pending','Pending task…')
+    +'<span class="dl-lab">Today\'s planning <em>— min. 3 tasks</em></span>'+dlList('today','Planned task…')
+    +(sugg.length?'<span class="dl-lab">From your open Tasks <em>— tap to add</em></span><div class="chips">'+sugg.map(t=>'<button type="button" class="chip on" style="text-decoration:none" onclick="dlAdd(\'today\','+esc(JSON.stringify(t))+')">+ '+esc(t)+'</button>').join('')+'</div>':'')
+    +'<button class="btn gold" onclick="dlSavePlan()">Save morning plan</button></div>'
+    +h(2,'⏱','Task Updates','during the day')
+    +d.updates.map((u,i)=>'<div class="card dl-up" data-u="'+i+'"><div class="btn-row"><label class="fld"><span>Time</span><input class="inp" type="time" data-f="time" value="'+esc(u.time||'')+'"></label><label class="fld"><span>Duration</span><input class="inp" data-f="duration" placeholder="e.g. 1h 30m" value="'+esc(u.duration||'')+'"></label></div>'
+      +'<label class="fld"><span>Task</span><textarea class="inp" data-f="task" placeholder="What did you work on?" style="min-height:60px">'+esc(u.task||'')+'</textarea></label>'
+      +'<div class="seg" style="margin-bottom:6px">'+DTL_ST.map(([sk,sl])=>'<button type="button" class="'+(u.status===sk?'on':'')+'" data-s="'+sk+'">'+sl+'</button>').join('')+'</div>'
+      +'<button type="button" class="linkbtn" style="color:var(--bad);font-size:12px" data-rm="'+i+'">Remove update</button></div>').join('')
+    +'<button class="btn ghost" onclick="DL.data.updates.push({time:fmtTime(new Date()),duration:\'\',task:\'\',status:\'\'});dlSaveSoon();renderDayLog()">+ Add task update</button>'
+    +h(3,'🌆','End of Day Report','before 7PM')
+    +'<div class="card"><span class="dl-lab">Resolved task <em>— tap what you finished</em></span>'
+    +(resolvable.length?'<div class="chips">'+resolvable.map(t=>'<button type="button" class="chip'+(resolvedSet.has(t.toLowerCase())?' on':'')+'" style="text-decoration:none" data-res="'+esc(t)+'">'+(resolvedSet.has(t.toLowerCase())?'✓ ':'')+esc(t)+'</button>').join('')+'</div>':'')
+    +dlList('resolved','Other resolved task…', new Set(resolvable.map(t=>t.toLowerCase())))
+    +'<label class="fld"><span>1% Improvement — small win / learning</span><textarea class="inp" id="dlImp" placeholder="Key small improvement, learning or contribution">'+esc(d.improve)+'</textarea></label>'
+    +'<label class="fld"><span>Remark — issues, blockers, follow-ups</span><textarea class="inp" id="dlRem" placeholder="Any issue, blocker, delay or follow-up needed">'+esc(d.remark)+'</textarea></label></div>'
+    +'<div class="card" style="background:#141210;color:#fff;border:none"><h4 style="color:var(--gold-l)">🔒 Secret Box</h4><p class="small" style="color:#bdb4a3;margin-bottom:8px">A safe space to share honestly with management (HOD / Manager / Admin only). Be brave and transparent — your input matters.</p>'
+    +'<textarea class="inp" id="dlSec" placeholder="Suggestions, concerns or feedback (private to management)"></textarea></div>'
+    +'<button class="btn gold" id="dlSend">📲 Submit &amp; send to WhatsApp</button>'
+    +'<p class="small muted center" style="margin-top:8px">Autosaves as you type · also updates your Google Sheet tab</p>';
+  // bind lists
+  document.querySelectorAll('#subBody .dl-list').forEach(box=>{
+    const key=box.dataset.key;
+    box.querySelectorAll('input').forEach(inp=>inp.oninput=()=>{ DL.data[key][+inp.dataset.i]=inp.value; dlSaveSoon(); });
+    box.querySelectorAll('.dl-x').forEach(b=>b.onclick=()=>{ DL.data[key].splice(+b.dataset.x,1); dlSaveSoon(); renderDayLog(); });
+  });
+  document.querySelectorAll('#subBody .dl-up').forEach(c=>{
+    const u=DL.data.updates[+c.dataset.u];
+    c.querySelectorAll('[data-f]').forEach(el=>el.oninput=()=>{ u[el.dataset.f]=el.value; dlSaveSoon(); });
+    c.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ u.status=u.status===b.dataset.s?'':b.dataset.s; dlSaveSoon(); c.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',x.dataset.s===u.status)); });
+    c.querySelector('[data-rm]').onclick=()=>{ DL.data.updates.splice(+c.dataset.u,1); dlSaveSoon(); renderDayLog(); };
+  });
+  document.querySelectorAll('#subBody [data-res]').forEach(b=>b.onclick=()=>{ const t=b.dataset.res, i=DL.data.resolved.findIndex(x=>String(x).trim().toLowerCase()===t.toLowerCase()); if(i>=0) DL.data.resolved.splice(i,1); else DL.data.resolved.push(t); dlSaveSoon(); renderDayLog(); });
+  $('dlImp').oninput=()=>{ DL.data.improve=$('dlImp').value; dlSaveSoon(); };
+  $('dlRem').oninput=()=>{ DL.data.remark=$('dlRem').value; dlSaveSoon(); };
+  $('dlSend').onclick=submitDayLog;
+}
+async function dlSavePlan(){
+  const n=DL.data.today.filter(x=>String(x).trim()).length;
+  if(!n){ toast('Add at least 1 planned task'); return; }
+  clearTimeout(DL_TIMER); await dlSave(); toast(n<3?'Plan saved — try to plan at least 3 tasks':'Morning plan saved ✓'); if(CUR_VIEW==='home') renderHome();
+}
+function dlPayload(secret){
+  const d=DL.data;
+  return { date:DL.date_key, name:ME.name, position:ME.title||ME.role||'', dept:ME.company||'',
+    pending:d.pending.filter(Boolean), today:d.today.filter(Boolean), updates:d.updates.filter(u=>u.task||u.time).map(u=>({time:u.time||'',duration:u.duration||'',task:u.task||'',status:u.status||''})),
+    resolved:d.resolved.filter(Boolean), improve:d.improve||'', remark:d.remark||'', secret:secret||'' };
+}
+function dlMessage(p, secretSent){
+  const b=a=>a.length?a.map(t=>'- '+t).join('\n'):'- ';
+  const L=['📒 *DAILY TASK LOG*','📅 Date: '+keyToDate(p.date).toLocaleDateString('en-GB'),'💼 Position: '+String(p.position||'').toUpperCase(),'🙋‍♂️ Name: '+String(p.name||'').toUpperCase(),'🏢 Department: '+(p.dept||''),'',
+    '🌅 *1. Morning Planning (Before Work Starts 10AM)*','*Pending Task:* (carry forward from previous day)',b(p.pending),'*Today Planning:* (minimum 3 tasks planned for the day)',b(p.today),'',
+    '⏱ *2. During / End of Day — Daily Task Updates*'];
+  (p.updates.length?p.updates:[{}]).forEach(u=>{ L.push('*Time:* '+(u.time||''),'*Task:* '+(u.task||''),'*Duration:* '+(u.duration||''),'*Status:* '+(DTL_TXT[u.status]||''),''); });
+  L.push('🌆 *3. End of Day Report before 7pm*','*Resolved Task:*',b(p.resolved),'*1% Improvement:* (Key small improvement / learning / contribution)','- '+(p.improve||''),
+    '*Remark:* (Any issue, blockers, delay, or follow-up needed)','- '+(p.remark||''),'*Secret Box:* '+(secretSent?'sent privately to management ✓':'-'));
+  return L.join('\n');
+}
+async function submitDayLog(){
+  const d=DL.data;
+  if(!d.today.filter(x=>String(x).trim()).length){ toast('Add your planned tasks first'); return; }
+  const sec=($('dlSec').value||'').trim();
+  const btn=$('dlSend'); btn.disabled=true; btn.textContent='Sending…';
+  clearTimeout(DL_TIMER);
+  DL.submitted_at=new Date().toISOString();
+  await dlSave();
+  let secOk=false;
+  if(sec){ const r=await sb.from('gp_emp_secret').insert({ id:'sb'+Date.now()+Math.random().toString(36).slice(2,6), username:ME.username, name:ME.name, date_key:DL.date_key, body:sec }); secOk=!r.error; if(r.error) toast('Secret Box not sent: '+r.error.message,4000); }
+  const p=dlPayload(sec);
+  try{ fetch(DTL_SHEET,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)}).catch(()=>{}); }catch(e){}
+  btn.disabled=false; btn.textContent='📲 Submit & send to WhatsApp';
+  toast('Report saved ✓ — opening WhatsApp');
+  const url='https://wa.me/?text='+encodeURIComponent(dlMessage(p, secOk));
+  const w=window.open(url,'_blank'); if(!w) location.href=url;
+  if($('dlSec')) $('dlSec').value='';
+  renderDayLog(); if(CUR_VIEW==='home') renderHome();
+}
+function eodPrompt(){
+  if(!canTaskLog() || !DL || DL.submitted_at) return;
+  openSheet('<h3>📝 End-of-day report</h3><p class="muted" style="margin-bottom:14px">You\'ve clocked out — send today\'s Daily Task Log before you go?</p>'
+    +'<div class="btn-row"><button class="btn ghost" onclick="closeSheet()">Later</button><button class="btn gold" onclick="closeSheet();openDayLog()">Open Daily Log</button></div>');
+}
+/* manager view */
+let TL={ k:null, tab:'logs' };
+function teamLogPeople(){
+  const base=(canSettings()||ME.role==='Admin')?STAFF.filter(s=>s.username!=='admin'&&s.username!==ME.username):myTeam();
+  return base.filter(s=>!isChauffeur(s) && (s.role==='Admin'||smApps(s).indexOf('tasklog')>=0));
+}
+async function openTeamLogs(dir){
+  TL.k = dir ? addDays(TL.k, dir) : (TL.k||todayKey());
+  if(!dir && TL.k>todayKey()) TL.k=todayKey();
+  openSub('Team Daily Logs','<div class="spinner" style="margin-top:30px"></div>');
+  if(TL.tab==='secret' && isMgmt()) return renderSecretBox();
+  const people=teamLogPeople(); const us=people.map(s=>s.username);
+  let rows=[]; try{ if(us.length){ const r=await sb.from('gp_emp_daylog').select('*').eq('date_key',TL.k).in('username',us); rows=r.data||[]; } }catch(e){}
+  const by={}; rows.forEach(r=>by[r.username]=r); TL.rows=by;
+  const sent=rows.filter(r=>r.submitted_at).length, plannedN=rows.filter(r=>(r.data&&r.data.today||[]).length).length;
+  const nav='<div class="month-row"><button class="iconbtn" onclick="openTeamLogs(-1)">'+ICON.left+'</button><b>'+niceDate(TL.k,{weekday:'short',day:'numeric',month:'short'})+'</b><button class="iconbtn" onclick="openTeamLogs(1)" '+(TL.k>=todayKey()?'disabled style="opacity:.3"':'')+'>'+ICON.right+'</button></div>';
+  const seg=isMgmt()?'<div class="seg"><button class="on">Daily logs</button><button onclick="TL.tab=\'secret\';openTeamLogs(0)">🔒 Secret Box</button></div>':'';
+  const list=people.map(s=>{ const r=by[s.username], d=r?dlNorm(r.data):null, pl=d?d.today.length:0;
+    const pill=r&&r.submitted_at?'<span class="pill ok">Sent '+new Date(r.submitted_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'</span>':(pl?'<span class="pill gold">Planned '+pl+'</span>':'<span class="pill warn">No plan</span>');
+    return '<button class="menu-item" '+(r?'onclick="viewDayLog(\''+esc(s.username)+'\')"':'onclick="toast(\'No log yet\')"')+'><span class="avatar" style="width:40px;height:40px;font-size:14px;box-shadow:none;border:none">'+avatarHtml(s.name,s.photo_url)+'</span><span class="mt">'+esc(s.name)+'<small>'+(d?d.updates.length+' update'+(d.updates.length===1?'':'s')+' · '+d.resolved.length+' resolved':'—')+'</small></span>'+pill+'</button>'; }).join('');
+  $('subBody').innerHTML=seg+nav+sumStrip(people.length+' people',[[plannedN,'Planned'],[sent,'Reports sent'],[people.length-plannedN,'No plan'],[rows.reduce((a,r)=>a+((r.data&&r.data.updates)||[]).length,0),'Updates']])
+    +(list||'<div class="empty">Nobody with Daily Task Log access in your team.</div>');
+}
+function viewDayLog(u){
+  const r=TL.rows&&TL.rows[u]; if(!r) return; const d=dlNorm(r.data), s=staffByU(u)||{name:u};
+  const ul=a=>a.length?'<ul class="dl-ul">'+a.map(t=>'<li>'+esc(t)+'</li>').join('')+'</ul>':'<p class="muted small">—</p>';
+  openSheet('<h3>'+esc(s.name)+'</h3><p class="muted small" style="margin-bottom:10px">'+niceDate(r.date_key,{weekday:'long',day:'numeric',month:'short'})+(r.submitted_at?' · report sent '+new Date(r.submitted_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):' · not sent yet')+'</p>'
+    +'<span class="dl-lab">🌅 Pending</span>'+ul(d.pending)+'<span class="dl-lab">Today\'s plan</span>'+ul(d.today)
+    +'<span class="dl-lab">⏱ Updates</span>'+(d.updates.length?d.updates.map(x=>'<div class="pj-up"><div class="pj-uh"><b>'+esc(x.task||'')+'</b><small>'+esc(x.time||'')+(x.duration?' · '+esc(x.duration):'')+'</small></div>'+(x.status?'<span class="pill '+({done:'ok',progress:'gold',pending:'warn'}[x.status]||'grey')+'" style="margin-top:4px">'+DTL_TXT[x.status]+'</span>':'')+'</div>').join(''):'<p class="muted small">—</p>')
+    +'<span class="dl-lab">🌆 Resolved</span>'+ul(d.resolved)
+    +'<span class="dl-lab">1% Improvement</span><p style="margin-bottom:10px;white-space:pre-wrap">'+esc(d.improve||'—')+'</p><span class="dl-lab">Remark</span><p style="white-space:pre-wrap">'+esc(d.remark||'—')+'</p>');
+}
+async function renderSecretBox(){
+  let rows=[]; try{ const r=await sb.from('gp_emp_secret').select('*').order('created_at',{ascending:false}).limit(60); rows=r.data||[]; }catch(e){}
+  $('subBody').innerHTML='<div class="seg"><button onclick="TL.tab=\'logs\';openTeamLogs(0)">Daily logs</button><button class="on">🔒 Secret Box</button></div>'
+    +'<p class="small muted" style="margin:-4px 2px 12px">Private feedback — only HOD, Manager &amp; Admin can read this.</p>'
+    +(rows.length?rows.map(x=>'<div class="notice" style="border-left-color:#141210"><b>'+esc(x.name||x.username)+'</b><p>'+esc(x.body)+'</p><small>'+niceDate(x.date_key,{day:'numeric',month:'short',year:'numeric'})+' · '+new Date(x.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'</small></div>').join(''):'<div class="empty">Nothing in the Secret Box yet.</div>');
 }
 
 boot();
