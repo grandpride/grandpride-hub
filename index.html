@@ -3279,8 +3279,8 @@ init();
    VAPID_PUBLIC: public half of the keypair (private half is a
                  Supabase secret — never goes in this file)
    ============================================================ */
-const VAPID_PUBLIC = 'BHzXvr8rz0hZW02TKa68JiTNbc9uo0h4McAZ9DdOdo9gyqGSGkg6tfZsappyUK146_PQviRx9JBcoANY0uIUPhs';
-const PUSH_FN_URL  = 'https://iefevjkeckysdluzazeq.supabase.co/functions/v1/push-send';
+const VAPID_PUBLIC = 'BH9iSn1XcLP6XM2P5rF3BXS_Lv7UVtzdbPYzmWYqXOJGCi4apS3n94qosfUJloTZbeJ-OZjiH5TB0EITOy6fO4M';
+const PUSH_FN_URL  = 'https://gpdb.grandlab.com.my/functions/v1/push-send';
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function(){
@@ -3336,6 +3336,11 @@ async function enablePush(){
     if(perm !== 'granted') return false;
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
+    // Server move (Oct 2026) gave a new VAPID key: drop a subscription made with an old key, then subscribe fresh.
+    if(sub && sub.options && sub.options.applicationServerKey){
+      const have = new Uint8Array(sub.options.applicationServerKey), want = vapidToUint8(VAPID_PUBLIC);
+      if(have.length !== want.length || have.some((b,i)=>b!==want[i])){ try{ await sub.unsubscribe(); }catch(_e){} sub = null; }
+    }
     if(!sub){
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,

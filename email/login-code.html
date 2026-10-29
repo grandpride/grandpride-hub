@@ -1,0 +1,23 @@
+<!-- Grandpride Hub login code email. Used by the self-hosted Supabase auth server
+     (GOTRUE_MAILER_TEMPLATES_MAGIC_LINK / _CONFIRMATION). {{ .Token }} = the 6-digit code. -->
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0908;padding:32px 12px;font-family:Georgia,'Times New Roman',serif;">
+  <tr><td align="center">
+    <table width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;background:#1d1a16;border:1px solid #3a3328;border-radius:14px;">
+      <tr><td align="center" style="padding:32px 28px 8px;">
+        <div style="font-size:26px;letter-spacing:4px;color:#f5f3ee;font-weight:bold;">GRANDPRIDE</div>
+        <div style="font-size:11px;letter-spacing:4px;color:#c9a24b;margin-top:6px;font-family:Arial,sans-serif;font-weight:bold;">HUB LOGIN CODE</div>
+        <div style="height:1px;background:#c9a24b;opacity:.5;margin:20px 0 4px;"></div>
+      </td></tr>
+      <tr><td align="center" style="padding:8px 28px;color:#f5f3ee;font-size:15px;line-height:1.5;">
+        Use this code to sign in or reset your password:
+      </td></tr>
+      <tr><td align="center" style="padding:14px 28px 6px;">
+        <div style="display:inline-block;background:#0a0908;border:1px solid #c9a24b;border-radius:10px;padding:14px 26px;font-family:'Courier New',monospace;font-size:34px;letter-spacing:10px;color:#e3c887;font-weight:bold;">{{ .Token }}</div>
+      </td></tr>
+      <tr><td align="center" style="padding:10px 28px 30px;color:#9a8f7e;font-size:12px;line-height:1.5;font-family:Arial,sans-serif;">
+        This code expires in 1 hour. If you did not ask for it, you can ignore this email.
+      </td></tr>
+    </table>
+    <div style="color:#5f574b;font-size:11px;margin-top:14px;font-family:Arial,sans-serif;">Grandpride Luxury Travel Sdn. Bhd.</div>
+  </td></tr>
+</table>
