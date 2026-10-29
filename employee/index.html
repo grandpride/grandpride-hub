@@ -492,7 +492,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 11;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 12;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -1105,10 +1105,10 @@ async function versionCheck(){
 }
 async function loadStaff(){
   try{
-    const cols='username,name,email,role,company,title,reports_to,is_chauffeur,photo_url,phone,auth_id,birthday,can_post_notice,resigned_at,resigned_note';
+    const cols='username,name,email,role,company,title,reports_to,is_chauffeur,photo_url,phone,auth_id,birthday,can_post_notice,resigned_at,resigned_note,apps,can_drive,can_authorize,can_chauffeur_ops';
     let r=await sb.from('gp_staff').select(cols+',profile').order('name');
     if(r.error) r=await sb.from('gp_staff').select(cols).order('name');   // v1.1 SQL not run yet
-    if(r.error) r=await sb.from('gp_staff').select(cols.replace(',resigned_at,resigned_note','')).order('name');
+    if(r.error) r=await sb.from('gp_staff').select(cols.replace(',resigned_at,resigned_note','').replace(',apps,can_drive,can_authorize,can_chauffeur_ops','')).order('name');
     if(r.data){ ALL_STAFF=r.data; STAFF=r.data.filter(x=>!isGone(x)); }
   }catch(e){}
 }
@@ -1160,6 +1160,7 @@ async function enterApp(){
   flushQueue();
   show('sApp');
   switchView('home');
+  try{ const q=new URLSearchParams(location.search); if(q.get('open')==='staff' && canSettings()){ history.replaceState(null,'',location.pathname); setTimeout(openStaffAdmin,300); } }catch(e){}
   if(window.__gpZoom && !lsGet('gpemp_dsk_tip',false)){ lsSet('gpemp_dsk_tip',true); setTimeout(()=>toast('Tip: in Chrome ⋮ menu, untick "Desktop site" for the best view',6000),1500); }
   loadAllLeave().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
   locate().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
@@ -1738,6 +1739,7 @@ function renderProfile(){
     + menuItem('bell','Notifications', pushState==='granted'?'On':pushState==='denied'?'Blocked in phone settings':'Tap to turn on','askPush()')
     + menuItem('proj','Projects',(()=>{ const n=PROJECTS.filter(p=>p.status!=='done'&&pjMine(p)).length; return n?n+' active for you':'Jobs, team, status & updates'; })(),'openProjects()')
     + menuItem('meal','Meal Management','Coming soon',"toast('Meal Management — coming soon')",'','soon')
+    + (canSettings()?menuItem('adduser','Staff Manager','Add, edit, app access & permissions','openStaffAdmin()'):'')
     + menuItem('logout','Log out','','doLogout()')
     +'<div class="ver">Grandpride Employee · build '+APP_BUILD+'</div>';
 }
@@ -2556,6 +2558,121 @@ async function deleteProject(id){
   const r=await sb.from('gp_emp_projects').delete().eq('id',id);
   if(r.error){ toast('Failed: '+r.error.message); return; }
   PROJECTS=PROJECTS.filter(x=>x.id!==id); closeSheet(); toast('Deleted'); renderProjects();
+}
+
+/* ---------- Staff Manager (moved from the Hub's staff-manager.html) — approver / Admin only ---------- */
+const SM_ROLES=['Admin','Manager','HOD','Receptionist','Finance','Staff'];
+const SM_COMPANIES=['Grandlab','Grandpride'];
+const SM_TITLES=['CEO','Managing Director','Group CEO','Operation Executive','Finance','Admin','Receptionist','Business Development','Business Development Executive','Videographer','Chauffeur','PPF / Wrap Installer','Tinted Installer','QC Person','Detailer','Junior Technician','Senior Technician','Manager'];
+const SM_TOP_ROLES=['CEO','Managing Director','Group CEO'];
+const SM_APPS=[['attendance','Attendance'],['tasklog','Daily Task Log'],['joborder','Job Order'],['academy','Academy'],['dutyboard','DutyBoard'],['stock','Stock Report'],['mia','MIA - Sales Assistant'],['jobboard','Job Board'],['gpbooking','GP Booking'],['gpagreement','GP Agreement'],['gpchecklist','GP Checklist'],['gpdaily','GP Daily Update'],['gpfleet','GP Vehicle Fleet'],['gpuse','GP Vehicle Use Log'],['gpappt','GP Appointment Reminder'],['gprecord','GP Record Summary'],['gpdeposit','GP Deposit Return'],['gpchauffeur','GP Chauffeur'],['gpjobs','GP Jobs'],['marketing','Marketing Analysis']];
+const SM_OPT_IN=['mia','jobboard','gpbooking','gpagreement','gpchecklist','gpdaily','gpfleet','gpuse','gpappt','gprecord','gpdeposit','gpchauffeur','marketing','gpjobs'];
+const SM_FLAGS=[['can_post_notice','📢 Can post notices / announcements'],['can_drive','🚗 Can drive (shows in Vehicle Use Log)'],['can_authorize','✍️ Can authorize as GP Operation (vehicle release)'],['is_chauffeur','🧍 Is a chauffeur (chauffeur board + chauffeur attendance rules)'],['can_chauffeur_ops','🎩 Can manage chauffeur status (GP Operation – chauffeur)']];
+let SM={ q:'', co:'all' };
+const smApps = s => Array.isArray(s.apps)?s.apps:(typeof s.apps==='string'&&s.apps.indexOf('[')===0?(()=>{ try{ return JSON.parse(s.apps); }catch(e){ return []; } })():[]);
+const smFlag = (s,k) => s[k]===true || s[k]==='true';
+async function openStaffAdmin(){
+  if(!canSettings()){ toast('Only '+nameOf(SET.approver)+' or Admin'); return; }
+  openSub('Staff Manager','<div class="spinner" style="margin-top:30px"></div>','<button class="btn sm gold" onclick="openStaffForm()">+ Add</button>');
+  await loadStaff(); renderStaffAdmin();
+}
+function renderStaffAdmin(){
+  const q=SM.q.toLowerCase();
+  const list=ALL_STAFF.filter(s=>(SM.co==='all'||s.company===SM.co) && (!q || (s.name+' '+s.username+' '+(s.title||'')+' '+(s.email||'')).toLowerCase().indexOf(q)>=0))
+    .sort((a,b)=>(isGone(a)-isGone(b)) || String(a.name).localeCompare(String(b.name)));
+  const tag=(t,c)=>'<span class="pill '+(c||'grey')+'" style="padding:1px 7px;font-size:9.5px;margin-left:4px">'+t+'</span>';
+  const rows=list.map(s=>{
+    const login = s.auth_id ? tag('✓ Login','ok') : (s.email ? tag('No login yet','warn') : tag('No email','bad'));
+    return '<button class="menu-item" style="'+(isGone(s)?'opacity:.6':'')+'" onclick="openStaffForm(\''+esc(s.username)+'\')"><span class="avatar" style="width:40px;height:40px;font-size:14px;box-shadow:none;border:none">'+avatarHtml(s.name,s.photo_url)+'</span>'
+      +'<span class="mt">'+esc(s.name)+tag(esc(s.role||'Staff'),isLeadRole(s)?'gold':'grey')+(isGone(s)?tag('Resigned','bad'):'')
+      +'<small>@'+esc(s.username)+' · '+esc(s.title||'—')+(s.company?' · '+esc(s.company):'')+'</small>'
+      +'<small>'+(isChauffeur(s)?'🧍 Chauffeur ':'')+(smFlag(s,'can_drive')?'🚗 ':'')+(smFlag(s,'can_authorize')?'✍️ ':'')+(smFlag(s,'can_post_notice')?'📢 ':'')+login+'</small></span></button>';
+  }).join('');
+  $('subBody').innerHTML='<input class="inp" id="smQ" placeholder="Search name, username, title…" value="'+esc(SM.q)+'" style="margin-bottom:10px">'
+    +'<div class="seg">'+[['all','All'],['Grandpride','Grandpride'],['Grandlab','Grandlab']].map(([k,l])=>'<button class="'+(SM.co===k?'on':'')+'" onclick="SM.co=\''+k+'\';renderStaffAdmin()">'+l+'</button>').join('')+'</div>'
+    +'<p class="small muted" style="margin:-4px 2px 10px">'+list.length+' staff · tap to edit. New joiners can also self sign-up (approve under New Staff Sign-ups).</p>'+(rows||'<div class="empty">No match.</div>');
+  const qi=$('smQ'); qi.oninput=()=>{ SM.q=qi.value; const pos=qi.selectionStart; renderStaffAdmin(); const n=$('smQ'); n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} };
+}
+let SM_REP=new Set(), SM_APPSEL=new Set();
+function openStaffForm(u){
+  const s=u?staffByU(u):null; if(u&&!s) return;
+  const isNew=!s;
+  SM_REP=new Set(s?parseReports(s.reports_to).map(String):[]);
+  // same rule as the old Staff Manager: no list saved = default apps; 'ALL_APPS' = everything
+  const defApps=SM_APPS.map(a=>a[0]).filter(k=>SM_OPT_IN.indexOf(k)<0);
+  SM_APPSEL=new Set(!s?defApps:(s.apps==='ALL_APPS'?SM_APPS.map(a=>a[0]):(Array.isArray(s.apps)||(typeof s.apps==='string'&&s.apps.indexOf('[')===0)?smApps(s):defApps)));
+  const titles=SM_TITLES.concat(s&&s.title&&SM_TITLES.indexOf(s.title)<0?[s.title]:[]);
+  const others=ALL_STAFF.filter(x=>!isGone(x) && x.username!=='admin' && (!s||x.username!==s.username)).sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+  const chip=(set,k,l)=>'<button type="button" class="chip'+(set.has(k)?' on':'')+'" style="text-decoration:none" data-k="'+esc(k)+'">'+esc(l)+'</button>';
+  const sub=t=>'<span class="small muted" style="display:block;font-weight:700;letter-spacing:.6px;text-transform:uppercase;font-size:11px;margin:4px 0 6px">'+t+'</span>';
+  openSheet('<h3>'+(isNew?'Add staff':'Edit '+esc(s.name))+'</h3>'
+    +'<div style="display:flex;gap:12px;align-items:center;margin-bottom:12px"><div class="avatar" id="smPrev" style="width:56px;height:56px">'+avatarHtml(s?s.name:'?',s&&s.photo_url)+'</div><label class="btn ghost sm" style="text-align:center">📷 Photo<input type="file" accept="image/*" id="smPhoto" style="display:none"></label><input type="hidden" id="smPhotoUrl" value="'+esc(s&&s.photo_url||'')+'"><span class="small muted" id="smPhotoNote"></span></div>'
+    +'<div class="btn-row"><label class="fld"><span>Username</span><input class="inp" id="smU" autocapitalize="none" value="'+esc(s?s.username:'')+'"'+(isNew?'':' disabled')+'></label>'
+    +'<label class="fld"><span>Full name</span><input class="inp" id="smN" value="'+esc(s?s.name:'')+'"></label></div>'
+    +'<label class="fld"><span>Email'+(isNew?' (login invite is sent here)':'')+'</span><input class="inp" id="smE" type="email" autocapitalize="none" value="'+esc(s&&s.email||'')+'"'+(s&&s.auth_id?' disabled':'')+'></label>'
+    +(s&&s.auth_id?'<p class="small muted" style="margin:-6px 0 10px">Login email is locked once they have a login.</p>':'')
+    +'<div class="btn-row"><label class="fld"><span>Role</span><select class="inp" id="smR">'+SM_ROLES.map(r=>'<option'+((s?s.role:'Staff')===r?' selected':'')+'>'+r+'</option>').join('')+'</select></label>'
+    +'<label class="fld"><span>Company</span><select class="inp" id="smC"><option value="">—</option>'+SM_COMPANIES.map(c=>'<option'+(s&&s.company===c?' selected':'')+'>'+c+'</option>').join('')+'</select></label></div>'
+    +'<label class="fld"><span>Job title</span><select class="inp" id="smT"><option value="">—</option>'+titles.map(t=>'<option'+(s&&s.title===t?' selected':'')+'>'+esc(t)+'</option>').join('')+'<option value="__add__">+ Custom title…</option></select></label>'
+    +'<div class="btn-row"><label class="fld"><span>Birthday</span><input class="inp" type="date" id="smB" value="'+esc(s&&s.birthday||'')+'"></label><label class="fld"><span>Phone</span><input class="inp" type="tel" id="smP" value="'+esc(s&&s.phone||'')+'"></label></div>'
+    +sub('Reports to (can pick more than one)')+'<div class="chips" id="smRep">'+SM_TOP_ROLES.map(r=>chip(SM_REP,'role:'+r,'👑 '+r)).join('')+others.map(x=>chip(SM_REP,x.username,x.name)).join('')+'</div>'
+    +sub('Hub apps they can open')+'<div class="chips" id="smApps">'+SM_APPS.map(([k,l])=>chip(SM_APPSEL,k,l)).join('')+'</div>'
+    +sub('Permissions')+SM_FLAGS.map(([k,l])=>'<label class="switch" style="font-size:13px"><span>'+l+'</span><input type="checkbox" id="smF_'+k+'" '+(s&&smFlag(s,k)?'checked':'')+'></label>').join('')
+    +'<button class="btn gold" id="smSave" style="margin-top:6px">'+(isNew?'Add staff & send login invite':'Save changes')+'</button>'
+    +(s&&!s.auth_id&&s.email&&!isGone(s)?'<button class="btn ghost" style="margin-top:10px" id="smInv">✉️ Send login invite to '+esc(s.email)+'</button>':'')
+    +(s&&s.username!=='admin'&&s.username!==ME.username?'<button class="btn danger" style="margin-top:10px" onclick="closeSheet();openEmployee(\''+esc(s.username)+'\')">'+(s.resigned_at?'Employment status / re-activate…':'Resign, position & HR…')+'</button>':''));
+  const tog=(id,set)=>$(id).querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; if(set.has(k)) set.delete(k); else set.add(k); b.classList.toggle('on'); });
+  tog('smRep',SM_REP); tog('smApps',SM_APPSEL);
+  $('smT').onchange=()=>{ const t=$('smT'); if(t.value!=='__add__') return; const nt=(prompt('Custom job title:')||'').trim(); if(!nt){ t.value=''; return; } const o=document.createElement('option'); o.text=nt; o.value=nt; t.add(o,t.options[t.options.length-1]); t.value=nt; };
+  $('smPhoto').onchange=async()=>{ const f=$('smPhoto').files[0]; if(!f) return; $('smPhotoNote').textContent='Uploading…'; const b=await shrinkImage(f,600,0.82); const url=await imgbbUpload(b); if(url){ $('smPhotoUrl').value=url; $('smPrev').innerHTML='<img src="'+esc(url)+'" alt="">'; $('smPhotoNote').textContent='Photo ready ✓'; } else $('smPhotoNote').textContent='Upload failed'; };
+  $('smSave').onclick=()=>saveStaffForm(s);
+  if($('smInv')) $('smInv').onclick=()=>inviteStaffLogin(s);
+}
+async function callInvite(payload){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(!session) return { ok:false, error:'Not signed in' };
+  try{
+    const r=await fetch(SB_URL+'/functions/v1/invite-staff',{ method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SB_KEY}, body:JSON.stringify(payload) });
+    let d={}; try{ d=await r.json(); }catch(e){}
+    return r.ok ? { ok:true, data:d } : { ok:false, error:(d&&(d.error||d.message))||('Server error '+r.status) };
+  }catch(e){ return { ok:false, error:String(e) }; }
+}
+async function saveStaffForm(s){
+  const isNew=!s;
+  const username=(isNew?$('smU').value:s.username).trim().toLowerCase().replace(/[^a-z0-9._-]/g,'');
+  const name=$('smN').value.trim(), email=($('smE').value||'').trim().toLowerCase();
+  if(!username||!name){ toast('Username and name are required'); return; }
+  if(isNew && !email){ toast('Email is required — the login invite is sent there'); return; }
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ toast('That email looks invalid'); return; }
+  if(isNew && ALL_STAFF.some(x=>x.username===username)){ toast('Username "'+username+'" already exists'); return; }
+  const title=$('smT').value==='__add__'?'':$('smT').value;
+  const chauffeurTitle=/chauffeur/i.test(title||'');
+  const rep=[...SM_REP];
+  const fields={ name, role:$('smR').value, company:$('smC').value||null, title:title||null, birthday:$('smB').value||null, phone:$('smP').value.trim()||null,
+    reports_to:rep.length?JSON.stringify(rep):null, apps:[...SM_APPSEL], photo_url:$('smPhotoUrl').value||null,
+    can_post_notice:$('smF_can_post_notice').checked, can_drive:$('smF_can_drive').checked||chauffeurTitle, can_authorize:$('smF_can_authorize').checked,
+    is_chauffeur:$('smF_is_chauffeur').checked||chauffeurTitle, can_chauffeur_ops:$('smF_can_chauffeur_ops').checked, updated_at:new Date().toISOString() };
+  if(!isNew && email && !s.auth_id) fields.email=email;
+  const btn=$('smSave'); btn.disabled=true; btn.textContent='Saving…';
+  if(isNew){
+    const prof=Object.assign({}, fields); delete prof.name; delete prof.role;
+    const res=await callInvite({ email, username, name, role:fields.role, existing:false, profile:prof });
+    if(!res.ok){ btn.disabled=false; btn.textContent='Add staff & send login invite'; toast('Invite failed: '+res.error,4500); return; }
+    toast('Added ✓ — invite sent to '+email,3500);
+  } else {
+    const r=await sb.from('gp_staff').update(fields).eq('username',s.username);
+    if(r.error){ btn.disabled=false; btn.textContent='Save changes'; toast('Save failed: '+r.error.message,4000); return; }
+    if(s.username===ME.username) Object.assign(ME, fields);
+    toast('Saved ✓');
+  }
+  closeSheet(); await loadStaff(); renderStaffAdmin();
+}
+async function inviteStaffLogin(s){
+  if(!confirm('Send a login invite to '+s.name+' at '+s.email+'?')) return;
+  toast('Sending invite…',5000);
+  const res=await callInvite({ email:s.email, username:s.username, name:s.name, role:s.role||'Staff', existing:true });
+  if(!res.ok){ toast('Invite failed: '+res.error,4500); return; }
+  toast('Invite sent to '+s.email+' ✓',3500); closeSheet(); await loadStaff(); renderStaffAdmin();
 }
 
 boot();
