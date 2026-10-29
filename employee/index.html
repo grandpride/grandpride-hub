@@ -256,6 +256,9 @@ textarea.inp{resize:vertical;min-height:80px}
 .tt-days b{font-size:12px}
 .tt-days i{display:block;font-style:normal;font-size:10.5px;color:var(--ink2);font-weight:700}
 .det-grp h4{margin-top:4px}
+.geo-map{height:200px;border-radius:14px;overflow:hidden;background:#efe9dc;position:relative;z-index:0}
+.geo-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:8px}
+.geo-legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .banner{display:flex;align-items:center;gap:10px;background:var(--gold-soft);border:1px solid var(--gold);border-radius:14px;padding:11px 12px;margin-bottom:12px;font-size:12.5px}
 .banner b{flex:1;font-weight:600}
 </style>
@@ -417,7 +420,7 @@ textarea.inp{resize:vertical;min-height:80px}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 4;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 5;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -1183,6 +1186,7 @@ function renderHome(){
         +'<div>'+ICON.hrs+'<b id="workHrs">'+fmtHM(workedSoFar(r))+'</b><span>Working Hrs</span></div>'
       +'</div>'
     +'</div>'
+    +(geoOutside()?'<div class="card" style="margin-top:12px"><h4>Outside the office zone</h4><p class="small muted" style="margin:-4px 0 10px">You are '+Math.round(GEO.dist)+' m from the office (allowed '+(+(SET.geo.radius)||150)+' m + GPS accuracy ±'+Math.round(GEO.acc||0)+' m). Move closer, then check again.</p><div class="geo-map" id="geoMap"></div><div class="geo-legend"><span><i style="background:#3b82f6"></i>You</span><span><i style="background:#b08a37"></i>Office zone</span></div><button class="btn ghost" style="margin-top:10px" onclick="refreshLoc()">↻ Check my location again</button></div>':'')
     +'<div style="height:12px"></div>'+attStrip(true)
     +(r.lunchOut?'<p class="muted small center" style="margin-top:8px">Lunch '+esc(r.lunchOut)+(r.lunchIn?' – '+esc(r.lunchIn):' (on break)')+'</p>':'')
     +'<div class="sec-title">Today\'s Tasks <small><button class="linkbtn" onclick="switchView(\'tasks\')">See all</button></small></div>'
@@ -1190,6 +1194,7 @@ function renderHome(){
     +(ch?'<a class="menu-item" href="../gp-chauffeur.html" style="text-decoration:none;margin-top:6px"><span class="mi">'+ICON.car+'</span><span class="mt">My Chauffeur Jobs<small>Job sheet &amp; trip status</small></span><span class="ma">'+ICON.arrow+'</span></a>':'');
 
   const pb=$('punchBtn'); if(pb) pb.onclick=doPunch;
+  if(geoOutside()) drawGeoMap();
   clearInterval(clockTimer);
   clockTimer=setInterval(()=>{ const c=$('liveClock'); if(!c){ clearInterval(clockTimer); return; } c.textContent=fmtTime(new Date()); const w=$('workHrs'); if(w) w.textContent=fmtHM(workedSoFar(TODAY)); }, 15000);
 }
@@ -1201,6 +1206,35 @@ function attStrip(withView){
   const ch=isChauffeur(ME), c=cycleFor(todayKey(), ch), s=summarize(CYC_ROWS, c, ch);
   return sumStrip(ch?'This month':'This cycle', [[s.worked,'Present'],[s.lateDays,'Late'],[s.noRec,'Absent'],[s.leave,'Leave']], withView?'openHistory()':'');
 }
+/* small map — only shown when a staff member is OUTSIDE the zone (Leaflet loaded lazily) */
+function geoOutside(){ const g=SET.geo; return !!(ME && !isChauffeur(ME) && g && g.lat && g.lng && GEO && GEO.dist!=null && !GEO.inside); }
+let _leaflet=null;
+function loadLeaflet(){
+  if(window.L) return Promise.resolve(true);
+  if(_leaflet) return _leaflet;
+  _leaflet=new Promise(res=>{
+    const css=document.createElement('link'); css.rel='stylesheet'; css.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
+    const js=document.createElement('script'); js.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    js.onload=()=>res(!!window.L); js.onerror=()=>{ _leaflet=null; res(false); }; document.head.appendChild(js);
+  });
+  return _leaflet;
+}
+async function drawGeoMap(){
+  const ok=await loadLeaflet(); const el=$('geoMap');
+  if(!el) return;
+  if(!ok){ el.innerHTML='<div class="empty">Map could not load — '+Math.round(GEO.dist)+' m from office</div>'; return; }
+  try{ if(window._gmap){ window._gmap.remove(); window._gmap=null; } }catch(e){}
+  const g=SET.geo, you=[GEO.lat,GEO.lng], office=[+g.lat,+g.lng];
+  const map=L.map(el,{zoomControl:false,attributionControl:false,scrollWheelZoom:false}); window._gmap=map;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  L.circle(office,{radius:+g.radius||150,color:'#b08a37',weight:2,fillColor:'#c9a24b',fillOpacity:.15}).addTo(map);
+  L.marker(office,{icon:L.divIcon({className:'',html:'<div style="font-size:26px;line-height:26px">📍</div>',iconSize:[26,26],iconAnchor:[13,26]})}).addTo(map);
+  L.circleMarker(you,{radius:8,color:'#fff',weight:3,fillColor:'#3b82f6',fillOpacity:1}).addTo(map);
+  L.polyline([you,office],{color:'#d2533f',weight:2,dashArray:'6,6'}).addTo(map);
+  map.fitBounds(L.latLngBounds([you,office]).pad(0.35));
+  setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} },250);
+}
+async function refreshLoc(){ toast('Checking location…'); await locate(); renderHome(); if(GEO&&GEO.inside) toast('You are in office reach ✓'); }
 function alertCard(icon, title, sub, onclick){
   return '<div class="alert-card" onclick="'+onclick+'"><div class="ic">'+ICON[icon]+'</div><div class="tx"><b>'+esc(title)+'</b><small>'+esc(sub)+'</small></div><span class="go">›</span></div>';
 }
