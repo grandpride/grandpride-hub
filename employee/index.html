@@ -300,6 +300,20 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .switch{display:flex;align-items:center;justify-content:space-between;gap:10px;font-weight:600;margin-bottom:12px}
 .switch input{width:22px;height:22px;accent-color:var(--gold-d)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.sop-head{display:flex;gap:12px;align-items:center;background:var(--ink);color:#fff;border-radius:18px;padding:14px 16px;margin-bottom:12px}
+.sop-head>span{font-size:30px;line-height:1}
+.sop-head b{display:block;font-size:17px}
+.sop-head small{color:var(--gold-l);font-size:11.5px}
+.sop-intro{font-size:13.5px;color:var(--ink2);margin:0 2px 12px;white-space:pre-wrap}
+.sop-steps{list-style:none;margin:0;padding:0}
+.sop-steps li{display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.sop-steps .n{flex:0 0 32px;height:32px;border-radius:50%;background:linear-gradient(180deg,var(--gold-l),var(--gold));color:var(--ink);font-weight:800;display:flex;align-items:center;justify-content:center}
+.sop-steps p{font-size:14px;white-space:pre-wrap;padding-top:5px}
+.sop-steps img{max-width:100%;border-radius:12px;margin-top:8px;display:block}
+.sop-ed{border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:8px;background:#fff}
+.sop-ed-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.sop-ed-h button{border:1px solid var(--line);background:#fff;border-radius:8px;width:30px;height:28px;margin-left:4px}
+.sop-ed-h button:disabled{opacity:.3}
 .dl-lab{display:block;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:4px 0 6px}
 .dl-lab em{font-style:normal;text-transform:none;letter-spacing:0;font-weight:600}
 .dl-item{display:flex;gap:6px;margin-bottom:6px}
@@ -499,7 +513,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 14;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 16;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -568,6 +582,7 @@ const ICON = {
   mega:'<svg viewBox="0 0 24 24"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"/></svg>',
   cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><circle cx="8" cy="14.5" r="1"/><circle cx="12" cy="14.5" r="1"/><circle cx="16" cy="14.5" r="1"/><circle cx="8" cy="18" r="1"/></svg>',
   report:'<svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 17v-3M12 17v-6M16 17v-2"/></svg>',
+  book:'<svg viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5z"/><path d="M4 21.5A2.5 2.5 0 0 1 6.5 19H20v3H6.5"/><path d="M9 7h7M9 11h5"/></svg>',
   claim:'<svg viewBox="0 0 24 24"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg>',
   right:'<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>'
 };
@@ -1163,7 +1178,7 @@ async function enterApp(){
   versionCheck();
   // refresh ME from staff list (fresh copy)
   ME = STAFF.find(s=>s.username===ME.username) || ME;
-  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices(), loadProjects(), loadDayLog()]);
+  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices(), loadProjects(), loadDayLog(), loadDocs(), loadSop()]);
   flushQueue();
   show('sApp');
   switchView('home');
@@ -1173,7 +1188,9 @@ async function enterApp(){
       if(o==='staff' && canSettings()) setTimeout(openStaffAdmin,300);
       else if(o==='tasks') switchView('tasks');
       else if(o==='notices') setTimeout(openNotices,300);
-      else if(o==='daylog') setTimeout(openDayLog,300); } }catch(e){}
+      else if(o==='daylog') setTimeout(openDayLog,300);
+      else if(o==='docs') setTimeout(openDocs,300);
+      else if(o==='sop') setTimeout(openSop,300); } }catch(e){}
   if(window.__gpZoom && !lsGet('gpemp_dsk_tip',false)){ lsSet('gpemp_dsk_tip',true); setTimeout(()=>toast('Tip: in Chrome ⋮ menu, untick "Desktop site" for the best view',6000),1500); }
   loadAllLeave().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
   locate().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
@@ -1209,7 +1226,7 @@ function myOpenTasks(){ return TASKS.filter(t=>t.to_user===ME.username && t.stat
 function updateBadges(){
   $('nbTasks').classList.toggle('hidden', !myOpenTasks().some(t=>t.due_at && new Date(t.due_at)<new Date()));
   $('nbLeave').classList.toggle('hidden', !teamPendingLeave());
-  $('nbProfile').classList.toggle('hidden', !PENDING_SIGNUPS.length);
+  $('nbProfile').classList.toggle('hidden', !PENDING_SIGNUPS.length && !(typeof docsToSign==='function' && (docsToSign().length+sopToSign().length)));
 }
 function openSub(title, html, action){
   $('subTitle').textContent=title; $('subBody').innerHTML=html; $('subAction').innerHTML=action||'';
@@ -1257,6 +1274,8 @@ function renderHome(){
   if(isApprover() && PENDING_SIGNUPS.length) alerts+=alertCard('adduser', PENDING_SIGNUPS.length+' new staff sign-up'+(PENDING_SIGNUPS.length>1?'s':''), 'Waiting for your approval', 'openApprovals()');
   const tpl=teamPendingLeave();
   if(tpl) alerts+=alertCard('leave', tpl+' leave request'+(tpl>1?'s':'')+' to approve', 'From your team', "switchView('leave')");
+  const sopN=sopToSign().length; if(sopN) alerts=alertCard('book','Grandlab SOP: '+sopN+' categor'+(sopN>1?'ies':'y')+' to read & sign','Step-by-step workshop SOP for your job','openSop()')+alerts;
+  const toSign=docsToSign(); if(toSign.length) alerts=alertCard('book', toSign.length===1?'Please read & sign: '+toSign[0].title:toSign.length+' documents to read & sign', 'Grandlab SOP / company documents', toSign.length===1?"openDoc('"+toSign[0].id+"')":'openDocs()')+alerts;
   const q=lsGet(QKEY,[]); if(q.length) alerts+=alertCard('history', q.length+' punch not synced yet', 'Saved on this phone — will sync when online', 'flushQueue()');
 
   // today's tasks preview
@@ -1746,6 +1765,7 @@ function renderProfile(){
     + menuItem('cal','Team Calendar','Who is on leave',"openTeamCal()")
     + (canTaskLog()?menuItem('edit','Daily Task Log','Plan, updates & end-of-day report','openDayLog()'):'')
     + (isLeader()||isMgmt()?menuItem('report','Team Daily Logs','Who planned & reported today'+(isMgmt()?' · Secret Box':''),'openTeamLogs()'):'')
+    + menuItem('book','Documents & SOP',(()=>{ const n=docsToSign().length+sopToSign().length; return n?n+' to read & sign':'Grandlab SOP, policies & handbooks'; })(),'openDocs()', (docsToSign().length+sopToSign().length)?'<span class="cnt">'+(docsToSign().length+sopToSign().length)+'</span>':'')
     + menuItem('mega','Notice Board','Announcements & birthdays','openNotices()', unseenNotices().length?'<span class="cnt">'+unseenNotices().length+'</span>':'')
     + menuItem('claim','Claims','Submit & track claims (GL Claim)','openClaims()')
     + menuItem('pay','Payroll','Worked days, late, OT per cycle','openPayroll(undefined,null)')
@@ -2893,6 +2913,268 @@ async function renderSecretBox(){
   $('subBody').innerHTML='<div class="seg"><button onclick="TL.tab=\'logs\';openTeamLogs(0)">Daily logs</button><button class="on">🔒 Secret Box</button></div>'
     +'<p class="small muted" style="margin:-4px 2px 12px">Private feedback — only HOD, Manager &amp; Admin can read this.</p>'
     +(rows.length?rows.map(x=>'<div class="notice" style="border-left-color:#141210"><b>'+esc(x.name||x.username)+'</b><p>'+esc(x.body)+'</p><small>'+niceDate(x.date_key,{day:'numeric',month:'short',year:'numeric'})+' · '+new Date(x.created_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'</small></div>').join(''):'<div class="empty">Nothing in the Secret Box yet.</div>');
+}
+
+/* ---------- Documents & SOP (private PDFs in storage bucket 'emp-docs') with read-and-sign ---------- */
+const DOC_CATS=['SOP','Policy','Handbook','Form','Other'];
+let DOCS=[], MY_ACKS={}, DOC_OPENED=new Set(lsGet('gpemp_doc_opened',[]));
+async function loadDocs(){
+  try{
+    const r=await sb.from('gp_emp_docs').select('*').eq('active',true).order('created_at',{ascending:false}).limit(100);
+    if(!r.error) DOCS=r.data||[];
+    const a=await sb.from('gp_emp_doc_acks').select('*').eq('username',ME.username);
+    MY_ACKS={}; (a.data||[]).forEach(x=>MY_ACKS[x.doc_id]=x);
+  }catch(e){}
+}
+const docsToSign = () => DOCS.filter(d=>d.must_sign && !MY_ACKS[d.id]);
+const fmtSize = b => !b?'':(b>1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB');
+async function openDocs(){
+  openSub('Documents & SOP','<div class="spinner" style="margin-top:30px"></div>', isMgmt()?'<button class="btn sm gold" onclick="openUploadDoc()">+ Upload</button>':'');
+  await loadDocs(); renderDocs(); updateBadges();
+}
+async function renderDocs(){
+  let counts={};
+  if(isMgmt() && DOCS.length){ try{ const r=await sb.from('gp_emp_doc_acks').select('doc_id').in('doc_id',DOCS.map(d=>d.id)); (r.data||[]).forEach(x=>counts[x.doc_id]=(counts[x.doc_id]||0)+1); }catch(e){} }
+  const total=STAFF.filter(s=>s.username!=='admin').length;
+  const cats=DOC_CATS.filter(c=>DOCS.some(d=>(d.category||'Other')===c));
+  $('subBody').innerHTML=sopEntryHtml()+(docsToSign().length?'<div class="banner"><b>'+docsToSign().length+' document'+(docsToSign().length>1?'s':'')+' waiting for your signature. Open, read, then tap "I have read &amp; understood".</b></div>':'')
+    +(cats.length?cats.map(c=>'<div class="sec-title">'+esc(c)+'</div>'+DOCS.filter(d=>(d.category||'Other')===c).map(d=>{
+      const ack=MY_ACKS[d.id];
+      const pill=d.must_sign?(ack?'<span class="pill ok">Signed</span>':'<span class="pill warn">Read &amp; sign</span>'):'<span class="pill grey">Info</span>';
+      return '<button class="menu-item" onclick="openDoc(\''+esc(d.id)+'\')"><span class="mi">'+ICON.book+'</span><span class="mt">'+esc(d.title)+'<small>v'+(d.version||1)+' · '+niceDate(todayKey(new Date(d.updated_at||d.created_at)),{day:'numeric',month:'short',year:'numeric'})+(d.size_bytes?' · '+fmtSize(d.size_bytes):'')
+        +(isMgmt()&&d.must_sign?' · signed '+(counts[d.id]||0)+'/'+total:'')+'</small></span>'+pill+'</button>'; }).join('')).join('')
+      :'<div class="empty" style="padding:12px">No PDF documents yet.'+(isMgmt()?' Tap + Upload for policies / handbooks (PDF).':'')+'</div>');
+}
+function openDoc(id){
+  const d=DOCS.find(x=>x.id===id); if(!d){ openDocs(); return; }
+  const ack=MY_ACKS[d.id], opened=DOC_OPENED.has(d.id+'|'+(d.version||1));
+  openSheet('<h3>'+esc(d.title)+'</h3><p class="muted small" style="margin-bottom:10px">'+esc(d.category||'')+' · version '+(d.version||1)+(d.size_bytes?' · '+fmtSize(d.size_bytes):'')+'</p>'
+    +(d.description?'<p style="white-space:pre-wrap;margin-bottom:12px;font-size:13.5px">'+esc(d.description)+'</p>':'')
+    +'<button class="btn" id="docOpen">📖 Open PDF</button>'
+    +(d.must_sign?(ack
+      ? '<div class="card" style="margin-top:12px"><h4>Signed</h4><p class="small">You confirmed you have read &amp; understood this on <b>'+new Date(ack.signed_at).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</b>'+((ack.version||1)<(d.version||1)?' (version '+ack.version+' — a newer version is available, please re-read)':'')+'.</p>'+(ack.sig_url?'<img src="'+esc(ack.sig_url)+'" alt="Your signature" style="max-height:70px;margin-top:8px">':'')+'</div>'
+      : '<p class="small muted" style="margin:12px 0 8px">'+(opened?'Done reading? Confirm below.':'Open and read the PDF first — then the confirm button unlocks.')+'</p><button class="btn gold" id="docSign" '+(opened?'':'disabled')+'>✍️ I have read &amp; understood</button>'):'')
+    +(isMgmt()?'<div id="docAdmin" style="margin-top:16px"><div class="spinner"></div></div>':''));
+  $('docOpen').onclick=()=>openDocPdf(d);
+  if($('docSign')) $('docSign').onclick=()=>signDoc(d);
+  if(isMgmt()) renderDocAdmin(d);
+}
+async function openDocPdf(d){
+  const w=window.open('','_blank');      // open first (inside the tap) so the browser doesn't block the pop-up
+  const r=await sb.storage.from('emp-docs').createSignedUrl(d.file_path, 3600);
+  const url=r.data&&r.data.signedUrl;
+  if(r.error||!url){ if(w) w.close(); toast('Could not open file: '+((r.error&&r.error.message)||'not found'),4000); return; }
+  if(w) w.location.href=url; else location.href=url;
+  DOC_OPENED.add(d.id+'|'+(d.version||1)); lsSet('gpemp_doc_opened',[...DOC_OPENED].slice(-200));
+  const b=$('docSign'); if(b){ b.disabled=false; const p=b.previousElementSibling; if(p) p.textContent='Done reading? Confirm below.'; }
+}
+async function signDoc(d){
+  const sig=await getSignature(ME.name+' — read & understood'); if(!sig){ toast('Signature needed'); return; }
+  toast('Saving…',5000);
+  const sigUrl=await imgbbUpload(sig)||'';
+  const row={ id:d.id+'|'+ME.username, doc_id:d.id, version:d.version||1, username:ME.username, name:ME.name, sig_url:sigUrl, signed_at:new Date().toISOString() };
+  const r=await sb.from('gp_emp_doc_acks').upsert(row,{onConflict:'id'});
+  if(r.error){ toast('Save failed: '+r.error.message,4000); return; }
+  MY_ACKS[d.id]=row; toast('Signed ✓ Thank you');
+  closeSheet(); if($('subpage').classList.contains('open') && $('subTitle').textContent==='Documents & SOP') renderDocs(); updateBadges(); if(CUR_VIEW==='home') renderHome();
+}
+async function renderDocAdmin(d){
+  let acks=[]; try{ const r=await sb.from('gp_emp_doc_acks').select('*').eq('doc_id',d.id); acks=r.data||[]; }catch(e){}
+  const by={}; acks.forEach(a=>by[a.username]=a);
+  const people=STAFF.filter(s=>s.username!=='admin');
+  const signed=people.filter(s=>by[s.username]), notYet=people.filter(s=>!by[s.username]);
+  const el=$('docAdmin'); if(!el) return;
+  el.innerHTML='<div class="card"><h4>Who has signed · '+signed.length+'/'+people.length+'</h4>'
+    +(d.must_sign?(notYet.length?'<span class="dl-lab">Not yet ('+notYet.length+')</span><div class="chips">'+notYet.map(s=>'<span class="chip" style="text-decoration:none;cursor:default">'+esc(s.name)+'</span>').join('')+'</div><button class="btn ghost sm" id="docNudge" style="margin-bottom:10px">🔔 Remind the '+notYet.length+' who haven\'t signed</button>':'<p class="small" style="color:var(--ok);font-weight:700;margin-bottom:8px">Everyone has signed 🎉</p>')
+      +(signed.length?'<span class="dl-lab">Signed ('+signed.length+')</span>'+signed.map(s=>'<div class="row"><span>'+esc(s.name)+'</span><small class="muted">'+new Date(by[s.username].signed_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+((by[s.username].version||1)<(d.version||1)?' · v'+by[s.username].version:'')+'</small></div>').join(''):''):'<p class="small muted">Info only — no signature required.</p>')
+    +'</div><div class="btn-row"><button class="btn ghost" onclick="openUploadDoc(\''+esc(d.id)+'\')">⬆ New version</button><button class="btn danger" onclick="hideDoc(\''+esc(d.id)+'\')">Remove</button></div>';
+  const n=$('docNudge'); if(n) n.onclick=()=>{ notYet.forEach(s=>pushNotify('📘 Please read & sign', d.title+' — open the Employee app → Documents & SOP', s.username)); toast('Reminder sent to '+notYet.length+' ✓'); n.disabled=true; };
+}
+function openUploadDoc(id){
+  if(!isMgmt()){ toast('Management only'); return; }
+  const d=id?DOCS.find(x=>x.id===id):null;
+  openSheet('<h3>'+(d?'New version — '+esc(d.title):'Upload document')+'</h3>'
+    +(d?'':'<label class="fld"><span>Title</span><input class="inp" id="upT" maxlength="90" placeholder="e.g. Grandlab Workshop SOP"></label>'
+      +'<label class="fld"><span>Category</span><select class="inp" id="upC">'+DOC_CATS.map(c=>'<option>'+c+'</option>').join('')+'</select></label>'
+      +'<label class="fld"><span>Short description (optional)</span><textarea class="inp" id="upD" placeholder="What it covers, who it is for"></textarea></label>')
+    +'<label class="fld"><span>PDF file</span><input class="inp" type="file" id="upF" accept="application/pdf,.pdf"></label>'
+    +(d?'':'<label class="switch"><span>Staff must read &amp; sign</span><input type="checkbox" id="upS" checked></label>')
+    +'<label class="switch"><span>Notify all staff now</span><input type="checkbox" id="upP" checked></label>'
+    +'<button class="btn gold" id="upGo">'+(d?'Upload new version':'Upload')+'</button><p class="small muted center" style="margin-top:8px">PDF only · max 50 MB · stored privately on your server</p>');
+  $('upGo').onclick=()=>uploadDoc(d);
+}
+async function uploadDoc(d){
+  const f=$('upF').files[0];
+  const title=d?d.title:($('upT').value||'').trim();
+  if(!title){ toast('Give it a title'); return; }
+  if(!f){ toast('Choose the PDF file'); return; }
+  if(!/pdf$/i.test(f.type||'') && !/\.pdf$/i.test(f.name||'')){ toast('PDF files only'); return; }
+  if(f.size>50*1048576){ toast('File too big (max 50 MB)'); return; }
+  const btn=$('upGo'); btn.disabled=true; btn.textContent='Uploading…';
+  const id=d?d.id:'doc'+Date.now(), ver=d?(d.version||1)+1:1;
+  const safe=String(f.name||'document.pdf').replace(/[^A-Za-z0-9._-]+/g,'_').slice(-80);
+  const path='docs/'+id+'/v'+ver+'-'+safe;
+  const up=await sb.storage.from('emp-docs').upload(path, f, { contentType:'application/pdf', upsert:true });
+  if(up.error){ btn.disabled=false; btn.textContent='Upload'; toast('Upload failed: '+up.error.message,4500); return; }
+  const now=new Date().toISOString();
+  const r = d
+    ? await sb.from('gp_emp_docs').update({ file_path:path, file_name:f.name, size_bytes:f.size, version:ver, updated_at:now }).eq('id',id)
+    : await sb.from('gp_emp_docs').insert({ id, title, category:$('upC').value, description:($('upD').value||'').trim()||null, file_path:path, file_name:f.name, size_bytes:f.size, version:1, must_sign:$('upS').checked, active:true, created_by:ME.username, created_at:now, updated_at:now });
+  if(r.error){ btn.disabled=false; btn.textContent='Upload'; toast('Save failed: '+r.error.message,4500); return; }
+  if($('upP').checked) pushNotify(d?'📘 Updated: '+title:'📘 New '+(d?d.category:$('upC').value)+': '+title, d?'A new version is out — please have a look in Documents & SOP.':'Please read & sign it in the Employee app → Documents & SOP.', 'all');
+  closeSheet(); toast(d?'New version uploaded ✓':'Uploaded ✓'); await loadDocs(); if($('subTitle').textContent==='Documents & SOP') renderDocs(); else openDocs();
+}
+async function hideDoc(id){
+  if(!confirm('Remove this document from the list? (signatures are kept)')) return;
+  const r=await sb.from('gp_emp_docs').update({ active:false, updated_at:new Date().toISOString() }).eq('id',id);
+  if(r.error){ toast('Failed: '+r.error.message); return; }
+  closeSheet(); toast('Removed'); await loadDocs(); renderDocs();
+}
+
+/* ---------- Grandlab SOP: categories with numbered steps, read & sign by job title ---------- */
+const SOP_DEFAULT_AUD=['Detailer','PPF / Wrap Installer','Tinted Installer','QC Person','Junior Technician','Senior Technician'];
+let SOP=[], SOP_ACKS={};
+async function loadSop(){
+  try{
+    const r=await sb.from('gp_emp_sop').select('*').eq('active',true).order('sort');
+    if(!r.error) SOP=r.data||[];
+    const a=await sb.from('gp_emp_sop_acks').select('*').eq('username',ME.username);
+    SOP_ACKS={}; (a.data||[]).forEach(x=>SOP_ACKS[x.section_id]=x);
+  }catch(e){}
+}
+const sopAud = c => Array.isArray(c.audience)?c.audience:SOP_DEFAULT_AUD;
+const sopSteps = c => Array.isArray(c.steps)?c.steps:[];
+const sopFor = (c, st) => !!st && !isChauffeur(st) && sopAud(c).indexOf(st.title)>=0;
+const sopSigned = (c, ack) => !!ack && (ack.version||1) >= (c.version||1);
+const sopToSign = () => (SOP||[]).filter(c=>sopSteps(c).length && sopFor(c,ME) && !sopSigned(c,SOP_ACKS[c.id]));
+function sopEntryHtml(){
+  if(!SOP.length) return '';
+  const mine=SOP.filter(c=>sopSteps(c).length && sopFor(c,ME)), done=mine.filter(c=>sopSigned(c,SOP_ACKS[c.id])).length;
+  return '<div class="sec-title" style="margin-top:4px">Grandlab SOP</div><button class="menu-item" onclick="openSop()" style="border-color:var(--gold)"><span class="mi">📘</span><span class="mt">Grandlab SOP<small>'+SOP.length+' categories · step by step'+(mine.length?' · you signed '+done+'/'+mine.length:'')+'</small></span>'
+    +(mine.length&&done<mine.length?'<span class="pill warn">'+(mine.length-done)+' to sign</span>':(mine.length?'<span class="pill ok">All signed</span>':''))+'</button><div class="sec-title">Other documents</div>';
+}
+async function openSop(){
+  openSub('Grandlab SOP','<div class="spinner" style="margin-top:30px"></div>', isMgmt()?'<button class="btn sm gold" onclick="editSop()">+ Category</button>':'');
+  await loadSop(); renderSop();
+}
+async function renderSop(){
+  let counts={};
+  if(isMgmt() && SOP.length){ try{ const r=await sb.from('gp_emp_sop_acks').select('section_id,version').in('section_id',SOP.map(c=>c.id)); (r.data||[]).forEach(x=>{ const c=SOP.find(y=>y.id===x.section_id); if(c && sopSigned(c,x)) counts[x.section_id]=(counts[x.section_id]||0)+1; }); }catch(e){} }
+  const mine=sopToSign().length;
+  $('subBody').innerHTML=(mine?'<div class="banner"><b>'+mine+' categor'+(mine>1?'ies':'y')+' for your job still need your signature. Read every step, then tap "I have read &amp; understood".</b></div>':'')
+    +SOP.map((c,i)=>{ const n=sopSteps(c).length, need=sopFor(c,ME), ack=SOP_ACKS[c.id];
+      const aud=STAFF.filter(st=>sopFor(c,st)).length;
+      const pill=!n?'<span class="pill grey">Coming soon</span>':(need?(sopSigned(c,ack)?'<span class="pill ok">Signed</span>':'<span class="pill warn">Read &amp; sign</span>'):'<span class="pill grey">View</span>');
+      return '<button class="menu-item" onclick="openSopSection(\''+esc(c.id)+'\')"><span class="mi" style="font-size:19px">'+esc(c.icon||'📄')+'</span><span class="mt">'+(i+1)+'. '+esc(c.title)+'<small>'+n+' step'+(n===1?'':'s')+(isMgmt()?' · signed '+(counts[c.id]||0)+'/'+aud:'')+(c.version>1?' · v'+c.version:'')+'</small></span>'+pill+'</button>'; }).join('')
+    +'<p class="small muted center" style="margin-top:6px">Required for: '+esc(SOP_DEFAULT_AUD.filter(t=>STAFF.some(st=>st.title===t)).join(', '))+(isMgmt()?' (change per category in Edit)':'')+'</p>';
+}
+function openSopSection(id){
+  const c=SOP.find(x=>x.id===id); if(!c) return;
+  const steps=sopSteps(c), need=sopFor(c,ME), ack=SOP_ACKS[c.id], signed=sopSigned(c,ack);
+  const i=SOP.indexOf(c), prev=SOP[i-1], next=SOP[i+1];
+  openSub(c.title, '', isMgmt()?'<button class="btn sm ghost" onclick="editSop(\''+esc(c.id)+'\')">Edit</button>':'');
+  $('subBody').innerHTML='<div class="sop-head"><span>'+esc(c.icon||'📄')+'</span><div><b>'+esc(c.title)+'</b><small>Grandlab SOP · '+steps.length+' step'+(steps.length===1?'':'s')+(c.version>1?' · version '+c.version:'')+'</small></div></div>'
+    +(c.intro?'<p class="sop-intro">'+esc(c.intro)+'</p>':'')
+    +(steps.length?'<ol class="sop-steps">'+steps.map((st,k)=>'<li><span class="n">'+(k+1)+'</span><div><p>'+esc(st.text||'')+'</p>'+(st.photo?'<a href="'+esc(st.photo)+'" target="_blank"><img src="'+esc(st.photo)+'" alt="Step '+(k+1)+' photo" loading="lazy"></a>':'')+'</div></li>').join('')+'</ol>'
+      :'<div class="empty">Steps coming soon.</div>')
+    +(steps.length&&need?(signed
+      ?'<div class="card" style="margin-top:8px"><h4>Signed ✓</h4><p class="small">You confirmed you have read &amp; understood this on <b>'+new Date(ack.signed_at).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</b>.</p>'+(ack.sig_url?'<img src="'+esc(ack.sig_url)+'" alt="Your signature" style="max-height:60px;margin-top:6px">':'')+'</div>'
+      :'<div class="card" style="margin-top:8px;border-color:var(--gold)">'+(ack&&!signed?'<p class="small" style="color:var(--warn);font-weight:700;margin-bottom:8px">This SOP was updated — please read again and re-sign.</p>':'')+'<button class="btn gold" onclick="signSop(\''+esc(c.id)+'\')">✍️ I have read &amp; understood</button></div>'):'')
+    +(isMgmt()?'<div id="sopAdmin" style="margin-top:14px"><div class="spinner"></div></div>':'')
+    +'<div class="btn-row" style="margin-top:14px">'+(prev?'<button class="btn ghost" onclick="openSopSection(\''+esc(prev.id)+'\')">‹ '+esc(prev.title)+'</button>':'')+(next?'<button class="btn ghost" onclick="openSopSection(\''+esc(next.id)+'\')">'+esc(next.title)+' ›</button>':'')+'</div>';
+  if(isMgmt()) renderSopAdmin(c);
+}
+async function signSop(id){
+  const c=SOP.find(x=>x.id===id); if(!c) return;
+  const sig=await getSignature(ME.name+' — '+c.title+' SOP'); if(!sig){ toast('Signature needed'); return; }
+  toast('Saving…',5000);
+  const sigUrl=await imgbbUpload(sig)||'';
+  const row={ id:c.id+'|'+ME.username, section_id:c.id, version:c.version||1, username:ME.username, name:ME.name, sig_url:sigUrl, signed_at:new Date().toISOString() };
+  const r=await sb.from('gp_emp_sop_acks').upsert(row,{onConflict:'id'});
+  if(r.error){ toast('Save failed: '+r.error.message,4000); return; }
+  SOP_ACKS[c.id]=row; toast('Signed ✓'); updateBadges(); if(CUR_VIEW==='home') renderHome();
+  const nxt=sopToSign()[0]; openSopSection(nxt?nxt.id:c.id); if(nxt) toast('Signed ✓ — next: '+nxt.title,3000);
+}
+async function renderSopAdmin(c){
+  let acks=[]; try{ const r=await sb.from('gp_emp_sop_acks').select('*').eq('section_id',c.id); acks=r.data||[]; }catch(e){}
+  const by={}; acks.forEach(a=>by[a.username]=a);
+  const people=STAFF.filter(st=>sopFor(c,st)), signed=people.filter(st=>sopSigned(c,by[st.username])), notYet=people.filter(st=>!sopSigned(c,by[st.username]));
+  const el=$('sopAdmin'); if(!el) return;
+  el.innerHTML='<div class="card"><h4>Who has signed · '+signed.length+'/'+people.length+'</h4>'
+    +'<p class="small muted" style="margin-bottom:8px">Required for: '+esc(sopAud(c).join(', '))+'</p>'
+    +(notYet.length?'<span class="dl-lab">Not yet ('+notYet.length+')</span><div class="chips">'+notYet.map(st=>'<span class="chip" style="text-decoration:none;cursor:default">'+esc(st.name)+'</span>').join('')+'</div>'+(sopSteps(c).length?'<button class="btn ghost sm" id="sopNudge" style="margin-bottom:10px">🔔 Remind '+notYet.length+'</button>':''):(people.length?'<p class="small" style="color:var(--ok);font-weight:700">Everyone has signed 🎉</p>':''))
+    +(signed.length?'<span class="dl-lab">Signed ('+signed.length+')</span>'+signed.map(st=>'<div class="row"><span>'+esc(st.name)+'</span><small class="muted">'+new Date(by[st.username].signed_at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+'</small></div>').join(''):'')
+    +'</div>';
+  const n=$('sopNudge'); if(n) n.onclick=()=>{ notYet.forEach(st=>pushNotify('📘 SOP: '+c.title, 'Please read the '+c.title+' SOP and sign in the Employee app.', st.username)); toast('Reminder sent ✓'); n.disabled=true; };
+}
+/* editor (management) */
+let SOP_ED=null;
+function editSop(id){
+  if(!isMgmt()) return;
+  const c=id?SOP.find(x=>x.id===id):null;
+  SOP_ED={ id:c?c.id:null, title:c?c.title:'', icon:c?c.icon||'':'📄', intro:c?c.intro||'':'', steps:c?sopSteps(c).map(x=>({text:x.text||'',photo:x.photo||''})):[{text:'',photo:''}],
+    aud:new Set(c?sopAud(c):SOP_DEFAULT_AUD), version:c?c.version||1:1, hadAcks:false };
+  renderSopEditor();
+}
+function sopEdRead(){
+  if(!SOP_ED || !$('seT')) return;
+  SOP_ED.title=$('seT').value; SOP_ED.icon=$('seI').value; SOP_ED.intro=$('seIn').value;
+  document.querySelectorAll('#seSteps textarea').forEach(t=>{ SOP_ED.steps[+t.dataset.k].text=t.value; });
+}
+function renderSopEditor(){
+  const e=SOP_ED;
+  const titles=[...new Set(SOP_DEFAULT_AUD.concat(STAFF.map(st=>st.title).filter(Boolean)))].sort();
+  openSheet('<h3>'+(e.id?'Edit SOP — '+esc(e.title):'New SOP category')+'</h3>'
+    +'<div class="btn-row"><label class="fld" style="flex:0 0 76px"><span>Icon</span><input class="inp" id="seI" maxlength="4" value="'+esc(e.icon)+'" style="text-align:center"></label><label class="fld"><span>Category</span><input class="inp" id="seT" maxlength="60" value="'+esc(e.title)+'" placeholder="e.g. Car Wash"></label></div>'
+    +'<label class="fld"><span>Intro (optional)</span><textarea class="inp" id="seIn" placeholder="What this covers / tools needed">'+esc(e.intro)+'</textarea></label>'
+    +'<span class="dl-lab">Must read &amp; sign (job titles)</span><div class="chips" id="seAud">'+titles.map(t=>'<button type="button" class="chip'+(e.aud.has(t)?' on':'')+'" style="text-decoration:none" data-t="'+esc(t)+'">'+esc(t)+'</button>').join('')+'</div>'
+    +'<span class="dl-lab">Steps</span><div id="seSteps">'+e.steps.map((st,k)=>'<div class="sop-ed"><div class="sop-ed-h"><b>Step '+(k+1)+'</b><span><button type="button" data-up="'+k+'" '+(k?'':'disabled')+'>↑</button><button type="button" data-dn="'+k+'" '+(k<e.steps.length-1?'':'disabled')+'>↓</button><button type="button" data-rm="'+k+'">✕</button></span></div>'
+      +'<textarea class="inp" data-k="'+k+'" placeholder="e.g. Rinse the whole car first">'+esc(st.text)+'</textarea>'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'+(st.photo?'<img src="'+esc(st.photo)+'" alt="" style="width:54px;height:54px;object-fit:cover;border-radius:8px">':'')+'<label class="linkbtn" style="cursor:pointer">📷 '+(st.photo?'Change photo':'Add photo')+'<input type="file" accept="image/*" data-ph="'+k+'" style="display:none"></label>'+(st.photo?'<button type="button" class="linkbtn" style="color:var(--bad)" data-phx="'+k+'">Remove photo</button>':'')+'</div></div>').join('')+'</div>'
+    +'<button type="button" class="btn ghost" id="seAdd" style="margin-bottom:12px">+ Add step</button>'
+    +(e.id?'<label class="switch"><span>Content changed — ask everyone to re-read &amp; re-sign</span><input type="checkbox" id="seVer"></label>':'')
+    +'<label class="switch"><span>Notify the staff who must read it</span><input type="checkbox" id="sePush" checked></label>'
+    +'<button class="btn gold" id="seSave">Save SOP</button>'
+    +(e.id?'<div class="btn-row" style="margin-top:10px"><button class="btn ghost" id="seUp">Move up</button><button class="btn ghost" id="seDn">Move down</button><button class="btn danger" id="seDel">Remove</button></div>':''));
+  $('seAud').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ const t=b.dataset.t; if(e.aud.has(t)) e.aud.delete(t); else e.aud.add(t); b.classList.toggle('on'); });
+  const box=$('seSteps');
+  box.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ sopEdRead(); const k=+b.dataset.up; [e.steps[k-1],e.steps[k]]=[e.steps[k],e.steps[k-1]]; renderSopEditor(); });
+  box.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ sopEdRead(); const k=+b.dataset.dn; [e.steps[k+1],e.steps[k]]=[e.steps[k],e.steps[k+1]]; renderSopEditor(); });
+  box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ sopEdRead(); e.steps.splice(+b.dataset.rm,1); if(!e.steps.length) e.steps.push({text:'',photo:''}); renderSopEditor(); });
+  box.querySelectorAll('[data-phx]').forEach(b=>b.onclick=()=>{ sopEdRead(); e.steps[+b.dataset.phx].photo=''; renderSopEditor(); });
+  box.querySelectorAll('[data-ph]').forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; sopEdRead(); toast('Uploading photo…',6000); const b=await shrinkImage(f,1400,0.82); const url=await imgbbUpload(b); if(!url){ toast('Upload failed'); return; } e.steps[+inp.dataset.ph].photo=url; toast('Photo added ✓'); renderSopEditor(); });
+  $('seAdd').onclick=()=>{ sopEdRead(); e.steps.push({text:'',photo:''}); renderSopEditor(); setTimeout(()=>{ const t=document.querySelectorAll('#seSteps textarea'); if(t.length) t[t.length-1].focus(); },60); };
+  $('seSave').onclick=saveSop;
+  if(e.id){ $('seUp').onclick=()=>moveSop(e.id,-1); $('seDn').onclick=()=>moveSop(e.id,1); $('seDel').onclick=()=>removeSop(e.id); }
+}
+async function saveSop(){
+  sopEdRead(); const e=SOP_ED;
+  const title=(e.title||'').trim(); if(!title){ toast('Give the category a name'); return; }
+  const steps=e.steps.map(x=>({text:(x.text||'').trim(),photo:x.photo||''})).filter(x=>x.text||x.photo);
+  const bump=e.id && $('seVer') && $('seVer').checked;
+  const now=new Date().toISOString();
+  const row={ title, icon:(e.icon||'').trim()||'📄', intro:(e.intro||'').trim()||null, steps, audience:[...e.aud], updated_by:ME.username, updated_at:now };
+  let r;
+  if(e.id){ if(bump) row.version=(e.version||1)+1; r=await sb.from('gp_emp_sop').update(row).eq('id',e.id); }
+  else { row.id='sop-'+Date.now(); row.sort=(SOP.reduce((m,c)=>Math.max(m,c.sort||0),0))+10; row.version=1; row.active=true; row.created_at=now; r=await sb.from('gp_emp_sop').insert(row); }
+  if(r.error){ toast('Save failed: '+r.error.message,4000); return; }
+  if($('sePush').checked && steps.length){ const who=STAFF.filter(st=>!isChauffeur(st) && row.audience.indexOf(st.title)>=0 && st.username!==ME.username);
+    who.forEach(st=>pushNotify(e.id&&!bump?'📘 SOP updated: '+title:'📘 SOP: '+title, (bump||!e.id)?'Please read the steps and sign in the Employee app.':'Small update — have a look in Grandlab SOP.', st.username)); }
+  closeSheet(); toast('SOP saved ✓'); await loadSop();
+  const id=e.id||row.id; openSopSection(id);
+}
+async function moveSop(id, dir){
+  const i=SOP.findIndex(c=>c.id===id), j=i+dir; if(i<0||j<0||j>=SOP.length) return;
+  const a=SOP[i], b=SOP[j]; const sa=a.sort||0, sbb=b.sort||0;
+  await sb.from('gp_emp_sop').update({sort:sbb===sa?sa+dir:sbb}).eq('id',a.id);
+  await sb.from('gp_emp_sop').update({sort:sa}).eq('id',b.id);
+  closeSheet(); await loadSop(); openSop();
+}
+async function removeSop(id){
+  if(!confirm('Remove this SOP category? (signatures are kept)')) return;
+  const r=await sb.from('gp_emp_sop').update({active:false,updated_at:new Date().toISOString()}).eq('id',id);
+  if(r.error){ toast('Failed: '+r.error.message); return; }
+  closeSheet(); toast('Removed'); await loadSop(); openSop();
 }
 
 boot();
