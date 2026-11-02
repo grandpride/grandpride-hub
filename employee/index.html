@@ -309,7 +309,9 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .sop-steps li{display:flex;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
 .sop-steps .n{flex:0 0 32px;height:32px;border-radius:50%;background:linear-gradient(180deg,var(--gold-l),var(--gold));color:var(--ink);font-weight:800;display:flex;align-items:center;justify-content:center}
 .sop-steps p{font-size:14px;white-space:pre-wrap;padding-top:5px}
+.sop-steps p.bm{font-size:12.5px;color:var(--muted);font-style:italic;padding-top:4px}
 .sop-steps img{max-width:100%;border-radius:12px;margin-top:8px;display:block}
+.sop-steps a.vid{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:6px 12px;border-radius:999px;background:#111;color:#fff;font-size:12.5px;font-weight:700;text-decoration:none}
 .sop-ed{border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:8px;background:#fff}
 .sop-ed-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
 .sop-ed-h button{border:1px solid var(--line);background:#fff;border-radius:8px;width:30px;height:28px;margin-left:4px}
@@ -513,7 +515,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 16;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 18;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -3075,7 +3077,7 @@ function openSopSection(id){
   openSub(c.title, '', isMgmt()?'<button class="btn sm ghost" onclick="editSop(\''+esc(c.id)+'\')">Edit</button>':'');
   $('subBody').innerHTML='<div class="sop-head"><span>'+esc(c.icon||'📄')+'</span><div><b>'+esc(c.title)+'</b><small>Grandlab SOP · '+steps.length+' step'+(steps.length===1?'':'s')+(c.version>1?' · version '+c.version:'')+'</small></div></div>'
     +(c.intro?'<p class="sop-intro">'+esc(c.intro)+'</p>':'')
-    +(steps.length?'<ol class="sop-steps">'+steps.map((st,k)=>'<li><span class="n">'+(k+1)+'</span><div><p>'+esc(st.text||'')+'</p>'+(st.photo?'<a href="'+esc(st.photo)+'" target="_blank"><img src="'+esc(st.photo)+'" alt="Step '+(k+1)+' photo" loading="lazy"></a>':'')+'</div></li>').join('')+'</ol>'
+    +(steps.length?'<ol class="sop-steps">'+steps.map((st,k)=>'<li><span class="n">'+(k+1)+'</span><div><p>'+esc(st.text||'')+'</p>'+(st.bm?'<p class="bm">'+esc(st.bm)+'</p>':'')+(st.video&&/^https?:\/\//i.test(st.video)?'<a class="vid" href="'+esc(st.video)+'" target="_blank" rel="noopener">▶ Watch video</a>':'')+(st.photo?'<a href="'+esc(st.photo)+'" target="_blank"><img src="'+esc(st.photo)+'" alt="Step '+(k+1)+' photo" loading="lazy"></a>':'')+'</div></li>').join('')+'</ol>'
       :'<div class="empty">Steps coming soon.</div>')
     +(steps.length&&need?(signed
       ?'<div class="card" style="margin-top:8px"><h4>Signed ✓</h4><p class="small">You confirmed you have read &amp; understood this on <b>'+new Date(ack.signed_at).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</b>.</p>'+(ack.sig_url?'<img src="'+esc(ack.sig_url)+'" alt="Your signature" style="max-height:60px;margin-top:6px">':'')+'</div>'
@@ -3112,14 +3114,16 @@ let SOP_ED=null;
 function editSop(id){
   if(!isMgmt()) return;
   const c=id?SOP.find(x=>x.id===id):null;
-  SOP_ED={ id:c?c.id:null, title:c?c.title:'', icon:c?c.icon||'':'📄', intro:c?c.intro||'':'', steps:c?sopSteps(c).map(x=>({text:x.text||'',photo:x.photo||''})):[{text:'',photo:''}],
+  SOP_ED={ id:c?c.id:null, title:c?c.title:'', icon:c?c.icon||'':'📄', intro:c?c.intro||'':'', steps:c?sopSteps(c).map(x=>({text:x.text||'',bm:x.bm||'',video:x.video||'',photo:x.photo||''})):[{text:'',bm:'',video:'',photo:''}],
     aud:new Set(c?sopAud(c):SOP_DEFAULT_AUD), version:c?c.version||1:1, hadAcks:false };
   renderSopEditor();
 }
 function sopEdRead(){
   if(!SOP_ED || !$('seT')) return;
   SOP_ED.title=$('seT').value; SOP_ED.icon=$('seI').value; SOP_ED.intro=$('seIn').value;
-  document.querySelectorAll('#seSteps textarea').forEach(t=>{ SOP_ED.steps[+t.dataset.k].text=t.value; });
+  document.querySelectorAll('#seSteps textarea[data-k]').forEach(t=>{ SOP_ED.steps[+t.dataset.k].text=t.value; });
+  document.querySelectorAll('#seSteps textarea[data-bm]').forEach(t=>{ SOP_ED.steps[+t.dataset.bm].bm=t.value; });
+  document.querySelectorAll('#seSteps input[data-vd]').forEach(t=>{ SOP_ED.steps[+t.dataset.vd].video=t.value; });
 }
 function renderSopEditor(){
   const e=SOP_ED;
@@ -3130,6 +3134,8 @@ function renderSopEditor(){
     +'<span class="dl-lab">Must read &amp; sign (job titles)</span><div class="chips" id="seAud">'+titles.map(t=>'<button type="button" class="chip'+(e.aud.has(t)?' on':'')+'" style="text-decoration:none" data-t="'+esc(t)+'">'+esc(t)+'</button>').join('')+'</div>'
     +'<span class="dl-lab">Steps</span><div id="seSteps">'+e.steps.map((st,k)=>'<div class="sop-ed"><div class="sop-ed-h"><b>Step '+(k+1)+'</b><span><button type="button" data-up="'+k+'" '+(k?'':'disabled')+'>↑</button><button type="button" data-dn="'+k+'" '+(k<e.steps.length-1?'':'disabled')+'>↓</button><button type="button" data-rm="'+k+'">✕</button></span></div>'
       +'<textarea class="inp" data-k="'+k+'" placeholder="e.g. Rinse the whole car first">'+esc(st.text)+'</textarea>'
+      +'<textarea class="inp" data-bm="'+k+'" placeholder="Bahasa Melayu (optional)" style="min-height:54px;margin-top:6px;font-size:13px">'+esc(st.bm||'')+'</textarea>'
+      +'<input class="inp" type="url" data-vd="'+k+'" placeholder="▶ Video link (Google Drive / YouTube, optional)" value="'+esc(st.video||'')+'" style="margin-top:6px;font-size:13px">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-top:6px">'+(st.photo?'<img src="'+esc(st.photo)+'" alt="" style="width:54px;height:54px;object-fit:cover;border-radius:8px">':'')+'<label class="linkbtn" style="cursor:pointer">📷 '+(st.photo?'Change photo':'Add photo')+'<input type="file" accept="image/*" data-ph="'+k+'" style="display:none"></label>'+(st.photo?'<button type="button" class="linkbtn" style="color:var(--bad)" data-phx="'+k+'">Remove photo</button>':'')+'</div></div>').join('')+'</div>'
     +'<button type="button" class="btn ghost" id="seAdd" style="margin-bottom:12px">+ Add step</button>'
     +(e.id?'<label class="switch"><span>Content changed — ask everyone to re-read &amp; re-sign</span><input type="checkbox" id="seVer"></label>':'')
@@ -3140,17 +3146,17 @@ function renderSopEditor(){
   const box=$('seSteps');
   box.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ sopEdRead(); const k=+b.dataset.up; [e.steps[k-1],e.steps[k]]=[e.steps[k],e.steps[k-1]]; renderSopEditor(); });
   box.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ sopEdRead(); const k=+b.dataset.dn; [e.steps[k+1],e.steps[k]]=[e.steps[k],e.steps[k+1]]; renderSopEditor(); });
-  box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ sopEdRead(); e.steps.splice(+b.dataset.rm,1); if(!e.steps.length) e.steps.push({text:'',photo:''}); renderSopEditor(); });
+  box.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ sopEdRead(); e.steps.splice(+b.dataset.rm,1); if(!e.steps.length) e.steps.push({text:'',bm:'',video:'',photo:''}); renderSopEditor(); });
   box.querySelectorAll('[data-phx]').forEach(b=>b.onclick=()=>{ sopEdRead(); e.steps[+b.dataset.phx].photo=''; renderSopEditor(); });
   box.querySelectorAll('[data-ph]').forEach(inp=>inp.onchange=async()=>{ const f=inp.files[0]; if(!f) return; sopEdRead(); toast('Uploading photo…',6000); const b=await shrinkImage(f,1400,0.82); const url=await imgbbUpload(b); if(!url){ toast('Upload failed'); return; } e.steps[+inp.dataset.ph].photo=url; toast('Photo added ✓'); renderSopEditor(); });
-  $('seAdd').onclick=()=>{ sopEdRead(); e.steps.push({text:'',photo:''}); renderSopEditor(); setTimeout(()=>{ const t=document.querySelectorAll('#seSteps textarea'); if(t.length) t[t.length-1].focus(); },60); };
+  $('seAdd').onclick=()=>{ sopEdRead(); e.steps.push({text:'',bm:'',video:'',photo:''}); renderSopEditor(); setTimeout(()=>{ const t=document.querySelectorAll('#seSteps textarea[data-k]'); if(t.length) t[t.length-1].focus(); },60); };
   $('seSave').onclick=saveSop;
   if(e.id){ $('seUp').onclick=()=>moveSop(e.id,-1); $('seDn').onclick=()=>moveSop(e.id,1); $('seDel').onclick=()=>removeSop(e.id); }
 }
 async function saveSop(){
   sopEdRead(); const e=SOP_ED;
   const title=(e.title||'').trim(); if(!title){ toast('Give the category a name'); return; }
-  const steps=e.steps.map(x=>({text:(x.text||'').trim(),photo:x.photo||''})).filter(x=>x.text||x.photo);
+  const steps=e.steps.map(x=>({text:(x.text||'').trim(),bm:(x.bm||'').trim(),video:(x.video||'').trim(),photo:x.photo||''})).filter(x=>x.text||x.photo);
   const bump=e.id && $('seVer') && $('seVer').checked;
   const now=new Date().toISOString();
   const row={ title, icon:(e.icon||'').trim()||'📄', intro:(e.intro||'').trim()||null, steps, audience:[...e.aud], updated_by:ME.username, updated_at:now };
