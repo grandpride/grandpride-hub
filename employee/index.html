@@ -377,6 +377,29 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .ck-head>div{flex:1;min-width:0}
 .ck-head>.pill{font-size:11px;line-height:1.3;flex:0 0 auto}
 #ckQuick .chip,.chips[data-set] .chip,#ceDays .chip,#ceOrd .chip{text-decoration:none}
+/* ---------- team incentive (v2.0) ---------- */
+.inc-card{display:block;width:100%;text-align:left;background:var(--ink);color:#fff;border:none;border-radius:16px;padding:14px;margin-bottom:10px}
+.inc-card.bad{background:#3a1a14}
+.inc-card small{display:block;color:#d8cfbd;font-size:11.5px;margin-top:4px}
+.inc-card b{font-size:16px;color:var(--gold-l)}
+.inc-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.inc-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.inc-nav b{font-size:15px}
+.inc-ladder{display:grid;grid-template-columns:repeat(auto-fit,minmax(54px,1fr));gap:6px;margin-bottom:12px}
+.inc-ladder div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px 4px;text-align:center}
+.inc-ladder div span{display:block;font-size:10.5px;color:var(--muted);font-weight:700}
+.inc-ladder div b{font-size:13px}
+.inc-ladder div.on{background:var(--ink);border-color:var(--ink)}
+.inc-ladder div.on span{color:var(--gold-l)} .inc-ladder div.on b{color:#fff}
+.inc-res.bad{border-color:var(--bad)}
+.inc-res .inc-top b{font-size:17px}
+.inc-item{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px}
+.inc-item .i{font-size:20px;line-height:1.2}
+.inc-item .t{flex:1;min-width:0}
+.inc-item .t b{display:block;font-size:13.5px}
+.inc-item .t small{display:block;color:var(--muted);font-size:11.5px}
+.inc-item img{width:100%;max-width:220px;border-radius:10px;margin-top:6px;display:block;cursor:zoom-in}
+.inc-item .pill{flex:0 0 auto}
 </style>
 </head>
 <body>
@@ -549,7 +572,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 19;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 20;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -1214,7 +1237,7 @@ async function enterApp(){
   versionCheck();
   // refresh ME from staff list (fresh copy)
   ME = STAFF.find(s=>s.username===ME.username) || ME;
-  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices(), loadProjects(), loadDayLog(), loadDocs(), loadSop(), loadChecks()]);
+  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices(), loadProjects(), loadDayLog(), loadDocs(), loadSop(), loadChecks(), loadIncentive()]);
   flushQueue();
   show('sApp');
   switchView('home');
@@ -1349,6 +1372,7 @@ function renderHome(){
     +(r.lunchOut?'<p class="muted small center" style="margin-top:8px">Lunch '+esc(r.lunchOut)+(r.lunchIn?' – '+esc(r.lunchIn):' (on break)')+'</p>':'')
     + homeOffHtml()
     + (typeof homeChecksHtml==='function'?homeChecksHtml():'')
+    + (typeof homeIncentiveHtml==='function'?homeIncentiveHtml():'')
     + homeDayLogHtml()
     + homeProjectsHtml()
     + homeNoticesHtml()
@@ -3341,12 +3365,13 @@ function ckRowHtml(c, k, showDate, extra){
 async function openChecks(tab){
   if(tab) CK_TAB=tab;
   openSub('Closing Check','<div class="spinner" style="margin-top:30px"></div>', isMgmt()?'<button class="btn sm gold" onclick="ckEdit()">+ Area</button>':'');
-  await loadChecks();
+  await Promise.all([loadChecks(), loadIncentive()]);
   if(!CK_READY){ $('subBody').innerHTML='<div class="empty">Closing Check is not set up yet.<br>Ask your manager.</div>'; return; }
   renderChecks();
 }
 function renderChecks(){
   const tabs=[['today','My tasks'],['review','To check ('+ckToCheck().length+')']];
+  if(typeof incTabAllowed==='function' && incTabAllowed()) tabs.push(['incentive','Incentive']);
   if(isMgmt()) tabs.push(['all','All areas'],['summary','Summary'],['areas','Manage']);
   if(!tabs.some(t=>t[0]===CK_TAB)) CK_TAB='today';
   let body='';
@@ -3375,6 +3400,7 @@ function renderChecks(){
       + (CHECKS.filter(c=>!ckDueOn(c,tk)).length?'<p class="small muted center" style="margin-top:8px">Not due today: '+esc(CHECKS.filter(c=>!ckDueOn(c,tk)).map(c=>c.title).join(', '))+'</p>':'');
   }
   if(CK_TAB==='summary'){ body='<div id="ckSum"><div class="spinner"></div></div>'; }
+  if(CK_TAB==='incentive'){ body='<div id="incBox"><div class="spinner"></div></div>'; }
   if(CK_TAB==='areas'){
     body=(CK_ALL.length?CK_ALL.map(c=>{
         const setup=[]; if(!c.ref_photo) setup.push('no reference photo'); if(!c.checker) setup.push('no checker'); if(c.mode==='rotation'?!ckArr(ckObj(c.rotation).order).length:!ckArr(c.doers).length) setup.push('no staff');
@@ -3387,6 +3413,7 @@ function renderChecks(){
   }
   $('subBody').innerHTML='<div class="ck-tabs">'+tabs.map(t=>'<button class="'+(t[0]===CK_TAB?'on':'')+'" onclick="CK_TAB=\''+t[0]+'\';renderChecks()">'+esc(t[1])+'</button>').join('')+'</div>'+body;
   if(CK_TAB==='summary') ckSummary();
+  if(CK_TAB==='incentive') incRender();
 }
 function ckTime(iso){ if(!iso) return ''; const d=new Date(iso); return fmtTime(d); }
 
@@ -3445,7 +3472,7 @@ async function ckSend(id, k, f){
     CK_LOG[row.id]=row;
     if(c.checker && c.checker!==ME.username) pushNotify('📸 '+c.title, ME.name+' sent the photo — please check (Follow / Not follow)', c.checker);
     toast('Photo sent ✓ — waiting for check',3000);
-    openCheck(c.id,k); if(CUR_VIEW==='home') renderHome();
+    INC_NOW=null; openCheck(c.id,k); if(CUR_VIEW==='home') renderHome();
   }catch(e){ toast('Could not send — try again',4000); }
   finally{ CK_BUSY=false; }
 }
@@ -3470,6 +3497,7 @@ async function ckSaveDecision(c, k, ok, why){
   if(L.sent_by && L.sent_by!==ME.username) pushNotify(ok?'✅ '+c.title+' — Follow':'❌ '+c.title+' — Not follow', ok?'Checked by '+ME.name+'. Good job 👍':why+' — fix it and retake the photo in Closing Check.', L.sent_by);
   toast(ok?'Follow ✓':'Not follow sent ✓',2500);
   const nxt=ckToCheck()[0];
+  INC_NOW=null;
   if(nxt) openCheck(nxt.c.id,nxt.L.date_key); else { CK_TAB='review'; openChecks(); }
   if(CUR_VIEW==='home') renderHome();
 }
@@ -3562,6 +3590,298 @@ async function ckEdSave(){
   else { row.id='chk-'+Date.now(); row.sort=CK_ALL.reduce((m,c)=>Math.max(m,c.sort||0),0)+10; row.company=(ME.company||'Grandlab'); row.created_at=now; r=await sb.from('gp_emp_checks').insert(row); }
   if(r.error){ toast('Save failed: '+r.error.message,4000); return; }
   closeSheet(); toast('Area saved ✓'); CK_TAB='areas'; await openChecks();
+}
+
+
+/* ============================ TEAM INCENTIVE (v2.0) ============================
+   Monthly team tier, worked out from Closing Check results on the team's areas
+   plus car issues reported with a photo. Rules (Jimmy, 11 Nov 2026):
+   - clean month = up 1 tier; month with an issue = down `drop` tiers (never below Tier 1)
+   - issue = closing check Missed, Not follow not fixed the same day, car issue,
+             or every warning beyond `warnings_allowed` (Not follow fixed same day = warning)
+   - paid at the tier reached that month; head gets head_pct %, staff share the rest by days worked
+   Additive: reads gp_settings 'emp_team_incentive', gp_emp_issues, gp_emp_incentive_month,
+   gp_emp_check_log, gp_attendance. Hidden until v2.0 SQL is run.
+   ============================================================================ */
+let INC=null, INC_READY=false, INC_CLOSED={}, INC_NOW=null, INC_BUSY=false;
+let INC_VIEW={ team:null, month:null };
+const incTeams = () => (INC_READY && INC && Array.isArray(INC.teams)) ? INC.teams : [];
+const incTeam = id => incTeams().find(t=>t.id===id);
+const incIn = (t,u) => !!u && (ckArr(t.members).indexOf(u)>=0 || t.head===u);
+const incMyTeam = () => ME ? incTeams().find(t=>incIn(t,ME.username)) : null;
+const incCanReport = () => !!ME && (isMgmt() || incTeams().some(t=>ckArr(t.reporters).indexOf(ME.username)>=0));
+const incTabAllowed = () => INC_READY && incTeams().length && (isMgmt() || !!incMyTeam() || incCanReport());
+const incMonthOf = k => String(k).slice(0,7);
+function incShiftMonth(m, n){ const p=m.split('-').map(Number); const d=new Date(p[0], p[1]-1+n, 1); return d.getFullYear()+'-'+pad2(d.getMonth()+1); }
+const incMonthLabel = m => { const p=m.split('-').map(Number); return new Date(p[0],p[1]-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'}); };
+const incTiers = t => ckArr(t.tiers).map(Number).filter(n=>n>0);
+const incRM = n => 'RM'+(Math.round((+n||0)*100)/100).toLocaleString('en-MY',{minimumFractionDigits:0,maximumFractionDigits:2});
+
+async function loadIncentive(){
+  try{
+    const r=await sb.from('gp_settings').select('id,data').eq('id','emp_team_incentive').maybeSingle();
+    if(r.error || !r.data){ INC_READY=false; return; }
+    INC=ckObj(r.data.data); if(!Array.isArray(INC.teams)) INC.teams=[];
+    const m=await sb.from('gp_emp_incentive_month').select('*');
+    if(m.error){ INC_READY=false; return; }          // v2.0 SQL not run yet
+    INC_CLOSED={}; (m.data||[]).forEach(x=>INC_CLOSED[x.id]=x);
+    INC_READY=true; INC_NOW=null;
+  }catch(e){ INC_READY=false; }
+}
+
+/* ---------- one month: issues + warnings ---------- */
+async function incEvalMonth(t, m){
+  const from=m+'-01', to=addDays(incShiftMonth(m,1)+'-01',-1), tk=todayKey(), end=to<tk?to:tk;
+  const areas=ckArr(t.areas);
+  let logs=[], iss=[];
+  try{ if(areas.length){ const r=await sb.from('gp_emp_check_log').select('*').gte('date_key',from).lte('date_key',to).in('check_id',areas); logs=r.data||[]; } }catch(e){}
+  try{ const r=await sb.from('gp_emp_issues').select('*').eq('team_id',t.id).gte('date_key',from).lte('date_key',to); iss=r.data||[]; }catch(e){}
+  const by={}; logs.forEach(x=>by[x.id]=x);
+  const items=[];
+  if(from<=end) for(let k=from;k<=end;k=addDays(k,1)){
+    areas.forEach(aid=>{
+      const c=ckFind(aid); if(!c || !ckDueOn(c,k)) return;
+      const L=by[aid+'|'+k], past=k<tk, who=ckDoers(c,k);
+      if(!L){ if(past) items.push({type:'missed',date:k,area:c.title,icon:c.icon,who}); return; }
+      const nfs=ckArr(L.history).filter(h=>h.status==='notfollow');
+      if(L.status==='notfollow'){
+        if(past) items.push({type:'notfixed',date:k,area:c.title,icon:c.icon,who:[L.sent_by],note:L.note});
+        else items.push({type:'open',date:k,area:c.title,icon:c.icon,who:[L.sent_by],note:L.note});
+      } else nfs.forEach(h=>items.push({type:'warning',date:k,area:c.title,icon:c.icon,who:[h.sent_by],note:h.note}));
+    });
+  }
+  iss.forEach(x=>items.push({type:x.voided?'void':'car',date:x.date_key,area:(x.plate?x.plate+' · ':'')+({qc:'QC fail',complaint:'Customer complaint'}[x.kind]||'Car issue'),icon:'🚗',who:[],note:x.reason,id:x.id,photo:x.photo,by:x.reported_by,void_note:x.void_note}));
+  items.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+  const warnings=items.filter(i=>i.type==='warning').length, allowed=Math.max(0,+t.warnings_allowed||0);
+  const over=Math.max(0,warnings-allowed);
+  const hard=items.filter(i=>i.type==='missed'||i.type==='notfixed'||i.type==='car').length;
+  return { items, warnings, allowed, over, hard, issues:hard+over, from, to, done:to<tk };
+}
+/* ---------- tier for a month (uses closed months where they exist) ---------- */
+async function incTier(t, m, depth){
+  depth=depth||0;
+  const start=t.start_month||'2099-01', tiers=incTiers(t); if(m<start || !tiers.length) return null;
+  const closed=INC_CLOSED[t.id+'|'+m];
+  const ev=await incEvalMonth(t,m);
+  if(closed) return { tier:closed.tier, amount:+closed.amount, prevTier:(closed.detail&&closed.detail.prevTier)||null, ev, closed };
+  let prev=0;
+  if(m>start){ const pc=INC_CLOSED[t.id+'|'+incShiftMonth(m,-1)];
+    if(pc) prev=pc.tier; else if(depth<24){ const p=await incTier(t,incShiftMonth(m,-1),depth+1); prev=p?p.tier:0; } }
+  const drop=Math.max(1,+t.drop||2);
+  const ifClean=Math.min(tiers.length, prev+1), ifIssue=Math.max(1, prev-drop);
+  const tier=ev.issues>0?ifIssue:ifClean;
+  return { tier, amount:tiers[tier-1], prevTier:prev, ifClean, ifIssue, ev, closed:null };
+}
+/* ---------- payout split ---------- */
+async function incPayout(t, m, amount){
+  const from=m+'-01', to=addDays(incShiftMonth(m,1)+'-01',-1);
+  const pct=Math.max(0,Math.min(100,+t.head_pct||0))/100, head=t.head||null;
+  const staff=ckArr(t.members).filter(u=>u!==head);
+  const days={}; staff.forEach(u=>days[u]=0);
+  try{ if(staff.length){ const r=await sb.from('gp_attendance').select('username,date_key,rec').gte('date_key',from).lte('date_key',to).in('username',staff);
+    (r.data||[]).forEach(x=>{ const rec=x.rec||{}; if(!rec.amIn || rec.leave) return; days[x.username]=(days[x.username]||0)+(rec.halfLeave?0.5:1); }); } }catch(e){}
+  const total=staff.reduce((s,u)=>s+(days[u]||0),0), pool=amount*(1-pct), headAmt=amount*pct;
+  const rows=staff.map(u=>({ u, days:days[u]||0, amt: total? Math.round(pool*(days[u]||0)/total*100)/100 : 0 }));
+  if(total){ const diff=Math.round((Math.round(pool*100)/100 - rows.reduce((s,x)=>s+x.amt,0))*100)/100; const big=rows.slice().sort((a,b)=>b.days-a.days)[0]; if(big&&diff) big.amt=Math.round((big.amt+diff)*100)/100; }  // rounding cents go to the most days
+  return { head, headAmt:Math.round(headAmt*100)/100, pool:Math.round(pool*100)/100, totalDays:total, rows };
+}
+
+/* ---------- home ---------- */
+async function incRefreshNow(){
+  if(INC_BUSY || !INC_READY) return; const t=incMyTeam(); if(!t){ INC_NOW={none:true}; return; }
+  INC_BUSY=true;
+  try{ const m=incMonthOf(todayKey()); INC_NOW={ t, m, r: await incTier(t,m) }; }catch(e){ INC_NOW={none:true}; }
+  INC_BUSY=false; if(CUR_VIEW==='home') renderHome();
+}
+function homeIncentiveHtml(){
+  try{
+    if(!INC_READY) return '';
+    if(!INC_NOW){ incRefreshNow(); return ''; }
+    if(INC_NOW.none) return '';
+    const t=INC_NOW.t, m=INC_NOW.m, r=INC_NOW.r, start=t.start_month;
+    if(!r){ // before start month — show a heads-up in the month before
+      if(start && incShiftMonth(m,1)===start) return '<div class="sec-title">Team Incentive</div><button class="inc-card" onclick="openChecks(\'incentive\')"><b>Starts '+esc(incMonthLabel(start))+' 🏁</b><small>'+esc(t.name)+' · keep your areas clean — every clean month moves the team up a tier (up to '+esc(incRM(incTiers(t).slice(-1)[0]))+')</small></button>';
+      return '';
+    }
+    const ev=r.ev, left=Math.max(0,ev.allowed-ev.warnings);
+    const st = ev.issues>0 ? '<span class="pill bad">Issue — tier drops</span>' : (ev.warnings?'<span class="pill warn">'+ev.warnings+' warning'+(ev.warnings>1?'s':'')+' · '+left+' left</span>':'<span class="pill ok">Clean so far</span>');
+    return '<div class="sec-title">Team Incentive <small>'+esc(incMonthLabel(m))+'</small></div>'
+      +'<button class="inc-card'+(ev.issues>0?' bad':'')+'" onclick="openChecks(\'incentive\')"><div class="inc-top"><b>'+(ev.issues>0?'':'On track · ')+'Tier '+r.tier+' · '+esc(incRM(r.amount))+'</b>'+st+'</div>'
+      +'<small>'+esc(t.name)+(ev.issues>0?' · '+ev.issues+' issue'+(ev.issues>1?'s':'')+' this month — dropped from Tier '+(r.prevTier||0):' · keep every area clean to month end to get it')+'</small></button>';
+  }catch(e){ return ''; }
+}
+
+/* ---------- Incentive tab ---------- */
+async function incRender(){
+  const box=$('incBox'); if(!box) return;
+  const teams=isMgmt()||incCanReport()?incTeams():[incMyTeam()].filter(Boolean);
+  if(!teams.length){ box.innerHTML='<div class="empty">No team set up.</div>'; return; }
+  if(!INC_VIEW.team || !teams.some(t=>t.id===INC_VIEW.team)) INC_VIEW.team=(incMyTeam()||teams[0]).id;
+  const t=incTeam(INC_VIEW.team), now=incMonthOf(todayKey());
+  if(!INC_VIEW.month) INC_VIEW.month = now<t.start_month ? t.start_month : now;
+  const m=INC_VIEW.month;
+  box.innerHTML='<div class="spinner" style="margin-top:20px"></div>';
+  const r=await incTier(t,m), tiers=incTiers(t);
+  let h='';
+  if(teams.length>1) h+='<div class="ck-tabs">'+teams.map(x=>'<button class="'+(x.id===t.id?'on':'')+'" onclick="INC_VIEW.team=\''+esc(x.id)+'\';INC_VIEW.month=null;incRender()">'+esc(x.name)+'</button>').join('')+'</div>';
+  h+='<div class="inc-nav"><button class="btn sm ghost" onclick="INC_VIEW.month=incShiftMonth(INC_VIEW.month,-1);incRender()">‹</button><b>'+esc(incMonthLabel(m))+'</b><button class="btn sm ghost" onclick="INC_VIEW.month=incShiftMonth(INC_VIEW.month,1);incRender()" '+(m>=now?'disabled':'')+'>›</button></div>';
+  h+='<div class="inc-ladder">'+tiers.map((a,i)=>'<div class="'+(r&&r.tier===i+1?'on':'')+'"><span>T'+(i+1)+'</span><b>'+esc(incRM(a).replace('RM',''))+'</b></div>').join('')+'</div>';
+  if(!r){
+    h+='<div class="card"><h4>Not started</h4><p class="small">'+esc(t.name)+' incentive starts <b>'+esc(incMonthLabel(t.start_month))+'</b>. From then, every clean month moves the team up one tier.</p></div>';
+  } else {
+    const ev=r.ev;
+    h+='<div class="card inc-res'+(ev.issues>0?' bad':'')+'"><div class="inc-top"><b>Tier '+r.tier+' · '+esc(incRM(r.amount))+'</b>'
+      +(r.closed?'<span class="pill grey">Closed</span>':(ev.done?'<span class="pill warn">Ready to close</span>':'<span class="pill gold">This month so far</span>'))+'</div>'
+      +'<p class="small muted">Last month Tier '+(r.prevTier||0)+(r.closed?'':(ev.issues>0?' → drops to Tier '+r.ifIssue:' → Tier '+r.ifClean+' if clean to month end'))+'</p>'
+      +'<div class="ck-sum" style="grid-template-columns:repeat(3,1fr);margin:10px 0 0"><div class="'+(ev.issues?'bad':'ok')+'"><b>'+ev.issues+'</b><span>Issues</span></div><div class="'+(ev.warnings>ev.allowed?'bad':(ev.warnings?'warn':'ok'))+'"><b>'+ev.warnings+'/'+ev.allowed+'</b><span>Warnings</span></div><div><b>'+ev.items.filter(i=>i.type==='car').length+'</b><span>Car issues</span></div></div></div>';
+    h+='<p class="small muted" style="margin:0 2px 10px">Issue = Missed photo, Not follow not fixed the same day, or car issue. Not follow fixed the same day = warning ('+ev.allowed+' allowed a month, the next one is an issue). Any issue = drop '+(+t.drop||2)+' tiers.</p>';
+    if(incCanReport() && !r.closed && m===now) h+='<button class="btn danger" style="margin-bottom:12px" onclick="incReport(\''+esc(t.id)+'\')">⚠️ Report car issue (photo)</button>';
+    const list=ev.items.filter(i=>i.type!=='void' || isMgmt());
+    let wn=0; list.forEach(i=>{ if(i.type==='warning'){ wn++; i.wn=wn; i.over=wn>ev.allowed; } });
+    h+='<div class="sec-title">What happened <small>'+list.length+'</small></div>'
+      +(list.length?list.map(i=>incItemHtml(i,t,r)).join(''):'<div class="empty">Nothing yet — all clean 👍</div>');
+    if(isMgmt()){
+      h+='<div class="sec-title">Payout</div><div class="card" id="incPay"><div class="spinner"></div></div>';
+      if(!r.closed && ev.done) h+='<button class="btn gold" onclick="incClose(\''+esc(t.id)+'\',\''+esc(m)+'\')">🔒 Close '+esc(incMonthLabel(m))+' — lock tier &amp; payout</button>';
+      if(r.closed) h+='<p class="small muted center" style="margin-top:6px">Closed by '+esc(ckWho(r.closed.closed_by))+' · '+esc(new Date(r.closed.closed_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}))+' · <button class="linkbtn" onclick="incReopen(\''+esc(t.id)+'\',\''+esc(m)+'\')">Reopen</button></p>';
+    }
+  }
+  if(isMgmt()) h+='<button class="btn ghost" style="margin-top:14px" onclick="incEditTeam(\''+esc(t.id)+'\')">⚙️ Team set-up</button>';
+  box.innerHTML=h;
+  if(r && isMgmt()) incPayHtml(t,m,r);
+}
+function incItemHtml(i,t,r){
+  const lab=i.over?['bad','Warning '+i.wn+' — issue']:{missed:['bad','Missed — issue'],notfixed:['bad','Not follow, not fixed — issue'],car:['bad','Car issue — issue'],warning:['warn','Warning (fixed same day)'],open:['warn','Not follow — fix today'],void:['grey','Voided']}[i.type]||['grey',i.type];
+  return '<div class="inc-item"><span class="i">'+esc(i.icon||'•')+'</span><div class="t"><b>'+esc(i.area)+'</b><small>'+esc(niceDate(i.date))+(i.who&&i.who.length?' · '+esc(i.who.map(ckWho).join(', ')):'')+(i.by?' · reported by '+esc(ckWho(i.by)):'')+'</small>'
+    +(i.note?'<small style="color:var(--ink2)">'+esc(i.note)+'</small>':'')+(i.void_note?'<small>Voided: '+esc(i.void_note)+'</small>':'')
+    +(i.photo?'<img src="'+esc(i.photo)+'" alt="" onclick="ckZoom(this.src)">':'')
+    +(i.type==='car'&&isMgmt()&&!(r&&r.closed)?'<button class="linkbtn" onclick="incVoid(\''+esc(i.id)+'\')">Void (mistake)</button>':'')
+    +'</div><span class="pill '+lab[0]+'">'+lab[1]+'</span></div>';
+}
+async function incPayHtml(t,m,r){
+  const el=$('incPay'); if(!el) return;
+  const p=r.closed&&r.closed.detail&&r.closed.detail.payout ? r.closed.detail.payout : await incPayout(t,m,r.amount);
+  el.innerHTML='<div class="row"><div class="l"><b>Team total</b><small>Tier '+r.tier+'</small></div><b>'+esc(incRM(r.amount))+'</b></div>'
+    +'<div class="row"><div class="l"><b>Head '+(+t.head_pct||0)+'%</b><small>'+(p.head?esc(ckWho(p.head)):'<span style="color:var(--bad)">Head not set — not paid</span>')+'</small></div><b>'+esc(incRM(p.headAmt))+'</b></div>'
+    +'<div class="dl-lab" style="margin-top:8px">Staff '+(100-(+t.head_pct||0))+'% by days worked · '+esc(incRM(p.pool))+' · '+p.totalDays+' days</div>'
+    +(p.rows.length?p.rows.map(x=>'<div class="row"><div class="l"><b>'+esc(ckWho(x.u))+'</b><small>'+x.days+' day'+(x.days===1?'':'s')+'</small></div><b>'+esc(incRM(x.amt))+'</b></div>').join(''):'<div class="empty">No staff in team</div>')
+    +(r.closed?'':'<p class="small muted" style="margin-top:6px">Days so far — final when the month is closed.</p>');
+}
+async function incClose(tid, m){
+  if(!isMgmt()) return; const t=incTeam(tid); if(!t) return;
+  const prev=incShiftMonth(m,-1);
+  if(m>t.start_month && !INC_CLOSED[t.id+'|'+prev]){ toast('Close '+incMonthLabel(prev)+' first',3500); return; }
+  if(!confirm('Close '+incMonthLabel(m)+'? Tier and payout will be locked.')) return;
+  const r=await incTier(t,m); if(!r) return;
+  const p=await incPayout(t,m,r.amount);
+  const row={ id:t.id+'|'+m, team_id:t.id, month:m, tier:r.tier, amount:r.amount, issues:r.ev.issues, warnings:r.ev.warnings,
+    detail:{ prevTier:r.prevTier, items:r.ev.items.filter(i=>i.type!=='void').map(i=>({type:i.type,date:i.date,area:i.area,note:i.note||null})), payout:p, head_pct:+t.head_pct||0 },
+    closed_by:ME.username, closed_at:new Date().toISOString() };
+  const x=await sb.from('gp_emp_incentive_month').upsert(row,{onConflict:'id'});
+  if(x.error){ toast('Close failed: '+x.error.message,4000); return; }
+  INC_CLOSED[row.id]=row; toast('Month closed ✓');
+  const who=ckArr(t.members).concat(t.head?[t.head]:[]);
+  who.forEach(u=>{ const mine=p.head===u?p.headAmt:((p.rows.find(y=>y.u===u)||{}).amt||0);
+    pushNotify('💰 '+t.name+' — '+incMonthLabel(m), 'Tier '+r.tier+' ('+incRM(r.amount)+'). Your share '+incRM(mine)+'.', u); });
+  INC_NOW=null; incRender();
+}
+async function incReopen(tid, m){
+  if(!isMgmt()) return;
+  const t=incTeam(tid); if(INC_CLOSED[tid+'|'+incShiftMonth(m,1)]){ toast('Reopen '+incMonthLabel(incShiftMonth(m,1))+' first',3500); return; }
+  if(!confirm('Reopen '+incMonthLabel(m)+'? The locked result is removed and worked out again.')) return;
+  const x=await sb.from('gp_emp_incentive_month').delete().eq('id',tid+'|'+m);
+  if(x.error){ toast('Failed: '+x.error.message,4000); return; }
+  delete INC_CLOSED[tid+'|'+m]; INC_NOW=null; toast('Reopened'); incRender();
+}
+
+/* ---------- report a car issue (QC / management) ---------- */
+let INC_REP=null;
+function incReport(tid){
+  if(!incCanReport()) return;
+  const teams=incTeams(); INC_REP={ team:tid||(teams[0]&&teams[0].id), kind:'qc', photo:null };
+  openSheet('<h3>⚠️ Report car issue</h3><p class="small muted" style="margin-bottom:10px">Counts as an issue for the team this month (tier drops). Photo is required.</p>'
+    +(teams.length>1?'<label class="fld"><span>Team</span><select class="inp" id="irT">'+teams.map(t=>'<option value="'+esc(t.id)+'"'+(t.id===INC_REP.team?' selected':'')+'>'+esc(t.name)+'</option>').join('')+'</select></label>':'')
+    +'<span class="dl-lab">Type</span><div class="chips" id="irK" style="margin-bottom:12px">'+[['qc','QC fail'],['complaint','Customer complaint'],['other','Other']].map(k=>'<button type="button" class="chip'+(k[0]==='qc'?' on':'')+'" data-k="'+k[0]+'">'+k[1]+'</button>').join('')+'</div>'
+    +'<label class="fld"><span>Car plate</span><input class="inp" id="irP" maxlength="15" placeholder="e.g. VAB 1234" style="text-transform:uppercase"></label>'
+    +'<label class="fld"><span>What is wrong</span><textarea class="inp" id="irR" placeholder="e.g. Water spots on bonnet after wash"></textarea></label>'
+    +'<div id="irPh" class="ck-ph" style="min-height:120px;margin-bottom:10px">No photo yet</div>'
+    +'<label class="btn ghost ck-cam" style="margin-top:0">📸 Take photo<input type="file" accept="image/*" capture="environment" id="irCam" hidden></label>'
+    +'<div class="btn-row" style="margin-top:12px"><button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn danger" id="irSave">Report issue</button></div>');
+  $('irK').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ INC_REP.kind=b.dataset.k; $('irK').querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x===b)); });
+  $('irCam').onchange=async()=>{ const f=$('irCam').files[0]; if(!f) return;
+    if(f.lastModified && Date.now()-f.lastModified>20*60*1000){ toast('Please take a NEW photo now',3500); return; }
+    toast('Preparing photo…',5000); INC_REP.photo=await shrinkImage(f,1280,0.72); $('irPh').innerHTML='<img src="'+INC_REP.photo+'" alt="" style="width:100%;border-radius:10px">'; toast('Photo ready ✓'); };
+  $('irSave').onclick=incReportSave;
+}
+async function incReportSave(){
+  const e=INC_REP; if(!e) return;
+  if($('irT')) e.team=$('irT').value;
+  const reason=($('irR').value||'').trim(), plate=($('irP').value||'').trim().toUpperCase();
+  if(!reason){ toast('Write what is wrong'); return; }
+  if(!e.photo){ toast('Photo is required'); return; }
+  const t=incTeam(e.team); if(!t) return;
+  $('irSave').disabled=true; toast('Saving…',10000);
+  const k=todayKey(), id='iss-'+Date.now();
+  const url=await ckUpload(e.photo,'issues/'+k+'/'+id+'.jpg');
+  if(!url){ toast('Upload failed — try again',4000); $('irSave').disabled=false; return; }
+  const row={ id, team_id:t.id, date_key:k, kind:e.kind, plate:plate||null, reason, photo:url, reported_by:ME.username, created_at:new Date().toISOString(), voided:false };
+  const x=await sb.from('gp_emp_issues').insert(row);
+  if(x.error){ toast('Save failed: '+x.error.message,4000); $('irSave').disabled=false; return; }
+  closeSheet(); toast('Issue reported ✓');
+  ckArr(t.members).concat(t.head?[t.head]:[]).filter(u=>u!==ME.username).forEach(u=>pushNotify('⚠️ Car issue — '+t.name, (plate?plate+': ':'')+reason+' (reported by '+ME.name+')', u));
+  INC_NOW=null; if($('incBox')) incRender();
+}
+function incVoid(id){
+  if(!isMgmt()) return;
+  openSheet('<h3>Void this car issue?</h3><p class="small muted" style="margin-bottom:10px">Use only if it was reported by mistake. It stops counting against the team.</p>'
+    +'<label class="fld"><span>Why</span><textarea class="inp" id="ivN" placeholder="e.g. Wrong car / not our team"></textarea></label>'
+    +'<div class="btn-row"><button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn danger" id="ivOk">Void</button></div>');
+  $('ivOk').onclick=async()=>{ const n=($('ivN').value||'').trim(); if(!n){ toast('Write why'); return; }
+    const x=await sb.from('gp_emp_issues').update({ voided:true, voided_by:ME.username, void_note:n, voided_at:new Date().toISOString() }).eq('id',id);
+    if(x.error){ toast('Failed: '+x.error.message,4000); return; }
+    closeSheet(); toast('Voided ✓'); INC_NOW=null; incRender(); };
+}
+
+/* ---------- team set-up (management) ---------- */
+let INC_ED=null;
+function incEditTeam(tid){
+  if(!isMgmt()) return; const t=incTeam(tid); if(!t) return;
+  INC_ED={ id:t.id, name:t.name||'', members:new Set(ckArr(t.members)), head:t.head||'', head_pct:+t.head_pct||0, areas:new Set(ckArr(t.areas)),
+    tiers:incTiers(t).join(', '), drop:+t.drop||2, wa:+t.warnings_allowed||0, start:t.start_month||incMonthOf(todayKey()), reporters:new Set(ckArr(t.reporters)) };
+  incEdRender();
+}
+function incEdRead(){ const e=INC_ED; if(!e||!$('ieN')) return;
+  e.name=$('ieN').value; e.head=$('ieH').value; e.head_pct=+$('iePct').value||0; e.tiers=$('ieT').value; e.drop=+$('ieD').value||2; e.wa=Math.max(0,+$('ieW').value||0); e.start=$('ieS').value||e.start; }
+function incEdRender(){
+  const e=INC_ED;
+  const people=STAFF.filter(st=>st.username!=='admin' && !isChauffeur(st)).sort((a,b)=>((a.company==='Grandlab'?0:1)-(b.company==='Grandlab'?0:1))||String(a.name).localeCompare(String(b.name)));
+  const chips=(set,key,list)=>'<div class="chips" data-iset="'+key+'" style="margin-bottom:12px">'+list.map(x=>'<button type="button" class="chip'+(set.has(x[0])?' on':'')+'" data-v="'+esc(x[0])+'">'+esc(x[1])+'</button>').join('')+'</div>';
+  openSheet('<h3>Team set-up</h3>'
+    +'<label class="fld"><span>Team name</span><input class="inp" id="ieN" value="'+esc(e.name)+'"></label>'
+    +'<span class="dl-lab">Staff in the team</span>'+chips(e.members,'members',people.map(s=>[s.username,s.name]))
+    +'<div class="btn-row"><label class="fld"><span>Operation head</span><select class="inp" id="ieH"><option value="">— not set —</option>'+people.map(s=>'<option value="'+esc(s.username)+'"'+(e.head===s.username?' selected':'')+'>'+esc(s.name)+'</option>').join('')+'</select></label>'
+      +'<label class="fld" style="flex:0 0 96px"><span>Head %</span><input class="inp" id="iePct" type="number" min="0" max="100" value="'+e.head_pct+'"></label></div>'
+    +'<span class="dl-lab">Closing Check areas that count</span>'+chips(e.areas,'areas',CK_ALL.map(c=>[c.id,(c.icon||'')+' '+c.title]))
+    +'<label class="fld"><span>Tiers (RM, lowest first)</span><input class="inp" id="ieT" value="'+esc(e.tiers)+'"></label>'
+    +'<div class="btn-row"><label class="fld"><span>Drop tiers per issue month</span><input class="inp" id="ieD" type="number" min="1" max="5" value="'+e.drop+'"></label>'
+      +'<label class="fld"><span>Warnings allowed / month</span><input class="inp" id="ieW" type="number" min="0" max="10" value="'+e.wa+'"></label></div>'
+    +'<label class="fld"><span>Starts (month)</span><input class="inp" id="ieS" type="month" value="'+esc(e.start)+'"></label>'
+    +'<span class="dl-lab">Who can report car issues</span>'+chips(e.reporters,'reporters',people.map(s=>[s.username,s.name]))
+    +'<button class="btn gold" id="ieSave">Save set-up</button>');
+  document.querySelectorAll('#sheetBody .chips[data-iset]').forEach(box=>box.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ const set=e[box.dataset.iset], v=b.dataset.v; if(set.has(v)) set.delete(v); else set.add(v); b.classList.toggle('on'); }));
+  $('ieSave').onclick=incEdSave;
+}
+async function incEdSave(){
+  incEdRead(); const e=INC_ED;
+  const tiers=String(e.tiers).split(/[,\s]+/).map(Number).filter(n=>n>0);
+  if(!tiers.length){ toast('Enter the tier amounts'); return; }
+  if(e.head && e.members.has(e.head)) e.members.delete(e.head);
+  const teams=incTeams().map(t=>t.id!==e.id?t:Object.assign({},t,{ name:(e.name||'').trim()||t.name, members:[...e.members], head:e.head||null, head_pct:e.head_pct,
+    areas:[...e.areas], tiers, drop:e.drop, warnings_allowed:e.wa, start_month:e.start, reporters:[...e.reporters] }));
+  const data=Object.assign({}, INC, { teams });
+  const x=await sb.from('gp_settings').upsert({ id:'emp_team_incentive', data },{onConflict:'id'});
+  if(x.error){ toast('Save failed: '+x.error.message,4000); return; }
+  INC=data; INC_NOW=null; closeSheet(); toast('Team set-up saved ✓'); incRender();
 }
 
 boot();
