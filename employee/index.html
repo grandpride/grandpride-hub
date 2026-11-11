@@ -343,6 +343,40 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .chip b{font-size:13px}
 .chip.on{background:var(--ink);border-color:var(--ink);color:#fff;text-decoration:none}
 .chip.on b{color:var(--gold-l)}
+
+/* ---------- closing check (v1.9) ---------- */
+.ck-row{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:8px;width:100%;text-align:left;color:var(--ink)}
+.ck-row .i{font-size:22px;line-height:1;flex:0 0 auto}
+.ck-row .t{flex:1;min-width:0}
+.ck-row .t b{display:block;font-size:14px}
+.ck-row .t small{display:block;color:var(--muted);font-size:11.5px}
+.ck-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:12px;padding-bottom:2px}
+.ck-tabs button{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.ck-tabs button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.ck-card{padding:12px;margin-bottom:10px}
+.ck-card img{width:100%;border-radius:12px;display:block;cursor:zoom-in}
+.ck-lab{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.ck-lab.ok{color:var(--ok)}
+.ck-ph{background:#f0ede6;border:1.5px dashed var(--line);border-radius:12px;min-height:170px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12.5px;text-align:center;padding:10px}
+.ck-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ck-pair .ck-card{margin-bottom:0}
+.ck-pair .ck-ph{min-height:130px}
+.ck-cam{display:block;text-align:center;margin-top:12px;cursor:pointer}
+.ck-cam small{font-weight:600;opacity:.75}
+.btn.ck-yes{background:var(--ok);color:#fff}
+.ck-sum{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:12px}
+.ck-sum div{background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px 4px;text-align:center}
+.ck-sum b{display:block;font-size:18px}
+.ck-sum span{font-size:10.5px;color:var(--muted)}
+.ck-sum .ok b{color:var(--ok)} .ck-sum .warn b{color:var(--warn)} .ck-sum .bad b{color:var(--bad)}
+.ck-hist{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:6px}
+.ck-hist img{width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:zoom-in}
+.ck-refed{margin-bottom:12px}
+.ck-refed img{width:100%;max-height:260px;object-fit:cover;border-radius:12px;display:block}
+.ck-order{margin-bottom:4px}
+.ck-head>div{flex:1;min-width:0}
+.ck-head>.pill{font-size:11px;line-height:1.3;flex:0 0 auto}
+#ckQuick .chip,.chips[data-set] .chip,#ceDays .chip,#ceOrd .chip{text-decoration:none}
 </style>
 </head>
 <body>
@@ -515,7 +549,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 18;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 19;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -1180,7 +1214,7 @@ async function enterApp(){
   versionCheck();
   // refresh ME from staff list (fresh copy)
   ME = STAFF.find(s=>s.username===ME.username) || ME;
-  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices(), loadProjects(), loadDayLog(), loadDocs(), loadSop()]);
+  await Promise.all([loadToday(), loadTasks(), loadLeave(), loadSignups(), loadCycle(), loadNotices(), loadProjects(), loadDayLog(), loadDocs(), loadSop(), loadChecks()]);
   flushQueue();
   show('sApp');
   switchView('home');
@@ -1192,7 +1226,8 @@ async function enterApp(){
       else if(o==='notices') setTimeout(openNotices,300);
       else if(o==='daylog') setTimeout(openDayLog,300);
       else if(o==='docs') setTimeout(openDocs,300);
-      else if(o==='sop') setTimeout(openSop,300); } }catch(e){}
+      else if(o==='sop') setTimeout(openSop,300);
+      else if(o==='checks') setTimeout(()=>openChecks('today'),300); } }catch(e){}
   if(window.__gpZoom && !lsGet('gpemp_dsk_tip',false)){ lsSet('gpemp_dsk_tip',true); setTimeout(()=>toast('Tip: in Chrome ⋮ menu, untick "Desktop site" for the best view',6000),1500); }
   loadAllLeave().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
   locate().then(()=>{ if(CUR_VIEW==='home') renderHome(); });
@@ -1276,6 +1311,7 @@ function renderHome(){
   if(isApprover() && PENDING_SIGNUPS.length) alerts+=alertCard('adduser', PENDING_SIGNUPS.length+' new staff sign-up'+(PENDING_SIGNUPS.length>1?'s':''), 'Waiting for your approval', 'openApprovals()');
   const tpl=teamPendingLeave();
   if(tpl) alerts+=alertCard('leave', tpl+' leave request'+(tpl>1?'s':'')+' to approve', 'From your team', "switchView('leave')");
+  alerts=(typeof ckAlertsHtml==='function'?ckAlertsHtml():'')+alerts;
   const sopN=sopToSign().length; if(sopN) alerts=alertCard('book','Grandlab SOP: '+sopN+' categor'+(sopN>1?'ies':'y')+' to read & sign','Step-by-step workshop SOP for your job','openSop()')+alerts;
   const toSign=docsToSign(); if(toSign.length) alerts=alertCard('book', toSign.length===1?'Please read & sign: '+toSign[0].title:toSign.length+' documents to read & sign', 'Grandlab SOP / company documents', toSign.length===1?"openDoc('"+toSign[0].id+"')":'openDocs()')+alerts;
   const q=lsGet(QKEY,[]); if(q.length) alerts+=alertCard('history', q.length+' punch not synced yet', 'Saved on this phone — will sync when online', 'flushQueue()');
@@ -1312,6 +1348,7 @@ function renderHome(){
     +'<div style="height:12px"></div>'+attStrip(true)
     +(r.lunchOut?'<p class="muted small center" style="margin-top:8px">Lunch '+esc(r.lunchOut)+(r.lunchIn?' – '+esc(r.lunchIn):' (on break)')+'</p>':'')
     + homeOffHtml()
+    + (typeof homeChecksHtml==='function'?homeChecksHtml():'')
     + homeDayLogHtml()
     + homeProjectsHtml()
     + homeNoticesHtml()
@@ -1767,6 +1804,7 @@ function renderProfile(){
     + menuItem('cal','Team Calendar','Who is on leave',"openTeamCal()")
     + (canTaskLog()?menuItem('edit','Daily Task Log','Plan, updates & end-of-day report','openDayLog()'):'')
     + (isLeader()||isMgmt()?menuItem('report','Team Daily Logs','Who planned & reported today'+(isMgmt()?' · Secret Box':''),'openTeamLogs()'):'')
+    + (typeof ckRelevant==='function' && ckRelevant() ? menuItem('check','Closing Check',(()=>{ const n=ckMineToday().filter(x=>!x.backup && ['todo','late','notfollow'].indexOf(ckStatus(x.c,todayKey()))>=0).length, m=ckToCheck().length; return (n?n+' photo'+(n>1?'s':'')+' to send':'Reference vs today\'s photo')+(m?' · '+m+' to check':''); })(),"openChecks('today')", (ckToCheck().length?'<span class="cnt">'+ckToCheck().length+'</span>':'')) : '')
     + menuItem('book','Documents & SOP',(()=>{ const n=docsToSign().length+sopToSign().length; return n?n+' to read & sign':'Grandlab SOP, policies & handbooks'; })(),'openDocs()', (docsToSign().length+sopToSign().length)?'<span class="cnt">'+(docsToSign().length+sopToSign().length)+'</span>':'')
     + menuItem('mega','Notice Board','Announcements & birthdays','openNotices()', unseenNotices().length?'<span class="cnt">'+unseenNotices().length+'</span>':'')
     + menuItem('claim','Claims','Submit & track claims (GL Claim)','openClaims()')
@@ -3181,6 +3219,349 @@ async function removeSop(id){
   const r=await sb.from('gp_emp_sop').update({active:false,updated_at:new Date().toISOString()}).eq('id',id);
   if(r.error){ toast('Failed: '+r.error.message); return; }
   closeSheet(); toast('Removed'); await loadSop(); openSop();
+}
+
+
+/* ============================ CLOSING CHECK (v1.9) ============================
+   Grandlab housekeeping checks: reference photo on top, staff photo below,
+   checker taps Follow / Not follow. Additive module — reads/writes only
+   gp_emp_checks + gp_emp_check_log + storage bucket emp-checks.
+   If v1.9 SQL is not run yet, every entry point stays hidden.
+   ============================================================================ */
+let CHECKS=[];            // active areas (gp_emp_checks)
+let CK_ALL=[];            // incl. inactive (management)
+let CK_LOG={};            // log id -> row (last 7 days)
+let CK_READY=false;       // table exists + loaded
+let CK_TAB='today';
+let CK_ED=null;           // area editor state
+ICON.check='<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5"/><path d="M8.5 12.2l2.6 2.6 4.6-5.4"/></svg>';
+const CK_DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const ckArr = v => Array.isArray(v)?v:(typeof v==='string'&&v.trim().indexOf('[')===0?(()=>{ try{ const j=JSON.parse(v); return Array.isArray(j)?j:[]; }catch(e){ return []; } })():[]);
+const ckObj = v => (v&&typeof v==='object'&&!Array.isArray(v))?v:(typeof v==='string'?(()=>{ try{ const j=JSON.parse(v); return (j&&typeof j==='object')?j:{}; }catch(e){ return {}; } })():{});
+const ckLogId = (c,k) => c.id+'|'+k;
+const ckLog = (c,k) => CK_LOG[ckLogId(c,k)]||null;
+const ckFind = id => CHECKS.find(c=>c.id===id) || CK_ALL.find(c=>c.id===id);
+const ckSlotLabel = c => c.slot==='opening'?'Opening':'Closing';
+
+async function loadChecks(){
+  try{
+    const r=await sb.from('gp_emp_checks').select('*').order('sort');
+    if(r.error){ CK_READY=false; CHECKS=[]; CK_ALL=[]; return; }   // v1.9 SQL not run yet
+    CK_ALL=r.data||[]; CHECKS=CK_ALL.filter(c=>c.active!==false); CK_READY=true;
+    const l=await sb.from('gp_emp_check_log').select('*').gte('date_key', addDays(todayKey(),-7));
+    CK_LOG={}; (l.data||[]).forEach(x=>CK_LOG[x.id]=x);
+  }catch(e){ CK_READY=false; }
+}
+function ckDueOn(c,k){
+  if(!c || c.active===false) return false;
+  if(c.start_date && k<c.start_date) return false;
+  return ckArr(c.days).map(Number).indexOf(keyToDate(k).getDay())>=0;
+}
+function ckDoers(c,k){
+  if(c.mode==='rotation'){
+    const r=ckObj(c.rotation), ord=ckArr(r.order); if(!ord.length) return [];
+    const st=r.start||c.start_date||k;
+    const wk=Math.floor(Math.round((keyToDate(k)-keyToDate(st))/86400000)/7);
+    return [ord[((wk%ord.length)+ord.length)%ord.length]];
+  }
+  return ckArr(c.doers);
+}
+function ckStatus(c,k){
+  const L=ckLog(c,k); if(L) return L.status||'sent';
+  const tk=todayKey();
+  if(k<tk) return 'missed';
+  if(k===tk && toMin(fmtTime(new Date()))>toMin(c.due_time||'18:00')) return 'late';
+  return 'todo';
+}
+function ckPill(s,k){
+  if(s==='notfollow' && k && k<todayKey()) return '<span class="pill bad">Not follow</span>';
+  return ({ todo:'<span class="pill grey">Not sent</span>', late:'<span class="pill bad">Late — send now</span>',
+            sent:'<span class="pill warn">Waiting check</span>', follow:'<span class="pill ok">Follow ✓</span>',
+            notfollow:'<span class="pill bad">Not follow — retake</span>', missed:'<span class="pill bad">Missed</span>' })[s]||'';
+}
+const ckWho = u => u ? nameOf(u) : '—';
+function ckIsInvolved(c){
+  if(!ME) return false; const u=ME.username;
+  return c.checker===u || ckArr(c.doers).indexOf(u)>=0 || ckArr(c.backups).indexOf(u)>=0 || ckArr(ckObj(c.rotation).order).indexOf(u)>=0;
+}
+const ckRelevant = () => CK_READY && (isMgmt() || CHECKS.some(ckIsInvolved));
+// my areas today: [{c, backup}]
+function ckMineToday(){
+  const tk=todayKey(), u=ME&&ME.username; if(!CK_READY||!u) return [];
+  const out=[];
+  CHECKS.forEach(c=>{ if(!ckDueOn(c,tk)) return;
+    if(ckDoers(c,tk).indexOf(u)>=0) out.push({c, backup:false});
+    else if(ckArr(c.backups).indexOf(u)>=0) out.push({c, backup:true}); });
+  return out;
+}
+// photos waiting for me to check (last 7 days), never my own photo
+function ckToCheck(){
+  if(!CK_READY||!ME) return [];
+  const out=[];
+  Object.values(CK_LOG).forEach(L=>{
+    if(L.status!=='sent' || L.sent_by===ME.username) return;
+    const c=ckFind(L.check_id); if(!c) return;
+    if(c.checker===ME.username || (!c.checker && isMgmt())) out.push({c, L});
+  });
+  return out.sort((a,b)=>String(a.L.sent_at).localeCompare(String(b.L.sent_at)));
+}
+const ckCanCheck = (c,L) => !!ME && !!L && L.sent_by!==ME.username && (c.checker===ME.username || isMgmt());
+
+/* ---------- home ---------- */
+function ckAlertsHtml(){
+  try{
+    if(!CK_READY) return '';
+    const tk=todayKey(); let h='';
+    const open=ckMineToday().filter(x=>!x.backup && ['todo','late','notfollow'].indexOf(ckStatus(x.c,tk))>=0);
+    if(open.length){
+      const bad=open.filter(x=>ckStatus(x.c,tk)!=='todo').length;
+      h+=alertCard('check', open.length+' check photo'+(open.length>1?'s':'')+' still to send today',
+        open.map(x=>x.c.title).join(' · ')+(bad?' — '+bad+' late / retake':' — due '+open.map(x=>x.c.due_time).sort()[0]), "openChecks('today')");
+    }
+    const tc=ckToCheck();
+    if(tc.length) h+=alertCard('check', tc.length+' photo'+(tc.length>1?'s':'')+' waiting for your check', 'Tap Follow or Not follow', "openChecks('review')");
+    return h;
+  }catch(e){ return ''; }
+}
+function homeChecksHtml(){
+  try{
+    const mine=ckMineToday().filter(x=>!x.backup); if(!mine.length) return '';
+    const tk=todayKey();
+    return '<div class="sec-title">Closing Check <small><button class="linkbtn" onclick="openChecks(\'today\')">Open</button></small></div>'
+      + mine.map(x=>ckRowHtml(x.c, tk, false)).join('');
+  }catch(e){ return ''; }
+}
+function ckRowHtml(c, k, showDate, extra){
+  const s=ckStatus(c,k);
+  return '<button class="ck-row" onclick="openCheck(\''+esc(c.id)+'\',\''+esc(k)+'\')"><span class="i">'+esc(c.icon||'📋')+'</span><span class="t"><b>'+esc(c.title)+'</b><small>'
+    +(showDate?esc(niceDate(k))+' · ':'')+ckSlotLabel(c)+' · by '+esc(c.due_time||'18:00')+(extra?' · '+extra:'')+'</small></span>'+ckPill(s,k)+'</button>';
+}
+
+/* ---------- main page ---------- */
+async function openChecks(tab){
+  if(tab) CK_TAB=tab;
+  openSub('Closing Check','<div class="spinner" style="margin-top:30px"></div>', isMgmt()?'<button class="btn sm gold" onclick="ckEdit()">+ Area</button>':'');
+  await loadChecks();
+  if(!CK_READY){ $('subBody').innerHTML='<div class="empty">Closing Check is not set up yet.<br>Ask your manager.</div>'; return; }
+  renderChecks();
+}
+function renderChecks(){
+  const tabs=[['today','My tasks'],['review','To check ('+ckToCheck().length+')']];
+  if(isMgmt()) tabs.push(['all','All areas'],['summary','Summary'],['areas','Manage']);
+  if(!tabs.some(t=>t[0]===CK_TAB)) CK_TAB='today';
+  let body='';
+  const tk=todayKey();
+  if(CK_TAB==='today'){
+    const mine=ckMineToday();
+    body=mine.length
+      ? '<p class="small muted" style="margin:-2px 2px 10px">'+esc(niceDate(tk,{weekday:'long',day:'numeric',month:'short'}))+' · take the photo from the same angle as the reference.</p>'
+        + mine.filter(x=>!x.backup).map(x=>ckRowHtml(x.c,tk,false)).join('')
+        + (mine.some(x=>x.backup)?'<div class="sec-title">You are backup for <small>only if the main person is off</small></div>'+mine.filter(x=>x.backup).map(x=>ckRowHtml(x.c,tk,false,'main: '+esc(ckDoers(x.c,tk).map(ckWho).join(', ')||'—'))).join(''):'')
+      : '<div class="empty">No check for you today 👍</div>';
+    // recent not-follow / missed on earlier days for me
+    const past=[]; for(let i=1;i<=6;i++){ const k=addDays(tk,-i); CHECKS.forEach(c=>{ if(ckDueOn(c,k) && ckDoers(c,k).indexOf(ME.username)>=0){ const s=ckStatus(c,k); if(s==='notfollow'||s==='missed') past.push(ckRowHtml(c,k,true)); } }); }
+    if(past.length) body+='<div class="sec-title">Last 7 days — not OK</div>'+past.join('');
+  }
+  if(CK_TAB==='review'){
+    const tc=ckToCheck();
+    body=tc.length ? tc.map(x=>ckRowHtml(x.c,x.L.date_key,true,'sent by '+esc(ckWho(x.L.sent_by))+' '+esc(ckTime(x.L.sent_at)))).join('')
+      : '<div class="empty">Nothing waiting for your check 👍</div>';
+  }
+  if(CK_TAB==='all'){
+    const due=CHECKS.filter(c=>ckDueOn(c,tk));
+    const cnt={}; due.forEach(c=>{ const s=ckStatus(c,tk); cnt[s]=(cnt[s]||0)+1; });
+    body='<div class="ck-sum">'+[['follow','Follow','ok'],['sent','Waiting','warn'],['notfollow','Not follow','bad'],['late','Late','bad'],['todo','Not sent','grey']].map(a=>'<div class="'+a[2]+'"><b>'+(cnt[a[0]]||0)+'</b><span>'+a[1]+'</span></div>').join('')+'</div>'
+      + (due.length?due.map(c=>ckRowHtml(c,tk,false,esc(ckDoers(c,tk).map(ckWho).join(', ')||'no one set')+' → '+esc(ckWho(c.checker)))).join(''):'<div class="empty">No area due today.</div>')
+      + (CHECKS.filter(c=>!ckDueOn(c,tk)).length?'<p class="small muted center" style="margin-top:8px">Not due today: '+esc(CHECKS.filter(c=>!ckDueOn(c,tk)).map(c=>c.title).join(', '))+'</p>':'');
+  }
+  if(CK_TAB==='summary'){ body='<div id="ckSum"><div class="spinner"></div></div>'; }
+  if(CK_TAB==='areas'){
+    body=(CK_ALL.length?CK_ALL.map(c=>{
+        const setup=[]; if(!c.ref_photo) setup.push('no reference photo'); if(!c.checker) setup.push('no checker'); if(c.mode==='rotation'?!ckArr(ckObj(c.rotation).order).length:!ckArr(c.doers).length) setup.push('no staff');
+        return '<button class="ck-row" onclick="ckEdit(\''+esc(c.id)+'\')"><span class="i">'+esc(c.icon||'📋')+'</span><span class="t"><b>'+esc(c.title)+'</b><small>'
+          +ckSlotLabel(c)+' by '+esc(c.due_time||'')+' · '+esc(ckArr(c.days).map(d=>CK_DOW[+d]).join(' '))+' · from '+esc(c.start_date||'—')+'</small>'
+          +(setup.length?'<small style="color:var(--bad)">Missing: '+esc(setup.join(', '))+'</small>':'')+'</span>'
+          +(c.active===false?'<span class="pill grey">Off</span>':(c.ref_photo?'<span class="pill ok">Ready</span>':'<span class="pill warn">Set up</span>'))+'</button>';
+      }).join(''):'<div class="empty">No areas yet.</div>')
+      +'<button class="btn ghost" style="margin-top:6px" onclick="ckEdit()">+ Add area</button>';
+  }
+  $('subBody').innerHTML='<div class="ck-tabs">'+tabs.map(t=>'<button class="'+(t[0]===CK_TAB?'on':'')+'" onclick="CK_TAB=\''+t[0]+'\';renderChecks()">'+esc(t[1])+'</button>').join('')+'</div>'+body;
+  if(CK_TAB==='summary') ckSummary();
+}
+function ckTime(iso){ if(!iso) return ''; const d=new Date(iso); return fmtTime(d); }
+
+/* ---------- one area on one day ---------- */
+function openCheck(id, k){
+  const c=ckFind(id); if(!c) return; k=k||todayKey();
+  const L=ckLog(c,k), s=ckStatus(c,k), doers=ckDoers(c,k), u=ME.username;
+  const canSend=(doers.indexOf(u)>=0 || ckArr(c.backups).indexOf(u)>=0 || isMgmt()) && k===todayKey() && (!L || L.status==='notfollow' || (L.status==='sent' && L.sent_by===u));
+  const canCheck=ckCanCheck(c,L) && L.status==='sent';
+  const ref=c.ref_photo?'<img src="'+esc(c.ref_photo)+'" alt="" onclick="ckZoom(this.src)">':'<div class="ck-ph">No reference photo yet</div>';
+  const cur=L&&L.photo?'<img src="'+esc(L.photo)+'" alt="" onclick="ckZoom(this.src)">':'<div class="ck-ph">'+(s==='missed'?'No photo sent ❌':'Not sent yet')+'</div>';
+  const pair=canCheck||isMgmt();
+  openSub(c.title,'', isMgmt()?'<button class="btn sm ghost" onclick="ckEdit(\''+esc(c.id)+'\')">Edit</button>':'');
+  $('subBody').innerHTML=
+    '<div class="sop-head ck-head"><span>'+esc(c.icon||'📋')+'</span><div><b>'+esc(c.title)+'</b><small>'+(c.title_bm?esc(c.title_bm)+' · ':'')+esc(niceDate(k))+' · '+ckSlotLabel(c)+' by '+esc(c.due_time||'18:00')+'</small></div>'+ckPill(s,k)+'</div>'
+    +'<p class="small muted" style="margin:0 2px 10px">Done by <b>'+esc(doers.map(ckWho).join(', ')||'—')+'</b>'+(ckArr(c.backups).length?' (backup '+esc(ckArr(c.backups).map(ckWho).join(', '))+')':'')+' · checked by <b>'+esc(ckWho(c.checker))+'</b></p>'
+    +'<div class="'+(pair?'ck-pair':'')+'">'
+      +'<div class="card ck-card"><div class="ck-lab ok">✓ Reference — must look like this</div>'+ref
+        +(c.ref_note?'<p class="small" style="margin-top:8px">'+esc(c.ref_note)+'</p>':'')+(c.ref_note_bm?'<p class="small muted" style="font-style:italic">'+esc(c.ref_note_bm)+'</p>':'')+'</div>'
+      +'<div class="card ck-card"><div class="ck-lab">📸 '+(L?'Photo '+esc(niceDate(k,{day:'numeric',month:'short'}))+' '+esc(ckTime(L.sent_at))+' · '+esc(ckWho(L.sent_by)):'Current photo')+'</div>'+cur
+        +(L&&L.status==='notfollow'?'<p class="small" style="margin-top:8px;color:var(--bad);font-weight:700">❌ Not follow'+(L.note?': '+esc(L.note):'')+' — by '+esc(ckWho(L.checked_by))+'</p>':'')
+        +(L&&L.status==='follow'?'<p class="small" style="margin-top:8px;color:var(--ok);font-weight:700">✓ Follow — by '+esc(ckWho(L.checked_by))+' '+esc(ckTime(L.checked_at))+'</p>':'')
+      +'</div>'
+    +'</div>'
+    +(canSend?'<label class="btn gold ck-cam">📸 '+(L?'Retake photo':'Take photo')+' <small>/ Ambil gambar</small><input type="file" accept="image/*" capture="environment" id="ckCam" hidden></label>'
+       +'<p class="small muted center" style="margin-top:6px">Stand where the reference photo was taken. Photo must be taken now.</p>':'')
+    +(canCheck?'<div class="btn-row" style="margin-top:12px"><button class="btn ck-yes" onclick="ckDecide(\''+esc(c.id)+'\',\''+esc(k)+'\',true)">✅ Follow</button><button class="btn danger" onclick="ckDecide(\''+esc(c.id)+'\',\''+esc(k)+'\',false)">❌ Not follow</button></div>':'')
+    +(L&&L.status==='sent'&&L.sent_by===u?'<p class="small muted center" style="margin-top:10px">Waiting for '+esc(ckWho(c.checker))+' to check.</p>':'')
+    +(L&&ckArr(L.history).length?'<div class="sec-title">Earlier tries</div>'+ckArr(L.history).map(h=>'<div class="ck-hist">'+(h.photo?'<img src="'+esc(h.photo)+'" alt="" onclick="ckZoom(this.src)">':'')+'<div class="small"><b>'+esc(ckWho(h.sent_by))+'</b> '+esc(ckTime(h.sent_at))+'<br>'+(h.status==='notfollow'?'<span style="color:var(--bad)">❌ Not follow'+(h.note?': '+esc(h.note):'')+'</span>':esc(h.status||''))+'</div></div>').join(''):'');
+  const cam=$('ckCam'); if(cam) cam.onchange=()=>ckSend(c.id,k,cam.files&&cam.files[0]);
+}
+function ckZoom(src){ openSheet('<img src="'+esc(src)+'" alt="" style="width:100%;border-radius:14px;display:block"><button class="btn ghost" style="margin-top:12px" onclick="closeSheet()">Close</button>'); }
+
+async function ckUpload(dataUrl, path){
+  try{
+    const blob=await (await fetch(dataUrl)).blob();
+    const up=await sb.storage.from('emp-checks').upload(path, blob, { contentType:'image/jpeg', upsert:true });
+    if(!up.error){ const g=sb.storage.from('emp-checks').getPublicUrl(path); if(g&&g.data&&g.data.publicUrl) return g.data.publicUrl; }
+  }catch(e){}
+  return await imgbbUpload(dataUrl);   // fallback, same as the rest of the app
+}
+let CK_BUSY=false;
+async function ckSend(id, k, f){
+  const c=ckFind(id); if(!c||!f||CK_BUSY) return;
+  if(f.lastModified && Date.now()-f.lastModified > 20*60*1000){ toast('Please take a NEW photo now — old photos not allowed',4000); return; }
+  CK_BUSY=true; toast('Sending photo…',15000);
+  try{
+    const d=await shrinkImage(f,1280,0.72);
+    const url=await ckUpload(d, k+'/'+c.id+'-'+ME.username+'-'+Date.now()+'.jpg');
+    if(!url){ toast('Upload failed — check internet and try again',4000); return; }
+    const prev=ckLog(c,k), now=new Date().toISOString();
+    const hist=ckArr(prev&&prev.history).concat(prev&&prev.photo?[{photo:prev.photo,sent_by:prev.sent_by,sent_at:prev.sent_at,status:prev.status,checked_by:prev.checked_by||null,note:prev.note||null}]:[]);
+    const row={ id:ckLogId(c,k), check_id:c.id, date_key:k, photo:url, sent_by:ME.username, sent_at:now, status:'sent', checked_by:null, checked_at:null, note:null, history:hist, updated_at:now };
+    const r=await sb.from('gp_emp_check_log').upsert(row,{onConflict:'id'});
+    if(r.error){ toast('Save failed: '+r.error.message,4000); return; }
+    CK_LOG[row.id]=row;
+    if(c.checker && c.checker!==ME.username) pushNotify('📸 '+c.title, ME.name+' sent the photo — please check (Follow / Not follow)', c.checker);
+    toast('Photo sent ✓ — waiting for check',3000);
+    openCheck(c.id,k); if(CUR_VIEW==='home') renderHome();
+  }catch(e){ toast('Could not send — try again',4000); }
+  finally{ CK_BUSY=false; }
+}
+function ckDecide(id, k, ok){
+  const c=ckFind(id), L=c&&ckLog(c,k); if(!c||!L) return;
+  if(ok){ ckSaveDecision(c,k,true,''); return; }
+  const quick=['Not same as reference','Still dirty','Item not in place','Photo not clear'];
+  openSheet('<h3>❌ Not follow — what is wrong?</h3><p class="small muted" style="margin-bottom:10px">'+esc(ckWho(L.sent_by))+' will get this message and must fix it and retake the photo.</p>'
+    +'<div class="chips" id="ckQuick" style="margin-bottom:10px">'+quick.map(q=>'<button type="button" class="chip">'+esc(q)+'</button>').join('')+'</div>'
+    +'<label class="fld"><span>Reason</span><textarea class="inp" id="ckWhy" placeholder="e.g. Pads still on the ledge"></textarea></label>'
+    +'<div class="btn-row"><button class="btn ghost" onclick="closeSheet()">Cancel</button><button class="btn danger" id="ckNo">❌ Not follow</button></div>');
+  $('ckQuick').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ const t=$('ckWhy'); t.value=(t.value?t.value+' · ':'')+b.textContent; });
+  $('ckNo').onclick=()=>{ const why=($('ckWhy').value||'').trim(); if(!why){ toast('Write what is wrong'); return; } closeSheet(); ckSaveDecision(c,k,false,why); };
+}
+async function ckSaveDecision(c, k, ok, why){
+  const L=ckLog(c,k); if(!L) return;
+  const now=new Date().toISOString();
+  const upd={ status:ok?'follow':'notfollow', checked_by:ME.username, checked_at:now, note:why||null, updated_at:now };
+  const r=await sb.from('gp_emp_check_log').update(upd).eq('id',L.id);
+  if(r.error){ toast('Save failed: '+r.error.message,4000); return; }
+  Object.assign(L,upd);
+  if(L.sent_by && L.sent_by!==ME.username) pushNotify(ok?'✅ '+c.title+' — Follow':'❌ '+c.title+' — Not follow', ok?'Checked by '+ME.name+'. Good job 👍':why+' — fix it and retake the photo in Closing Check.', L.sent_by);
+  toast(ok?'Follow ✓':'Not follow sent ✓',2500);
+  const nxt=ckToCheck()[0];
+  if(nxt) openCheck(nxt.c.id,nxt.L.date_key); else { CK_TAB='review'; openChecks(); }
+  if(CUR_VIEW==='home') renderHome();
+}
+
+/* ---------- summary (management) ---------- */
+async function ckSummary(){
+  const el=$('ckSum'); if(!el) return;
+  const to=todayKey(), from=addDays(to,-29);
+  let rows=[]; try{ const r=await sb.from('gp_emp_check_log').select('*').gte('date_key',from).lte('date_key',to); rows=r.data||[]; }catch(e){}
+  const by={}; rows.forEach(x=>by[x.id]=x);
+  const area={}, ppl={};
+  for(let k=from;k<=to;k=addDays(k,1)){
+    CHECKS.forEach(c=>{ if(!ckDueOn(c,k)) return; if(k===to && ckStatus(c,k)!=='follow' && ckStatus(c,k)!=='notfollow' && !by[ckLogId(c,k)]) return;
+      const L=by[ckLogId(c,k)], a=area[c.id]=area[c.id]||{due:0,follow:0,nf:0,missed:0,late:0};
+      a.due++;
+      const nf=L && (L.status==='notfollow' || ckArr(L.history).some(h=>h.status==='notfollow'));
+      if(!L) a.missed++; else { if(L.status==='follow') a.follow++; if(nf) a.nf++; if(L.sent_at && fmtTime(new Date(L.sent_at))>(c.due_time||'18:00')) a.late++; }
+      ckDoers(c,k).forEach(u=>{ const p=ppl[u]=ppl[u]||{due:0,ok:0,bad:0}; p.due++; if(L&&L.status==='follow'&&!nf) p.ok++; if(!L||nf) p.bad++; });
+    });
+  }
+  el.innerHTML='<p class="small muted" style="margin:0 2px 10px">Last 30 days · '+esc(niceDate(from,{day:'numeric',month:'short'}))+' – '+esc(niceDate(to,{day:'numeric',month:'short'}))+'. Issue = Not follow or Missed.</p>'
+    +'<div class="card"><h4>By area</h4>'+(CHECKS.length?CHECKS.map(c=>{ const a=area[c.id]||{due:0,follow:0,nf:0,missed:0,late:0};
+      return '<div class="row"><div class="l"><b>'+esc((c.icon||'')+' '+c.title)+'</b><small>'+a.due+' days · '+a.follow+' follow · '+a.late+' late</small></div><span>'+(a.nf?'<span class="pill bad">'+a.nf+' not follow</span> ':'')+(a.missed?'<span class="pill bad">'+a.missed+' missed</span>':'')+(!a.nf&&!a.missed&&a.due?'<span class="pill ok">Clean</span>':'')+'</span></div>'; }).join(''):'<div class="empty">No areas</div>')+'</div>'
+    +'<div class="card"><h4>By person</h4>'+(Object.keys(ppl).length?Object.keys(ppl).sort((a,b)=>ppl[b].bad-ppl[a].bad).map(u=>'<div class="row"><div class="l"><b>'+esc(ckWho(u))+'</b><small>'+ppl[u].due+' checks · '+ppl[u].ok+' clean</small></div>'+(ppl[u].bad?'<span class="pill bad">'+ppl[u].bad+' issue'+(ppl[u].bad>1?'s':'')+'</span>':'<span class="pill ok">0 issues</span>')+'</div>').join(''):'<div class="empty">Nothing yet</div>')+'</div>';
+}
+
+/* ---------- area editor (management) ---------- */
+function ckEdit(id){
+  if(!isMgmt()) return;
+  const c=id?ckFind(id):null;
+  CK_ED={ id:c?c.id:null, title:c?c.title:'', title_bm:c?c.title_bm||'':'', icon:c?c.icon||'📋':'📋', slot:c?c.slot||'closing':'closing',
+    days:new Set(ckArr(c?c.days:[1,2,3,4,5,6]).map(Number)), due_time:c?c.due_time||'18:00':'18:00', mode:c?c.mode||'team':'team',
+    doers:new Set(ckArr(c&&c.doers)), backups:new Set(ckArr(c&&c.backups)), order:ckArr(c&&ckObj(c.rotation).order).slice(),
+    rstart:c?(ckObj(c.rotation).start||c.start_date||todayKey()):todayKey(), checker:c?c.checker||'':'', ref_photo:c?c.ref_photo||'':'',
+    ref_note:c?c.ref_note||'':'', ref_note_bm:c?c.ref_note_bm||'':'', start_date:c?c.start_date||todayKey():todayKey(), active:c?c.active!==false:true, sort:c?c.sort||0:0 };
+  ckEdRender();
+}
+function ckEdRead(){
+  const e=CK_ED; if(!e||!$('ceT')) return;
+  e.title=$('ceT').value; e.title_bm=$('ceTb').value; e.icon=$('ceI').value; e.slot=$('ceSl').value; e.due_time=$('ceDue').value||e.due_time;
+  e.mode=$('ceMo').value; e.checker=$('ceCk').value; e.ref_note=$('ceN').value; e.ref_note_bm=$('ceNb').value; e.start_date=$('ceSt').value||e.start_date;
+  if($('ceRs')) e.rstart=$('ceRs').value||e.rstart; e.active=$('ceAc').checked;
+}
+function ckEdRender(){
+  const e=CK_ED;
+  const people=STAFF.filter(st=>st.username!=='admin' && !isChauffeur(st)).sort((a,b)=>((a.company==='Grandlab'?0:1)-(b.company==='Grandlab'?0:1))||String(a.name).localeCompare(String(b.name)));
+  const chips=(set,key)=>'<div class="chips" data-set="'+key+'">'+people.map(st=>'<button type="button" class="chip'+(set.has(st.username)?' on':'')+'" data-u="'+esc(st.username)+'">'+esc(st.name)+'</button>').join('')+'</div>';
+  openSheet('<h3>'+(e.id?'Edit area — '+esc(e.title):'New check area')+'</h3>'
+    +'<div class="btn-row"><label class="fld" style="flex:0 0 76px"><span>Icon</span><input class="inp" id="ceI" maxlength="4" value="'+esc(e.icon)+'" style="text-align:center"></label><label class="fld"><span>Area</span><input class="inp" id="ceT" maxlength="60" value="'+esc(e.title)+'" placeholder="e.g. Toilet clean"></label></div>'
+    +'<label class="fld"><span>Area (BM, optional)</span><input class="inp" id="ceTb" maxlength="60" value="'+esc(e.title_bm)+'"></label>'
+    +'<span class="dl-lab">Reference photo — how it MUST look</span><div class="ck-refed">'+(e.ref_photo?'<img src="'+esc(e.ref_photo)+'" alt="">':'<div class="ck-ph">No photo yet</div>')
+      +'<label class="btn ghost sm" style="margin-top:8px;display:inline-block">📷 '+(e.ref_photo?'Change':'Upload')+' reference<input type="file" accept="image/*" id="ceRef" hidden></label></div>'
+    +'<label class="fld"><span>What OK looks like (EN)</span><textarea class="inp" id="ceN" style="min-height:60px">'+esc(e.ref_note)+'</textarea></label>'
+    +'<label class="fld"><span>What OK looks like (BM)</span><textarea class="inp" id="ceNb" style="min-height:60px">'+esc(e.ref_note_bm)+'</textarea></label>'
+    +'<div class="btn-row"><label class="fld"><span>When</span><select class="inp" id="ceSl"><option value="closing"'+(e.slot==='closing'?' selected':'')+'>Closing</option><option value="opening"'+(e.slot==='opening'?' selected':'')+'>Opening</option></select></label>'
+      +'<label class="fld"><span>Photo due by</span><input class="inp" type="time" id="ceDue" value="'+esc(e.due_time)+'"></label></div>'
+    +'<span class="dl-lab">Days</span><div class="chips" id="ceDays" style="margin-bottom:12px">'+[1,2,3,4,5,6,0].map(d=>'<button type="button" class="chip'+(e.days.has(d)?' on':'')+'" data-d="'+d+'">'+CK_DOW[d]+'</button>').join('')+'</div>'
+    +'<label class="fld"><span>Starts counting from</span><input class="inp" type="date" id="ceSt" value="'+esc(e.start_date)+'"></label>'
+    +'<label class="fld"><span>Who does it</span><select class="inp" id="ceMo"><option value="team"'+(e.mode==='team'?' selected':'')+'>Fixed person / team (any one sends)</option><option value="rotation"'+(e.mode==='rotation'?' selected':'')+'>Weekly rotation (one person per week)</option></select></label>'
+    +(e.mode==='rotation'
+      ?'<span class="dl-lab">Rotation order — tap names in order</span><div class="ck-order">'+(e.order.length?e.order.map((u,i)=>'<span class="chip on" style="text-decoration:none">'+(i+1)+'. '+esc(ckWho(u))+'</span>').join(' '):'<span class="small muted">No one yet</span>')+' <button type="button" class="linkbtn" id="ceOrdX">Clear</button></div>'
+        +'<div class="chips" id="ceOrd" style="margin:8px 0 10px">'+people.filter(st=>e.order.indexOf(st.username)<0).map(st=>'<button type="button" class="chip" data-u="'+esc(st.username)+'">+ '+esc(st.name)+'</button>').join('')+'</div>'
+        +'<label class="fld"><span>Week 1 starts (Monday)</span><input class="inp" type="date" id="ceRs" value="'+esc(e.rstart)+'"></label>'
+      :'<span class="dl-lab">Main person / team</span>'+chips(e.doers,'doers')+'<div style="height:10px"></div>')
+    +'<span class="dl-lab">Backup (covers when main is off)</span>'+chips(e.backups,'backups')
+    +'<label class="fld" style="margin-top:12px"><span>Checker (Follow / Not follow)</span><select class="inp" id="ceCk"><option value="">— choose —</option>'+people.map(st=>'<option value="'+esc(st.username)+'"'+(e.checker===st.username?' selected':'')+'>'+esc(st.name)+'</option>').join('')+'</select></label>'
+    +'<label class="switch"><span>Active</span><input type="checkbox" id="ceAc"'+(e.active?' checked':'')+'></label>'
+    +'<button class="btn gold" id="ceSave">Save area</button>');
+  document.querySelectorAll('#sheetBody .chips[data-set]').forEach(box=>box.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ const set=e[box.dataset.set], u=b.dataset.u; if(set.has(u)) set.delete(u); else set.add(u); b.classList.toggle('on'); }));
+  $('ceDays').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ const d=+b.dataset.d; if(e.days.has(d)) e.days.delete(d); else e.days.add(d); b.classList.toggle('on'); });
+  $('ceMo').onchange=()=>{ ckEdRead(); ckEdRender(); };
+  if($('ceOrd')) $('ceOrd').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{ ckEdRead(); e.order.push(b.dataset.u); ckEdRender(); });
+  if($('ceOrdX')) $('ceOrdX').onclick=()=>{ ckEdRead(); e.order=[]; ckEdRender(); };
+  $('ceRef').onchange=async()=>{ const f=$('ceRef').files[0]; if(!f) return; ckEdRead(); toast('Uploading reference…',8000);
+    try{ const d=await shrinkImage(f,1400,0.82); const url=await ckUpload(d,'ref/'+(e.id||'new')+'-'+Date.now()+'.jpg'); if(!url){ toast('Upload failed'); return; } e.ref_photo=url; toast('Reference photo added ✓'); ckEdRender(); }catch(x){ toast('Upload failed'); } };
+  $('ceSave').onclick=ckEdSave;
+}
+async function ckEdSave(){
+  ckEdRead(); const e=CK_ED;
+  const title=(e.title||'').trim(); if(!title){ toast('Give the area a name'); return; }
+  if(!e.days.size){ toast('Pick at least one day'); return; }
+  if(e.checker && (e.mode==='team'?e.doers.has(e.checker):e.order.indexOf(e.checker)>=0)){ toast('Checker cannot be the same person who does it',3500); return; }
+  const now=new Date().toISOString();
+  const row={ title, title_bm:(e.title_bm||'').trim()||null, icon:(e.icon||'').trim()||'📋', slot:e.slot, days:[...e.days].sort(), due_time:e.due_time||'18:00',
+    mode:e.mode, doers:[...e.doers], backups:[...e.backups], rotation:e.mode==='rotation'?{start:e.rstart, order:e.order}:{},
+    checker:e.checker||null, ref_photo:e.ref_photo||null, ref_note:(e.ref_note||'').trim()||null, ref_note_bm:(e.ref_note_bm||'').trim()||null,
+    start_date:e.start_date||todayKey(), active:!!e.active, updated_by:ME.username, updated_at:now };
+  let r;
+  if(e.id) r=await sb.from('gp_emp_checks').update(row).eq('id',e.id);
+  else { row.id='chk-'+Date.now(); row.sort=CK_ALL.reduce((m,c)=>Math.max(m,c.sort||0),0)+10; row.company=(ME.company||'Grandlab'); row.created_at=now; r=await sb.from('gp_emp_checks').insert(row); }
+  if(r.error){ toast('Save failed: '+r.error.message,4000); return; }
+  closeSheet(); toast('Area saved ✓'); CK_TAB='areas'; await openChecks();
 }
 
 boot();
