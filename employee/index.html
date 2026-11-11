@@ -400,6 +400,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .inc-item .t small{display:block;color:var(--muted);font-size:11.5px}
 .inc-item img{width:100%;max-width:220px;border-radius:10px;margin-top:6px;display:block;cursor:zoom-in}
 .inc-item .pill{flex:0 0 auto}
+.inc-fund{background:var(--gold-soft);border-radius:10px;padding:10px 8px!important;margin-top:6px}
 </style>
 </head>
 <body>
@@ -572,7 +573,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 20;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 21;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -3674,16 +3675,22 @@ async function incTier(t, m, depth){
 }
 /* ---------- payout split ---------- */
 async function incPayout(t, m, amount){
-  const from=m+'-01', to=addDays(incShiftMonth(m,1)+'-01',-1);
+  // Staff Fund rule (Jimmy, 11 Nov): everyone has a full share; a day with no clock-in AND no
+  // clock-out = absent (share lost), half day = half lost. Lost money + unpaid head share -> Staff Fund.
+  const from=m+'-01', to=addDays(incShiftMonth(m,1)+'-01',-1), tk=todayKey(), end=to<tk?to:tk;
+  let workdays=0; for(let k=from;k<=end;k=addDays(k,1)) if(!isSunday(k)) workdays++;
   const pct=Math.max(0,Math.min(100,+t.head_pct||0))/100, head=t.head||null;
-  const staff=ckArr(t.members).filter(u=>u!==head);
-  const days={}; staff.forEach(u=>days[u]=0);
-  try{ if(staff.length){ const r=await sb.from('gp_attendance').select('username,date_key,rec').gte('date_key',from).lte('date_key',to).in('username',staff);
-    (r.data||[]).forEach(x=>{ const rec=x.rec||{}; if(!rec.amIn || rec.leave) return; days[x.username]=(days[x.username]||0)+(rec.halfLeave?0.5:1); }); } }catch(e){}
-  const total=staff.reduce((s,u)=>s+(days[u]||0),0), pool=amount*(1-pct), headAmt=amount*pct;
-  const rows=staff.map(u=>({ u, days:days[u]||0, amt: total? Math.round(pool*(days[u]||0)/total*100)/100 : 0 }));
-  if(total){ const diff=Math.round((Math.round(pool*100)/100 - rows.reduce((s,x)=>s+x.amt,0))*100)/100; const big=rows.slice().sort((a,b)=>b.days-a.days)[0]; if(big&&diff) big.amt=Math.round((big.amt+diff)*100)/100; }  // rounding cents go to the most days
-  return { head, headAmt:Math.round(headAmt*100)/100, pool:Math.round(pool*100)/100, totalDays:total, rows };
+  const staff=ckArr(t.members).filter(u=>u!==head), who=staff.concat(head?[head]:[]);
+  const days={}; who.forEach(u=>days[u]=0);
+  try{ if(who.length){ const r=await sb.from('gp_attendance').select('username,date_key,rec').gte('date_key',from).lte('date_key',end).in('username',who);
+    (r.data||[]).forEach(x=>{ const rec=x.rec||{}; const a=!!rec.amIn, b=!!rec.pmOut; if(!a&&!b) return;
+      days[x.username]=(days[x.username]||0)+((a&&b&&!rec.halfLeave)?1:0.5); }); } }catch(e){}
+  const r2=n=>Math.round(n*100)/100, cap=u=>Math.min(days[u]||0, workdays);
+  const headFull=amount*pct, pool=amount*(1-pct), base=staff.length?pool/staff.length:0;
+  const headAmt=head&&workdays?r2(headFull*cap(head)/workdays):0;
+  const rows=staff.map(u=>{ const d=cap(u), amt=workdays?r2(base*d/workdays):0; return { u, days:d, amt, lost:r2(base-amt) }; });
+  const fund=r2(amount-headAmt-rows.reduce((s,x)=>s+x.amt,0));
+  return { head, headDays:head?cap(head):0, headFull:r2(headFull), headAmt, pool:r2(pool), base:r2(base), workdays, rows, fund, partial:end<to };
 }
 
 /* ---------- home ---------- */
@@ -3761,11 +3768,13 @@ function incItemHtml(i,t,r){
 async function incPayHtml(t,m,r){
   const el=$('incPay'); if(!el) return;
   const p=r.closed&&r.closed.detail&&r.closed.detail.payout ? r.closed.detail.payout : await incPayout(t,m,r.amount);
-  el.innerHTML='<div class="row"><div class="l"><b>Team total</b><small>Tier '+r.tier+'</small></div><b>'+esc(incRM(r.amount))+'</b></div>'
-    +'<div class="row"><div class="l"><b>Head '+(+t.head_pct||0)+'%</b><small>'+(p.head?esc(ckWho(p.head)):'<span style="color:var(--bad)">Head not set — not paid</span>')+'</small></div><b>'+esc(incRM(p.headAmt))+'</b></div>'
-    +'<div class="dl-lab" style="margin-top:8px">Staff '+(100-(+t.head_pct||0))+'% by days worked · '+esc(incRM(p.pool))+' · '+p.totalDays+' days</div>'
-    +(p.rows.length?p.rows.map(x=>'<div class="row"><div class="l"><b>'+esc(ckWho(x.u))+'</b><small>'+x.days+' day'+(x.days===1?'':'s')+'</small></div><b>'+esc(incRM(x.amt))+'</b></div>').join(''):'<div class="empty">No staff in team</div>')
-    +(r.closed?'':'<p class="small muted" style="margin-top:6px">Days so far — final when the month is closed.</p>');
+  const fundAll=Object.values(INC_CLOSED).filter(x=>x.team_id===t.id).reduce((s,x)=>s+(+((x.detail||{}).payout||{}).fund||0),0);
+  el.innerHTML='<div class="row"><div class="l"><b>Team total</b><small>Tier '+r.tier+' · '+(p.workdays||0)+' working days'+(p.partial?' so far':'')+' (Mon–Sat)</small></div><b>'+esc(incRM(r.amount))+'</b></div>'
+    +'<div class="row"><div class="l"><b>Head '+(+t.head_pct||0)+'% · '+(p.head?esc(ckWho(p.head)):'not set')+'</b><small>'+(p.head?(p.headDays||0)+'/'+(p.workdays||0)+' days · full share '+esc(incRM(p.headFull)):'<span style="color:var(--bad)">No head — share goes to Staff Fund</span>')+'</small></div><b>'+esc(incRM(p.headAmt))+'</b></div>'
+    +'<div class="dl-lab" style="margin-top:8px">Staff '+(100-(+t.head_pct||0))+'% · '+esc(incRM(p.pool))+' · full share '+esc(incRM(p.base||0))+' each</div>'
+    +(p.rows.length?p.rows.map(x=>'<div class="row"><div class="l"><b>'+esc(ckWho(x.u))+'</b><small>'+x.days+'/'+(p.workdays||0)+' days'+(x.lost>0?' · <span style="color:var(--bad)">−'+esc(incRM(x.lost))+' absent</span>':'')+'</small></div><b>'+esc(incRM(x.amt))+'</b></div>').join(''):'<div class="empty">No staff in team</div>')
+    +'<div class="row inc-fund"><div class="l"><b>🍱 Staff Fund</b><small>Absent days'+(p.head?'':' + head share')+' · managed by Jimmy'+(fundAll?' · closed months total '+esc(incRM(fundAll)):'')+'</small></div><b>'+esc(incRM(p.fund||0))+'</b></div>'
+    +'<p class="small muted" style="margin-top:6px">No clock-in and no clock-out = absent. Half day or only one punch = half day.'+(r.closed?'':' Figures so far — final when the month is closed.')+'</p>';
 }
 async function incClose(tid, m){
   if(!isMgmt()) return; const t=incTeam(tid); if(!t) return;
