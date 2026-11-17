@@ -587,7 +587,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 24;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 25;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -3311,7 +3311,9 @@ function ckDoers(c,k){
     const r=ckObj(c.rotation), ord=ckArr(r.order); if(!ord.length) return [];
     const st=r.start||c.start_date||k;
     const wk=Math.floor(Math.round((keyToDate(k)-keyToDate(st))/86400000)/7);
-    return [ord[((wk%ord.length)+ord.length)%ord.length]];
+    const n=Math.max(1,Math.min(ord.length, Number(r.per_week)||1)), i0=((wk%ord.length)+ord.length)%ord.length, out=[];
+    for(let j=0;j<n;j++) out.push(ord[(i0+j)%ord.length]);
+    return out;
   }
   return ckArr(c.doers);
 }
@@ -3598,7 +3600,7 @@ function ckEdit(id){
   CK_ED={ id:c?c.id:null, title:c?c.title:'', title_bm:c?c.title_bm||'':'', icon:c?c.icon||'📋':'📋', slot:c?c.slot||'closing':'closing',
     days:new Set(ckArr(c?c.days:[1,2,3,4,5,6]).map(Number)), due_time:c?c.due_time||'18:00':'18:00', mode:c?c.mode||'team':'team',
     doers:new Set(ckArr(c&&c.doers)), backups:new Set(ckArr(c&&c.backups)), order:ckArr(c&&ckObj(c.rotation).order).slice(),
-    rstart:c?(ckObj(c.rotation).start||c.start_date||todayKey()):todayKey(), checker:c?c.checker||'':'', ref_photo:c?c.ref_photo||'':'',
+    rstart:c?(ckObj(c.rotation).start||c.start_date||todayKey()):todayKey(), per:c?(Number(ckObj(c.rotation).per_week)||1):1, checker:c?c.checker||'':'', ref_photo:c?c.ref_photo||'':'',
     ref_note:c?c.ref_note||'':'', ref_note_bm:c?c.ref_note_bm||'':'', bad_photos:ckArr(c&&c.bad_photos).map(b=>typeof b==='string'?{src:b,note:''}:{src:b.src,note:b.note||''}).filter(b=>b.src), start_date:c?c.start_date||todayKey():todayKey(), active:c?c.active!==false:true, sort:c?c.sort||0:0 };
   ckEdRender();
 }
@@ -3606,7 +3608,7 @@ function ckEdRead(){
   const e=CK_ED; if(!e||!$('ceT')) return;
   e.title=$('ceT').value; e.title_bm=$('ceTb').value; e.icon=$('ceI').value; e.slot=$('ceSl').value; e.due_time=$('ceDue').value||e.due_time;
   e.mode=$('ceMo').value; e.checker=$('ceCk').value; e.ref_note=$('ceN').value; e.ref_note_bm=$('ceNb').value; e.start_date=$('ceSt').value||e.start_date;
-  if($('ceRs')) e.rstart=$('ceRs').value||e.rstart; e.active=$('ceAc').checked;
+  if($('ceRs')) e.rstart=$('ceRs').value||e.rstart; if($('ceRp')) e.per=Number($('ceRp').value)||1; e.active=$('ceAc').checked;
 }
 function ckEdRender(){
   const e=CK_ED;
@@ -3625,10 +3627,11 @@ function ckEdRender(){
       +'<label class="fld"><span>Photo due by</span><input class="inp" type="time" id="ceDue" value="'+esc(e.due_time)+'"></label></div>'
     +'<span class="dl-lab">Days</span><div class="chips" id="ceDays" style="margin-bottom:12px">'+[1,2,3,4,5,6,0].map(d=>'<button type="button" class="chip'+(e.days.has(d)?' on':'')+'" data-d="'+d+'">'+CK_DOW[d]+'</button>').join('')+'</div>'
     +'<label class="fld"><span>Starts counting from</span><input class="inp" type="date" id="ceSt" value="'+esc(e.start_date)+'"></label>'
-    +'<label class="fld"><span>Who does it</span><select class="inp" id="ceMo"><option value="team"'+(e.mode==='team'?' selected':'')+'>Fixed person / team (any one sends)</option><option value="rotation"'+(e.mode==='rotation'?' selected':'')+'>Weekly rotation (one person per week)</option></select></label>'
+    +'<label class="fld"><span>Who does it</span><select class="inp" id="ceMo"><option value="team"'+(e.mode==='team'?' selected':'')+'>Fixed person / team (any one sends)</option><option value="rotation"'+(e.mode==='rotation'?' selected':'')+'>Weekly rotation</option></select></label>'
     +(e.mode==='rotation'
       ?'<span class="dl-lab">Rotation order — tap names in order</span><div class="ck-order">'+(e.order.length?e.order.map((u,i)=>'<span class="chip on" style="text-decoration:none">'+(i+1)+'. '+esc(ckWho(u))+'</span>').join(' '):'<span class="small muted">No one yet</span>')+' <button type="button" class="linkbtn" id="ceOrdX">Clear</button></div>'
         +'<div class="chips" id="ceOrd" style="margin:8px 0 10px">'+people.filter(st=>e.order.indexOf(st.username)<0).map(st=>'<button type="button" class="chip" data-u="'+esc(st.username)+'">+ '+esc(st.name)+'</button>').join('')+'</div>'
+        +'<label class="fld"><span>People each week</span><select class="inp" id="ceRp">'+[1,2,3].map(n=>'<option value="'+n+'"'+((e.per||1)===n?' selected':'')+'>'+n+'</option>').join('')+'</select></label>'
         +'<label class="fld"><span>Week 1 starts (Monday)</span><input class="inp" type="date" id="ceRs" value="'+esc(e.rstart)+'"></label>'
       :'<span class="dl-lab">Main person / team</span>'+chips(e.doers,'doers')+'<div style="height:10px"></div>')
     +'<span class="dl-lab">Backup (covers when main is off)</span>'+chips(e.backups,'backups')
@@ -3655,7 +3658,7 @@ async function ckEdSave(){
   if(e.checker && (e.mode==='team'?e.doers.has(e.checker):e.order.indexOf(e.checker)>=0)){ toast('Checker cannot be the same person who does it',3500); return; }
   const now=new Date().toISOString();
   const row={ title, title_bm:(e.title_bm||'').trim()||null, icon:(e.icon||'').trim()||'📋', slot:e.slot, days:[...e.days].sort(), due_time:e.due_time||'18:00',
-    mode:e.mode, doers:[...e.doers], backups:[...e.backups], rotation:e.mode==='rotation'?{start:e.rstart, order:e.order}:{},
+    mode:e.mode, doers:[...e.doers], backups:[...e.backups], rotation:e.mode==='rotation'?Object.assign({start:e.rstart, order:e.order}, (e.per||1)>1?{per_week:e.per}:{}):{},
     checker:e.checker||null, ref_photo:e.ref_photo||null, ref_note:(e.ref_note||'').trim()||null, ref_note_bm:(e.ref_note_bm||'').trim()||null, bad_photos:e.bad_photos,
     start_date:e.start_date||todayKey(), active:!!e.active, updated_by:ME.username, updated_at:now };
   let r;
