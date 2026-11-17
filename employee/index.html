@@ -372,6 +372,15 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .ck-hist{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:6px}
 .ck-hist img{width:64px;height:64px;object-fit:cover;border-radius:8px;cursor:zoom-in}
 .ck-refed{margin-bottom:12px}
+.ck-bad{border-color:#f1c9c4}
+.ck-bad-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.ck-bad-row figure{margin:0;flex:0 0 120px}
+.ck-bad-row img{width:120px;height:90px;object-fit:cover;border-radius:10px;display:block;cursor:zoom-in;border:2px solid var(--bad)}
+.ck-bad-row figcaption{font-size:11px;line-height:1.3;color:var(--muted);margin-top:4px}
+.ck-bad-ed{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.ck-bad-ed div{position:relative}
+.ck-bad-ed img{width:84px;height:64px;object-fit:cover;border-radius:8px;display:block;border:2px solid var(--bad)}
+.ck-bad-ed button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:var(--bad);color:#fff;font-size:13px;line-height:22px;padding:0;cursor:pointer}
 .ck-refed img{width:100%;max-height:260px;object-fit:cover;border-radius:12px;display:block}
 .ck-order{margin-bottom:4px}
 .ck-head>div{flex:1;min-width:0}
@@ -573,7 +582,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 22;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 23;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -3441,6 +3450,9 @@ function openCheck(id, k){
         +(L&&isMgmt()&&(L.status==='follow'||L.status==='notfollow')?'<button class="btn sm ghost" style="margin-top:8px" onclick="ckOverride(\''+esc(c.id)+'\',\''+esc(k)+'\')">↺ Change decision</button>':'')
       +'</div>'
     +'</div>'
+    +(ckArr(c.bad_photos).length?'<div class="card ck-card ck-bad"><div class="ck-lab" style="color:var(--bad)">❌ Not like this / Jangan begini</div><div class="ck-bad-row">'
+       +ckArr(c.bad_photos).map(b=>{ const o=typeof b==='string'?{src:b}:(b||{}); return o.src?'<figure><img src="'+esc(o.src)+'" alt="" onclick="ckZoom(this.src)">'+(o.note?'<figcaption>'+esc(o.note)+'</figcaption>':'')+'</figure>':''; }).join('')
+       +'</div></div>':'')
     +(canSend?'<label class="btn gold ck-cam">📸 '+(L?'Retake photo':'Take photo')+' <small>/ Ambil gambar</small><input type="file" accept="image/*" capture="environment" id="ckCam" hidden></label>'
        +'<p class="small muted center" style="margin-top:6px">Stand where the reference photo was taken. Photo must be taken now.</p>':'')
     +(canCheck?'<div class="btn-row" style="margin-top:12px"><button class="btn ck-yes" onclick="ckDecide(\''+esc(c.id)+'\',\''+esc(k)+'\',true)">✅ Follow</button><button class="btn danger" onclick="ckDecide(\''+esc(c.id)+'\',\''+esc(k)+'\',false)">❌ Not follow</button></div>':'')
@@ -3571,7 +3583,7 @@ function ckEdit(id){
     days:new Set(ckArr(c?c.days:[1,2,3,4,5,6]).map(Number)), due_time:c?c.due_time||'18:00':'18:00', mode:c?c.mode||'team':'team',
     doers:new Set(ckArr(c&&c.doers)), backups:new Set(ckArr(c&&c.backups)), order:ckArr(c&&ckObj(c.rotation).order).slice(),
     rstart:c?(ckObj(c.rotation).start||c.start_date||todayKey()):todayKey(), checker:c?c.checker||'':'', ref_photo:c?c.ref_photo||'':'',
-    ref_note:c?c.ref_note||'':'', ref_note_bm:c?c.ref_note_bm||'':'', start_date:c?c.start_date||todayKey():todayKey(), active:c?c.active!==false:true, sort:c?c.sort||0:0 };
+    ref_note:c?c.ref_note||'':'', ref_note_bm:c?c.ref_note_bm||'':'', bad_photos:ckArr(c&&c.bad_photos).map(b=>typeof b==='string'?{src:b,note:''}:{src:b.src,note:b.note||''}).filter(b=>b.src), start_date:c?c.start_date||todayKey():todayKey(), active:c?c.active!==false:true, sort:c?c.sort||0:0 };
   ckEdRender();
 }
 function ckEdRead(){
@@ -3591,6 +3603,8 @@ function ckEdRender(){
       +'<label class="btn ghost sm" style="margin-top:8px;display:inline-block">📷 '+(e.ref_photo?'Change':'Upload')+' reference<input type="file" accept="image/*" id="ceRef" hidden></label></div>'
     +'<label class="fld"><span>What OK looks like (EN)</span><textarea class="inp" id="ceN" style="min-height:60px">'+esc(e.ref_note)+'</textarea></label>'
     +'<label class="fld"><span>What OK looks like (BM)</span><textarea class="inp" id="ceNb" style="min-height:60px">'+esc(e.ref_note_bm)+'</textarea></label>'
+    +'<span class="dl-lab">❌ Not like this — example photos</span><div class="ck-bad-ed">'+(e.bad_photos.length?e.bad_photos.map((b,i)=>'<div><img src="'+esc(b.src)+'" alt=""><button type="button" data-bx="'+i+'">×</button></div>').join(''):'<span class="small muted">None yet</span>')+'</div>'
+      +'<label class="btn ghost sm" style="margin-bottom:12px;display:inline-block">📷 Add "not like this" photo<input type="file" accept="image/*" id="ceBad" hidden></label>'
     +'<div class="btn-row"><label class="fld"><span>When</span><select class="inp" id="ceSl"><option value="closing"'+(e.slot==='closing'?' selected':'')+'>Closing</option><option value="opening"'+(e.slot==='opening'?' selected':'')+'>Opening</option></select></label>'
       +'<label class="fld"><span>Photo due by</span><input class="inp" type="time" id="ceDue" value="'+esc(e.due_time)+'"></label></div>'
     +'<span class="dl-lab">Days</span><div class="chips" id="ceDays" style="margin-bottom:12px">'+[1,2,3,4,5,6,0].map(d=>'<button type="button" class="chip'+(e.days.has(d)?' on':'')+'" data-d="'+d+'">'+CK_DOW[d]+'</button>').join('')+'</div>'
@@ -3612,6 +3626,10 @@ function ckEdRender(){
   if($('ceOrdX')) $('ceOrdX').onclick=()=>{ ckEdRead(); e.order=[]; ckEdRender(); };
   $('ceRef').onchange=async()=>{ const f=$('ceRef').files[0]; if(!f) return; ckEdRead(); toast('Uploading reference…',8000);
     try{ const d=await shrinkImage(f,1400,0.82); const url=await ckUpload(d,'ref/'+(e.id||'new')+'-'+Date.now()+'.jpg'); if(!url){ toast('Upload failed'); return; } e.ref_photo=url; toast('Reference photo added ✓'); ckEdRender(); }catch(x){ toast('Upload failed'); } };
+  document.querySelectorAll('#sheetBody [data-bx]').forEach(b=>b.onclick=()=>{ ckEdRead(); e.bad_photos.splice(+b.dataset.bx,1); ckEdRender(); });
+  $('ceBad').onchange=async()=>{ const f=$('ceBad').files[0]; if(!f) return; ckEdRead(); toast('Uploading photo…',8000);
+    try{ const d=await shrinkImage(f,1200,0.8); const url=await ckUpload(d,'ref/bad-'+(e.id||'new')+'-'+Date.now()+'.jpg'); if(!url){ toast('Upload failed'); return; }
+      const note=(prompt('Short note (optional), e.g. Leaf on floor')||'').trim(); e.bad_photos.push({src:url,note}); toast('Photo added ✓'); ckEdRender(); }catch(x){ toast('Upload failed'); } };
   $('ceSave').onclick=ckEdSave;
 }
 async function ckEdSave(){
@@ -3622,7 +3640,7 @@ async function ckEdSave(){
   const now=new Date().toISOString();
   const row={ title, title_bm:(e.title_bm||'').trim()||null, icon:(e.icon||'').trim()||'📋', slot:e.slot, days:[...e.days].sort(), due_time:e.due_time||'18:00',
     mode:e.mode, doers:[...e.doers], backups:[...e.backups], rotation:e.mode==='rotation'?{start:e.rstart, order:e.order}:{},
-    checker:e.checker||null, ref_photo:e.ref_photo||null, ref_note:(e.ref_note||'').trim()||null, ref_note_bm:(e.ref_note_bm||'').trim()||null,
+    checker:e.checker||null, ref_photo:e.ref_photo||null, ref_note:(e.ref_note||'').trim()||null, ref_note_bm:(e.ref_note_bm||'').trim()||null, bad_photos:e.bad_photos,
     start_date:e.start_date||todayKey(), active:!!e.active, updated_by:ME.username, updated_at:now };
   let r;
   if(e.id) r=await sb.from('gp_emp_checks').update(row).eq('id',e.id);
