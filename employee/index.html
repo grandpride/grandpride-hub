@@ -361,6 +361,11 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .ck-pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .ck-pair .ck-card{margin-bottom:0}
 .ck-pair .ck-ph{min-height:130px}
+.ck-pair.ck-stack{grid-template-columns:1fr}
+.ck-extra{background:#fff4e0;border:2px solid #e8a33d;border-radius:14px;padding:10px 12px;margin:0 0 10px}
+.ck-extra b{display:block;font-size:12px;letter-spacing:.5px;color:#b26a00;margin-bottom:4px}
+.ck-extra p{margin:4px 0 0;font-size:13.5px;font-weight:600}
+.ck-extra p.bm{font-weight:400;font-style:italic;color:var(--muted);font-size:12.5px}
 .ck-cam{display:block;text-align:center;margin-top:12px;cursor:pointer}
 .ck-cam small{font-weight:600;opacity:.75}
 .btn.ck-yes{background:var(--ok);color:#fff}
@@ -381,7 +386,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 .ck-bad-ed div{position:relative}
 .ck-bad-ed img{width:84px;height:64px;object-fit:cover;border-radius:8px;display:block;border:2px solid var(--bad)}
 .ck-bad-ed button{position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:var(--bad);color:#fff;font-size:13px;line-height:22px;padding:0;cursor:pointer}
-.ck-refed img{width:100%;max-height:260px;object-fit:cover;border-radius:12px;display:block}
+.ck-refed img{width:100%;max-height:420px;object-fit:contain;background:#f0ede6;border-radius:12px;display:block}
 .ck-order{margin-bottom:4px}
 .ck-head>div{flex:1;min-width:0}
 .ck-head>.pill{font-size:11px;line-height:1.3;flex:0 0 auto}
@@ -582,7 +587,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 23;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 24;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -3276,6 +3281,16 @@ const ckLogId = (c,k) => c.id+'|'+k;
 const ckLog = (c,k) => CK_LOG[ckLogId(c,k)]||null;
 const ckFind = id => CHECKS.find(c=>c.id===id) || CK_ALL.find(c=>c.id===id);
 const ckSlotLabel = c => c.slot==='opening'?'Opening':'Closing';
+// extra jobs on certain days, e.g. {dow:3,nth:1,text:'...'} = first Wednesday of the month; skip_nth:1 = every Wednesday except the first
+function ckExtras(c,k){
+  try{
+    const d=keyToDate(k), dow=d.getDay(), nth=Math.ceil(d.getDate()/7);
+    return ckArr(c&&c.extras).filter(x=>x&&x.text&&Number(x.dow)===dow&&(x.nth==null||Number(x.nth)===nth)&&(x.skip_nth==null||Number(x.skip_nth)!==nth));
+  }catch(e){ return []; }
+}
+function ckTall(img){
+  try{ if(img.naturalHeight>img.naturalWidth*1.2){ const pr=img.closest('.ck-pair'); if(pr) pr.classList.add('ck-stack'); } }catch(e){}
+}
 
 async function loadChecks(){
   try{
@@ -3368,7 +3383,7 @@ function homeChecksHtml(){
 function ckRowHtml(c, k, showDate, extra){
   const s=ckStatus(c,k);
   return '<button class="ck-row" onclick="openCheck(\''+esc(c.id)+'\',\''+esc(k)+'\')"><span class="i">'+esc(c.icon||'📋')+'</span><span class="t"><b>'+esc(c.title)+'</b><small>'
-    +(showDate?esc(niceDate(k))+' · ':'')+ckSlotLabel(c)+' · by '+esc(c.due_time||'18:00')+(extra?' · '+extra:'')+'</small></span>'+ckPill(s,k)+'</button>';
+    +(showDate?esc(niceDate(k))+' · ':'')+ckSlotLabel(c)+' · by '+esc(c.due_time||'18:00')+(extra?' · '+extra:'')+(ckExtras(c,k).length?' · <span style="color:#b26a00;font-weight:800">⭐ Extra job today</span>':'')+'</small></span>'+ckPill(s,k)+'</button>';
 }
 
 /* ---------- main page ---------- */
@@ -3433,13 +3448,14 @@ function openCheck(id, k){
   const L=ckLog(c,k), s=ckStatus(c,k), doers=ckDoers(c,k), u=ME.username;
   const canSend=(doers.indexOf(u)>=0 || ckArr(c.backups).indexOf(u)>=0 || isMgmt()) && k===todayKey() && (!L || L.status==='notfollow' || (L.status==='sent' && L.sent_by===u));
   const canCheck=ckCanCheck(c,L) && L.status==='sent';
-  const ref=c.ref_photo?'<img src="'+esc(c.ref_photo)+'" alt="" onclick="ckZoom(this.src)">':'<div class="ck-ph">No reference photo yet</div>';
+  const ref=c.ref_photo?'<img src="'+esc(c.ref_photo)+'" alt="" onload="ckTall(this)" onclick="ckZoom(this.src)">':'<div class="ck-ph">No reference photo yet</div>';
   const cur=L&&L.photo?'<img src="'+esc(L.photo)+'" alt="" onclick="ckZoom(this.src)">':'<div class="ck-ph">'+(s==='missed'?'No photo sent ❌':'Not sent yet')+'</div>';
   const pair=canCheck||isMgmt();
   openSub(c.title,'', isMgmt()?'<button class="btn sm ghost" onclick="ckEdit(\''+esc(c.id)+'\')">Edit</button>':'');
   $('subBody').innerHTML=
     '<div class="sop-head ck-head"><span>'+esc(c.icon||'📋')+'</span><div><b>'+esc(c.title)+'</b><small>'+(c.title_bm?esc(c.title_bm)+' · ':'')+esc(niceDate(k))+' · '+ckSlotLabel(c)+' by '+esc(c.due_time||'18:00')+'</small></div>'+ckPill(s,k)+'</div>'
     +'<p class="small muted" style="margin:0 2px 10px">Done by <b>'+esc(doers.map(ckWho).join(', ')||'—')+'</b>'+(ckArr(c.backups).length?' (backup '+esc(ckArr(c.backups).map(ckWho).join(', '))+')':'')+' · checked by <b>'+esc(ckWho(c.checker))+'</b></p>'
+    +(ckExtras(c,k).length?'<div class="ck-extra"><b>⭐ EXTRA JOB TODAY / KERJA TAMBAHAN HARI INI</b>'+ckExtras(c,k).map(x=>'<p>'+esc(x.text)+'</p>'+(x.text_bm?'<p class="bm">'+esc(x.text_bm)+'</p>':'')).join('')+'</div>':'')
     +'<div class="'+(pair?'ck-pair':'')+'">'
       +'<div class="card ck-card"><div class="ck-lab ok">✓ Reference — must look like this</div>'+ref
         +(c.ref_note?'<p class="small" style="margin-top:8px">'+esc(c.ref_note)+'</p>':'')+(c.ref_note_bm?'<p class="small muted" style="font-style:italic">'+esc(c.ref_note_bm)+'</p>':'')+'</div>'

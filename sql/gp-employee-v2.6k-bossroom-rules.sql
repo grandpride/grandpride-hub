@@ -1,0 +1,7 @@
+-- v2.6k: Boss room full rules + 10-photo reference (Jimmy, 17 Nov 2026). Data only, one row. Same ref file (ref/bossroom.jpg), now 10 labelled photos.
+update public.gp_emp_checks set
+  ref_note = 'Monday and Wednesday morning, like the photos. 1) Sofa pillows left and right, sheep in the middle, tea table cups and teapots in the same place. 2) Wipe the TV cabinet, desk and all tables. 3) Toilet clean, check tissue rolls and refill. 4) Drinking water refilled when less than 70%. 5) Floor and carpet: use the broom and vacuum from the cabinet (boss room only, do not take out). 6) EVERY WEDNESDAY: orange sofa and black leather chair wiped with Commune #2 Leather Protection Cream. FIRST WEDNESDAY OF THE MONTH: clean first with #1 Leather Soft Cleaner, then #2 cream. Kit is in the drawer.',
+  ref_note_bm = 'Isnin dan Rabu pagi, seperti gambar. 1) Bantal sofa kiri dan kanan, kambing di tengah, cawan dan teko di meja teh di tempat sama. 2) Lap kabinet TV, meja kerja dan semua meja. 3) Tandas bersih, periksa dan tambah tisu. 4) Air minuman diisi bila kurang 70%. 5) Lantai dan karpet: guna penyapu dan vakum dalam kabinet (untuk bilik bos sahaja, jangan bawa keluar). 6) SETIAP RABU: sofa oren dan kerusi kulit hitam dilap dengan Commune #2 Leather Protection Cream. RABU PERTAMA SETIAP BULAN: bersihkan dulu dengan #1 Leather Soft Cleaner, kemudian krim #2. Kit dalam laci.',
+  updated_by = 'jimmy', updated_at = now()
+ where id = 'chk-bossroom';
+select id, days, ref_photo, length(ref_note) note_len from public.gp_emp_checks where id = 'chk-bossroom';
