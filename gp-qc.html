@@ -117,7 +117,10 @@ textarea{min-height:70px;resize:vertical}
 
 /* ---------- config (from supa.js) ---------- */
 var SB_URL = (typeof SUPABASE_URL!=='undefined' && SUPABASE_URL) || '';
-var SB_KEY = (typeof ANON_KEY!=='undefined' && ANON_KEY) || '';
+/* supa.js calls it SUPABASE_ANON_KEY; accept the shorter name too in case
+   that file is ever tidied up. */
+var SB_KEY = (typeof SUPABASE_ANON_KEY!=='undefined' && SUPABASE_ANON_KEY)
+          || (typeof ANON_KEY!=='undefined' && ANON_KEY) || '';
 function sbBase(){ return (SB_URL||'').replace(/\/rest\/v1\/?$/,''); }
 
 /* The ops list is gated server-side, in gp_app_config -> qc_ops_code.
@@ -987,7 +990,8 @@ function driverSend(){ window.open('https://wa.me/?text='+encodeURIComponent(win
 /* ---------- boot ---------- */
 (function(){
   if(!SB_URL || !SB_KEY){
-    $('app').innerHTML='<div class="card err">supa.js did not load — SUPABASE_URL / ANON_KEY missing.</div>';
+    $('app').innerHTML='<div class="card err">supa.js did not load.<br>'+
+      (SB_URL?'':'SUPABASE_URL missing. ')+(SB_KEY?'':'SUPABASE_ANON_KEY missing.')+'</div>';
     return;
   }
   if(MODE==='ops') opsScreen(); else driverScreen();
