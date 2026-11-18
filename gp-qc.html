@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GP QC</title>
+<link rel="manifest" href="gp-qc.webmanifest">
+<meta name="theme-color" content="#141210">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="GP QC">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --ink:#141210; --panel:#1b1815; --panel2:#221e1a; --line:#2c2722;
+  --gold:#c9a24b; --gold-soft:#d8bd78; --grey:#9a8f7e; --text:#f5f0e6;
+  --red:#e05a54; --green:#3fae6b; --blue:#4a78c0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ink);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:820px;margin:0 auto;padding:16px;padding-bottom:110px}
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 4px;position:sticky;top:0;background:var(--ink);z-index:30;border-bottom:1px solid var(--line)}
+.topbar h1{font-size:17px;font-weight:700;letter-spacing:.3px}
+.topbar .sub{font-size:11px;color:var(--gold-soft)}
+.spacer{flex:1}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px}
+.card h3{font-size:14px;color:var(--gold-soft);margin-bottom:10px;letter-spacing:.3px}
+label{display:block;font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:.6px;margin:10px 0 4px}
+input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--text);
+  border-radius:10px;padding:11px;font-size:15px;font-family:inherit}
+textarea{min-height:70px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{background:linear-gradient(135deg,var(--gold),#8a5f1e);border:none;color:#1a1408;border-radius:10px;
+  padding:13px 16px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit;width:100%}
+.btn.sec{background:var(--panel2);border:1px solid var(--line);color:var(--text)}
+.btn.wa{background:linear-gradient(135deg,#25d366,#128c4a);color:#07240f}
+.btn:disabled{opacity:.5}
+.hint{font-size:12px;color:var(--grey);margin-top:6px}
+.rowline{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14px}
+.rowline .muted{color:var(--grey)}
+.pill{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:999px;
+  padding:4px 10px;font-size:12px;color:var(--gold-soft)}
+
+/* damage diagram */
+#diagWrap{background:#fff;border-radius:12px;overflow:hidden;margin-top:8px}
+#diagWrap svg{width:100%;display:block}
+#defectBar{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+#defectBar button{flex:1;min-width:62px;background:var(--panel2);border:2px solid var(--line);color:var(--text);
+  border-radius:10px;padding:7px 4px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;line-height:1.1}
+#defectBar button small{display:block;font-size:9px;font-weight:400;color:var(--grey);margin-top:2px}
+
+/* yes / no toggles */
+.yn{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.yn:last-child{border-bottom:none}
+.yn .lbl{font-size:14px}
+.yn .btns{display:flex;gap:6px;flex:0 0 auto}
+.yn button{background:var(--panel2);border:1px solid var(--line);color:var(--grey);border-radius:8px;
+  padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+.yn button.yes.on{background:var(--green);border-color:var(--green);color:#06220f}
+.yn button.no.on{background:var(--red);border-color:var(--red);color:#2a0b0a}
+.yn input.qty{width:62px;padding:7px;text-align:center;font-size:14px}
+
+/* photos */
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:7px;margin-top:9px}
+.thumb{position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;background:var(--panel2);border:1px solid var(--line)}
+.thumb img,.thumb video{width:100%;height:100%;object-fit:cover}
+.thumb .x{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.72);color:#fff;border:none;
+  border-radius:50%;width:21px;height:21px;font-size:13px;cursor:pointer;line-height:1}
+.sigpad{background:#fff;border-radius:10px;width:100%;height:135px;touch-action:none;display:block;margin-top:6px}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:84px;background:#000;border:1px solid var(--gold);
+  color:var(--text);padding:11px 17px;border-radius:11px;font-size:14px;z-index:99;display:none;max-width:90%;text-align:center}
+#stickyBar{position:fixed;left:0;right:0;bottom:0;background:var(--ink);border-top:1px solid var(--line);
+  padding:11px 14px;z-index:40}
+.center{text-align:center}
+.linkbox{background:var(--panel2);border:1px dashed var(--gold);border-radius:10px;padding:11px;
+  font-size:12px;word-break:break-all;color:var(--gold-soft);margin-top:8px}
+.err{color:var(--red)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>GP QC</h1>
+    <div class="sub" id="modeLabel">Loading…</div>
+  </div>
+  <div class="spacer"></div>
+  <span class="pill" id="stagePill" style="display:none"></span>
+</div>
+
+<div class="wrap" id="app"><div class="card">Loading…</div></div>
+<div id="stickyBar" style="display:none"><button class="btn" id="mainBtn">Save</button></div>
+<div id="toast"></div>
+
+<script src="supa.js"></script>
+<script src="gp-cars.js"></script>
+<script>
+/* ============================================================
+   GP QC — standalone delivery / return checklist
+   ------------------------------------------------------------
+   No login. Two modes, decided by the URL:
+
+     gp-qc.html            ops fills the job details, gets a link
+     gp-qc.html?t=<token>  driver fills the QC and sends it back
+
+   The driver page NEVER touches gp_checklists directly. It calls
+   qc_load / qc_submit, which are security definer and only ever
+   read or write the single row that token belongs to. The anon
+   key alone gets you nothing.
+
+   Photos and video go to the checkins storage bucket; only URLs
+   are stored on the row. Base64 in the row is what caused the
+   11MB rows and the save hangs before.
+   ============================================================ */
+
+/* ---------- config (from supa.js) ---------- */
+var SB_URL = (typeof SUPABASE_URL!=='undefined' && SUPABASE_URL) || '';
+var SB_KEY = (typeof ANON_KEY!=='undefined' && ANON_KEY) || '';
+function sbBase(){ return (SB_URL||'').replace(/\/rest\/v1\/?$/,''); }
+
+/* The ops list is gated server-side, in gp_app_config -> qc_ops_code.
+   No row = open (how it ships). Add a row and ops types the code once
+   per phone; it is remembered after that. Nothing to redeploy either way. */
+var OPS_CODE = localStorage.getItem('gpqc_code') || '';
+
+var CAR_IMAGES = (window.GP_CARS&&window.GP_CARS.images) || {};
+var CAR_DIMS   = (window.GP_CARS&&window.GP_CARS.dims)   || {};
+
+/* photo/video limits — same numbers the checklist app settled on */
+var MAX_PHOTO_PX = 1600, PHOTO_QUALITY = 0.82;
+
+/* The GP Checklist Apps Script — same /exec the checklist app posts to.
+   It fills the Sheet template, exports the PDF into
+   Car Leasing / <MON YYYY> / <CUSTOMER_MODEL_PLATE_DATE>/ and pulls the
+   photos across from Supabase storage. If this URL ever changes (a NEW
+   deployment instead of a new version of the existing one) update it here. */
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwcGj9D1K4UHrlBVcQAC-xf1_BIYEANq62ldCzVtr2WQ_GnGq6eq5Up5Uqfpl2RIFU/exec';
+var VIDEO_COMPRESS_OVER_MB = 12, VIDEO_MAX_PX = 854, VIDEO_BITRATE = 1200000;
+
+var DEFECTS = {
+  D:{name:'Dent',color:'#e0322f'},
+  S:{name:'Scratch',color:'#2f6fe0'},
+  PG:{name:'Paint Gone',color:'#e08a2f'},
+  SC:{name:'Stonechip',color:'#7d3fe0'},
+  C:{name:'Cracked',color:'#2fae5a'}
+};
+var activeDefect = 'D';
+
+var CHECK_ITEMS = [
+  ['inspection','Inspection done with customer'],
+  ['features','Car features explained'],
+  ['bluetooth','Bluetooth paired'],
+  ['smoking','No-smoking policy explained'],
+  ['fuel','Fuel policy explained']
+];
+
+/* items handed over — yes/no, a couple carry a number */
+var HANDOVER = [
+  ['keys','Keys','qty'],
+  ['spare_tyre','Spare tyre',''],
+  ['jack_tools','Jack + tools',''],
+  ['tng','Touch ’n Go / SmartTAG','balance'],
+  ['charger','Phone charger / cable',''],
+  ['roadtax_insurance','Roadtax & insurance in car',''],
+  ['parking_card','Parking card','']
+];
+
+var PHOTO_GROUPS = [
+  ['rims','Rims (4)'],
+  ['sides','Sides (4)'],
+  ['meter','Mileage + petrol'],
+  ['interior','Interior']
+];
+
+/* ---------- small helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function toast(m,ms){ var t=$('toast'); t.textContent=m; t.style.display='block';
+  clearTimeout(window._tt); window._tt=setTimeout(function(){t.style.display='none';}, ms||2600); }
+function qp(k){ return new URLSearchParams(location.search).get(k)||''; }
+function two(n){ return (n<10?'0':'')+n; }
+function nowTime(){ var d=new Date(); return two(d.getHours())+':'+two(d.getMinutes()); }
+function nowDate(){ var d=new Date(); return d.getFullYear()+'-'+two(d.getMonth()+1)+'-'+two(d.getDate()); }
+function prettyWhen(){ var d=new Date();
+  return two(d.getDate())+'/'+two(d.getMonth()+1)+'/'+d.getFullYear()+', '+
+    ((d.getHours()%12)||12)+':'+two(d.getMinutes())+' '+(d.getHours()>=12?'PM':'AM'); }
+
+/* call one of the three security definer functions */
+async function rpc(fn, body){
+  var r = await fetch(sbBase()+'/rest/v1/rpc/'+fn, {
+    method:'POST',
+    headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY, 'Content-Type':'application/json' },
+    body: JSON.stringify(body||{})
+  });
+  var txt = await r.text();
+  if(!r.ok) throw new Error('('+r.status+') '+txt.slice(0,200));
+  try { return JSON.parse(txt); } catch(e){ return null; }
+}
+
+/* ---------- state ---------- */
+var MODE  = qp('t') ? 'driver' : 'ops';
+var TOKEN = qp('t');
+var INFO  = null;                       /* what qc_load gave us */
+var D = {                               /* what the driver is filling in */
+  defects:[], checks:{}, items:{},
+  photos:[], interior_photos:[], defect_photos:[], videos:[],
+  sig_inspector:'', sig_customer:''
+};
+
+/* ============================================================
+   OPS — job list, job detail, new QC
+   ============================================================ */
+var JOBS = [];
+
+function fmtWhen(iso){
+  if(!iso) return '';
+  var d = new Date(iso);
+  if(isNaN(d)) return '';
+  return two(d.getDate())+'/'+two(d.getMonth()+1)+' '+((d.getHours()%12)||12)+':'+two(d.getMinutes())+(d.getHours()>=12?'pm':'am');
+}
+
+/* what the card shows: where this car actually is in the cycle */
+function jobState(j){
+  if(j.in_actual_at)  return { key:'done',  label:'Returned '+fmtWhen(j.in_actual_at),  color:'var(--grey)'  };
+  if(j.out_actual_at) return { key:'out',   label:'Delivered '+fmtWhen(j.out_actual_at), color:'var(--green)' };
+  if(j.has_out_link)  return { key:'wait',  label:'Waiting for driver',                  color:'var(--gold)'  };
+  return { key:'new', label:'Not sent', color:'var(--grey)' };
+}
+
+async function opsScreen(){
+  $('modeLabel').textContent = 'Operation';
+  $('stickyBar').style.display='block';
+  $('mainBtn').textContent='+ New QC';
+  $('mainBtn').onclick = opsNewForm;
+  await opsLoadList();
+}
+
+async function opsLoadList(){
+  $('app').innerHTML = '<div class="card">Loading jobs…</div>';
+  var res;
+  try { res = await rpc('qc_list', { p_code: OPS_CODE, p_limit: 60 }); }
+  catch(e){ $('app').innerHTML = '<div class="card err">Could not reach the server.<br>'+esc(e.message)+'</div>'; return; }
+
+  if(res && res.ok === false && res.error === 'locked'){
+    $('app').innerHTML = `
+      <div class="card center">
+        <h3>Ops code</h3>
+        <div class="hint" style="margin-bottom:10px">Type it once — this phone will remember it.</div>
+        <input id="o_code" inputmode="numeric" style="text-align:center;font-size:20px;letter-spacing:4px" placeholder="••••">
+        <button class="btn" style="margin-top:10px" onclick="opsSaveCode()">Unlock</button>
+      </div>`;
+    return;
+  }
+  if(!res || !res.ok){ $('app').innerHTML='<div class="card err">'+esc((res&&res.error)||'failed')+'</div>'; return; }
+
+  JOBS = res.rows || [];
+  if(!JOBS.length){
+    $('app').innerHTML = '<div class="card center"><h3>No QC yet</h3>'+
+      '<div class="hint">Tap <b>+ New QC</b> to create the first one.</div></div>';
+    return;
+  }
+
+  $('app').innerHTML = JOBS.map(function(j,i){
+    var st = jobState(j);
+    return `<div class="card" style="border-left:3px solid ${st.color};cursor:pointer" onclick="opsJob(${i})">
+      <div class="rowline" style="padding:0">
+        <b>${esc(j.car_model||'-')} ${j.car_plate?('('+esc(j.car_plate)+')'):''}</b>
+        <span style="color:${st.color};font-size:12px;white-space:nowrap">${esc(st.label)}</span>
+      </div>
+      <div class="hint" style="margin-top:3px">
+        ${esc(j.customer_name||'-')}
+        ${j.out_mileage?(' · '+Number(j.out_mileage).toLocaleString()+' km out'):''}
+        ${j.in_mileage?(' · '+Number(j.in_mileage).toLocaleString()+' km back'):''}
+        ${j.out_marks>0?(' · '+j.out_marks+' mark'+(j.out_marks>1?'s':'')):''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function opsSaveCode(){
+  var c = String(($('o_code')||{}).value||'').trim();
+  if(!c) return;
+  OPS_CODE = c; localStorage.setItem('gpqc_code', c);
+  opsLoadList();
+}
+
+/* ---- one job: what has happened, and what ops can do next ---- */
+function opsJob(i){
+  var j = JOBS[i]; if(!j) return;
+  var st = jobState(j);
+  var canReturn = !!j.out_actual_at && !j.in_actual_at;
+
+  $('app').innerHTML = `
+    <div class="card">
+      <button class="btn sec" style="width:auto;padding:7px 12px" onclick="opsLoadList()">‹ Back</button>
+      <h3 style="margin-top:12px">${esc(j.car_model||'-')} ${j.car_plate?('('+esc(j.car_plate)+')'):''}</h3>
+      <div class="rowline"><span class="muted">Customer</span><span>${esc(j.customer_name||'-')}</span></div>
+      ${j.customer_contact?`<div class="rowline"><span class="muted">Contact</span><span>${esc(j.customer_contact)}</span></div>`:''}
+      <div class="rowline"><span class="muted">Status</span><b style="color:${st.color}">${esc(st.label)}</b></div>
+      <div class="rowline"><span class="muted">Checklist ID</span><span style="font-size:12px">${esc(j.id)}</span></div>
+      ${j.drive_folder_url?`<a class="btn sec" style="margin-top:9px;display:block;text-decoration:none" href="${esc(j.drive_folder_url)}" target="_blank">Open photos in Drive</a>`:''}
+    </div>
+
+    <div class="card">
+      <h3>Delivery QC</h3>
+      ${j.out_actual_at
+        ? `<div class="rowline"><span class="muted">Done</span><b style="color:var(--green)">${fmtWhen(j.out_actual_at)}</b></div>
+           <div class="rowline"><span class="muted">Mileage</span><span>${j.out_mileage?Number(j.out_mileage).toLocaleString()+' km':'-'}</span></div>
+           <div class="rowline"><span class="muted">Damage marked</span><span>${j.out_marks||0}</span></div>
+           ${j.out_pdf_url?`<a class="btn sec" style="margin-top:9px;display:block;text-decoration:none" href="${esc(j.out_pdf_url)}" target="_blank">Open delivery PDF</a>`:''}`
+        : `<div class="hint">Not done yet${j.has_out_link?' — link already sent to the driver.':'.'}</div>
+           <button class="btn sec" style="margin-top:9px" onclick="opsRelink('${esc(j.id)}','out')">
+             ${j.has_out_link?'Resend delivery link':'Create delivery link'}</button>`}
+    </div>
+
+    <div class="card">
+      <h3>Return QC</h3>
+      ${j.in_actual_at
+        ? `<div class="rowline"><span class="muted">Done</span><b style="color:var(--green)">${fmtWhen(j.in_actual_at)}</b></div>
+           <div class="rowline"><span class="muted">Mileage</span><span>${j.in_mileage?Number(j.in_mileage).toLocaleString()+' km':'-'}</span></div>
+           ${(j.out_mileage&&j.in_mileage)?`<div class="rowline"><span class="muted">Used</span><b>${(Number(j.in_mileage)-Number(j.out_mileage)).toLocaleString()} km</b></div>`:''}
+           <div class="rowline"><span class="muted">New damage</span><span>${j.in_marks||0}</span></div>
+           ${j.in_pdf_url?`<a class="btn sec" style="margin-top:9px;display:block;text-decoration:none" href="${esc(j.in_pdf_url)}" target="_blank">Open return PDF</a>`:''}`
+        : canReturn
+          ? `<div class="hint">Car is out. When it comes back, send the driver a return link.</div>
+             <button class="btn" style="margin-top:9px" onclick="opsRelink('${esc(j.id)}','in')">
+               ${j.has_in_link?'Resend return link':'Create return QC link'}</button>`
+          : `<div class="hint">Available once the delivery QC is done.</div>`}
+    </div>
+
+    <div id="o_result"></div>`;
+  $('mainBtn').textContent='+ New QC';
+  $('mainBtn').onclick = opsNewForm;
+}
+
+/* ops taps "Create return QC link" -> new token on the same row */
+async function opsRelink(id, stage){
+  var driver = prompt(stage==='in' ? 'Which driver is collecting?' : 'Which driver is delivering?') || '';
+  try{
+    var res = await rpc('qc_relink', { p_code: OPS_CODE, p_id: id, p_stage: stage, p_driver: driver, p_location: '' });
+    if(!res || !res.ok){ toast('Failed: '+((res&&res.error)||'unknown')); return; }
+    var j = JOBS.filter(function(x){ return x.id===id; })[0] || {};
+    showLink(res, stage, {
+      car_model:j.car_model, car_plate:j.car_plate, customer_name:j.customer_name
+    });
+  }catch(e){ toast('Failed: '+e.message); }
+}
+
+/* ---- the create form ---- */
+function opsNewForm(){
+  $('modeLabel').textContent = 'New QC';
+  $('app').innerHTML = `
+    <div class="card">
+      <button class="btn sec" style="width:auto;padding:7px 12px" onclick="opsScreen()">‹ Back to list</button>
+    </div>
+
+    <div class="card">
+      <h3>Customer &amp; car</h3>
+      <label>Customer name</label><input id="o_cust" autocapitalize="characters">
+      <label>Customer contact</label><input id="o_contact" inputmode="tel" placeholder="60123456789">
+      <div class="row2">
+        <div><label>Car model</label><input id="o_model" autocapitalize="characters"></div>
+        <div><label>Car plate</label><input id="o_plate" style="text-transform:uppercase"></div>
+      </div>
+      <label>Car type</label>
+      <select id="o_ctype">
+        <option value="sedan">Sedan</option><option value="suv">SUV</option>
+        <option value="mpv">MPV</option><option value="supercar">Supercar</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <h3>Schedule</h3>
+      <div class="row2">
+        <div><label>Date</label><input type="date" id="o_sdate" value="${nowDate()}"></div>
+        <div><label>Time</label><input type="time" id="o_stime"></div>
+      </div>
+      <label>Location</label><input id="o_loc" placeholder="Mid Valley lobby">
+      <label>Driver sent</label><input id="o_driver" placeholder="Who is delivering">
+    </div>
+
+    <div class="card">
+      <h3>Rental terms</h3>
+      <div class="row2">
+        <div><label>Lease from</label><input type="date" id="o_lfrom"></div>
+        <div><label>Lease to</label><input type="date" id="o_lto"></div>
+      </div>
+      <div class="row2">
+        <div><label>Mileage given (km)</label><input id="o_mgiven" inputmode="decimal"></div>
+        <div><label>Per km exceed (RM)</label><input id="o_perkm" inputmode="decimal"></div>
+      </div>
+      <label>Petrol type</label>
+      <select id="o_fuel"><option>RON97</option><option>RON95</option><option>DIESEL</option></select>
+      <label>Note to driver</label>
+      <textarea id="o_remark" placeholder="Anything the driver should know"></textarea>
+    </div>
+
+    <div id="o_result"></div>`;
+  $('stickyBar').style.display='block';
+  $('mainBtn').textContent='Create QC link';
+  $('mainBtn').onclick = opsCreate;
+  window.scrollTo(0,0);
+}
+
+async function opsCreate(){
+  var v = function(id){ var e=$(id); return e ? String(e.value||'').trim() : ''; };
+  if(!v('o_model') && !v('o_plate')){ toast('Enter at least the car model or plate'); return; }
+
+  var btn = $('mainBtn'); btn.disabled = true; btn.textContent = 'Creating…';
+  try{
+    var res = await rpc('qc_create', { p: {
+      stage: 'out', checklist_id: '',
+      customer_name: v('o_cust'), customer_contact: v('o_contact'),
+      car_model: v('o_model'), car_plate: v('o_plate'), car_type: v('o_ctype'),
+      sched_date: v('o_sdate'), sched_time: v('o_stime'),
+      location: v('o_loc'), driver: v('o_driver'),
+      lease_from: v('o_lfrom'), lease_to: v('o_lto'),
+      mileage_given: v('o_mgiven'), per_km: v('o_perkm'),
+      fuel_type: v('o_fuel'), ops_remark: v('o_remark'),
+      created_by: 'ops'
+    }});
+    if(!res || !res.ok){ toast('Failed: '+((res&&res.error)||'unknown')); return; }
+    showLink(res, 'out', {
+      car_model:v('o_model'), car_plate:v('o_plate'), customer_name:v('o_cust'),
+      sched:v('o_sdate')+(v('o_stime')?(' '+v('o_stime')):''), location:v('o_loc'), remark:v('o_remark')
+    });
+    toast('QC link created ✓');
+  }catch(e){
+    toast('Failed: '+e.message);
+  }finally{
+    btn.disabled=false; btn.textContent='Create QC link';
+  }
+}
+
+/* one place that renders the link + WhatsApp, used by create and relink */
+function showLink(res, stage, info){
+  var link  = location.origin + location.pathname + '?t=' + res.token;
+  var label = stage==='out' ? 'QC DELIVERY' : 'QC RETURN';
+  var msg =
+    '*'+label+' — '+((info.car_model)||'')+(info.car_plate?(' ('+info.car_plate+')'):'')+'*\n'+
+    (info.customer_name?('Customer: '+info.customer_name+'\n'):'')+
+    (info.sched?('Scheduled: '+info.sched+'\n'):'')+
+    (info.location?('Location: '+info.location+'\n'):'')+
+    (info.remark?('Note: '+info.remark+'\n'):'')+
+    '\nFill in the QC here:\n'+link;
+
+  $('o_result').innerHTML = `
+    <div class="card" style="border-left:3px solid var(--green)">
+      <h3>${stage==='out'?'Delivery':'Return'} link ready</h3>
+      <div class="rowline"><span class="muted">Checklist ID</span><b style="font-size:12px">${esc(res.id)}</b></div>
+      <div class="linkbox">${esc(link)}</div>
+      <button class="btn wa" style="margin-top:10px" onclick="opsSend()">Send to driver on WhatsApp</button>
+      <button class="btn sec" style="margin-top:8px" onclick="opsCopy()">Copy link</button>
+      <button class="btn sec" style="margin-top:8px" onclick="opsScreen()">Back to list</button>
+    </div>`;
+  window._waMsg = msg; window._link = link;
+  $('o_result').scrollIntoView({behavior:'smooth'});
+}
+function opsSend(){ window.open('https://wa.me/?text='+encodeURIComponent(window._waMsg||''), '_blank'); }
+function opsCopy(){
+  navigator.clipboard.writeText(window._link||'').then(function(){ toast('Link copied'); },
+    function(){ toast('Copy failed — select it by hand'); });
+}
+
+/* ============================================================
+   DRIVER — fill the QC
+   ============================================================ */
+async function driverScreen(){
+  $('modeLabel').textContent = 'Loading link…';
+  var res;
+  try { res = await rpc('qc_load', { p_token: TOKEN }); }
+  catch(e){ $('app').innerHTML = '<div class="card err">Could not reach the server.<br>'+esc(e.message)+'</div>'; return; }
+
+  if(!res || !res.ok){
+    $('app').innerHTML = '<div class="card"><h3 class="err">Link not valid</h3>'+
+      '<div class="hint">'+esc((res&&res.error)||'unknown')+'. Ask ops to send a new QC link.</div></div>';
+    return;
+  }
+  INFO = res;
+  var isReturn = INFO.stage === 'in';
+
+  /* reopening a part-finished form keeps the work */
+  D.defects = INFO.defects || [];
+  D.checks  = INFO.checks  || {};
+  D.items   = INFO.items   || {};
+
+  $('modeLabel').textContent = isReturn ? 'Return checklist' : 'Delivery checklist';
+  $('stagePill').style.display='inline-block';
+  $('stagePill').textContent = isReturn ? 'RETURN' : 'DELIVERY';
+
+  $('app').innerHTML = `
+    <div class="card">
+      <div class="rowline"><span class="muted">Car</span><b>${esc(INFO.car_model||'-')} ${INFO.car_plate?('('+esc(INFO.car_plate)+')'):''}</b></div>
+      <div class="rowline"><span class="muted">Customer</span><span>${esc(INFO.customer_name||'-')}</span></div>
+      ${INFO.sched_date?`<div class="rowline"><span class="muted">Scheduled</span><span>${esc(INFO.sched_date)} ${esc(INFO.sched_time||'')}</span></div>`:''}
+      ${INFO.location?`<div class="rowline"><span class="muted">Location</span><span>${esc(INFO.location)}</span></div>`:''}
+      ${isReturn&&INFO.begin_mileage?`<div class="rowline"><span class="muted">Mileage at delivery</span><b>${esc(INFO.begin_mileage)} km</b></div>`:''}
+      ${INFO.ops_remark?`<div class="card" style="background:var(--panel2);margin-top:9px"><b style="color:var(--gold-soft)">Note from ops</b><div style="margin-top:4px">${esc(INFO.ops_remark)}</div></div>`:''}
+      <div class="hint" style="margin-top:8px">Arrived at <b>${prettyWhen()}</b> — recorded when you submit.</div>
+    </div>
+
+    <div class="card">
+      <h3>Mileage &amp; petrol</h3>
+      <div class="row2">
+        <div><label>Current mileage (km)</label><input id="d_mileage" inputmode="decimal" value="${esc(INFO.mileage||'')}"></div>
+        <div><label>Petrol bar</label>
+          <select id="d_petrol">
+            ${[0,1,2,3,4,5].map(n=>`<option value="${n}" ${String(INFO.petrol)===String(n)?'selected':''}>${n} / 5</option>`).join('')}
+          </select></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>${isReturn?'New damage':'Existing damage'}</h3>
+      <div class="hint">Tap the car where you see it. ${isReturn?'Grey marks are from delivery.':''}</div>
+      <div id="defectBar">
+        ${Object.keys(DEFECTS).map(k=>`<button type="button" data-k="${k}" onclick="setDefect('${k}')">${k}<small>${DEFECTS[k].name}</small></button>`).join('')}
+      </div>
+      <div id="diagWrap">${carSvg(INFO.car_type)}</div>
+      <div class="rowline"><span id="markerCount" class="muted">No damage marked</span>
+        <span><button class="btn sec" style="width:auto;padding:6px 11px" onclick="undoDefect()">Undo</button>
+        <button class="btn sec" style="width:auto;padding:6px 11px" onclick="clearDefects()">Clear</button></span></div>
+      <label>Close-up photos of the damage</label>
+      <input type="file" accept="image/*" multiple onchange="addPhotos(this,'defect_photos')">
+      <div class="thumbs" id="th_defect_photos"></div>
+    </div>
+
+    <div class="card">
+      <h3>Photos</h3>
+      ${PHOTO_GROUPS.map(g=>`
+        <label>${g[1]}</label>
+        <input type="file" accept="image/*" multiple onchange="addPhotos(this,'${g[0]==='interior'?'interior_photos':'photos'}','${g[1]}')">`).join('')}
+      <div class="thumbs" id="th_photos"></div>
+      <div class="thumbs" id="th_interior_photos"></div>
+      <div class="hint">Compressed to ${MAX_PHOTO_PX}px before upload.</div>
+    </div>
+
+    <div class="card">
+      <h3>Walkaround video</h3>
+      <input type="file" accept="video/*" capture="environment" onchange="addVideo(this)">
+      <div class="thumbs" id="th_videos"></div>
+      <div class="hint">Clips over ${VIDEO_COMPRESS_OVER_MB}MB are compressed automatically.</div>
+    </div>
+
+    <div class="card">
+      <h3>Checks</h3>
+      ${CHECK_ITEMS.map(c=>ynRow('checks',c[0],c[1],'')).join('')}
+    </div>
+
+    <div class="card">
+      <h3>Items ${isReturn?'returned':'handed over'}</h3>
+      ${HANDOVER.map(h=>ynRow('items',h[0],h[1],h[2])).join('')}
+      <label>Car cleanliness</label>
+      <select id="d_clean">
+        <option value="">—</option><option value="clean">Clean</option>
+        <option value="acceptable">Acceptable</option><option value="dirty">Dirty</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <h3>Sign off</h3>
+      <label>Remark / car condition</label>
+      <textarea id="d_remark">${esc(INFO.remark||'')}</textarea>
+      <label>Driver signature</label>
+      <canvas class="sigpad" id="sig_inspector"></canvas>
+      <button class="btn sec" style="margin-top:6px" onclick="clearSig('sig_inspector')">Clear</button>
+      <label style="margin-top:14px">Customer signature</label>
+      <canvas class="sigpad" id="sig_customer"></canvas>
+      <button class="btn sec" style="margin-top:6px" onclick="clearSig('sig_customer')">Clear</button>
+    </div>`;
+
+  $('stickyBar').style.display='block';
+  $('mainBtn').textContent='Submit QC';
+  $('mainBtn').onclick = driverSubmit;
+
+  renderMarkers(); setDefect('D'); paintYN();
+  if(INFO.items && INFO.items.cleanliness) $('d_clean').value = INFO.items.cleanliness;
+  var svg=$('carSvg');
+  if(svg){ svg.addEventListener('click', diagramTap); svg.addEventListener('touchstart', diagramTap, {passive:true}); }
+  initSig('sig_inspector'); initSig('sig_customer');
+}
+
+/* ---------- yes / no rows ---------- */
+function ynRow(group,key,label,extra){
+  return `<div class="yn">
+    <span class="lbl">${esc(label)}</span>
+    <span class="btns">
+      ${extra==='qty'?`<input class="qty" id="x_${key}" inputmode="numeric" placeholder="qty">`:''}
+      ${extra==='balance'?`<input class="qty" id="x_${key}" inputmode="decimal" placeholder="RM" style="width:72px">`:''}
+      <button type="button" class="yes" data-g="${group}" data-k="${key}" onclick="setYN('${group}','${key}',true)">Yes</button>
+      <button type="button" class="no"  data-g="${group}" data-k="${key}" onclick="setYN('${group}','${key}',false)">No</button>
+    </span></div>`;
+}
+function setYN(group,key,val){ D[group][key] = val; paintYN(); }
+function paintYN(){
+  ['checks','items'].forEach(function(g){
+    document.querySelectorAll('[data-g="'+g+'"]').forEach(function(b){
+      var k=b.getAttribute('data-k'), v=D[g][k];
+      b.classList.toggle('on', (b.classList.contains('yes') && v===true) || (b.classList.contains('no') && v===false));
+    });
+  });
+  HANDOVER.forEach(function(h){
+    if(!h[2]) return;
+    var el=$('x_'+h[0]); if(!el) return;
+    var stored = D.items[h[0]+'_'+(h[2]==='qty'?'qty':'balance')];
+    if(stored!=null && el.value==='') el.value=stored;
+  });
+}
+
+/* ---------- damage diagram (same behaviour as gp-checklist) ---------- */
+function carSvg(carType){
+  var t = (CAR_IMAGES[carType] ? carType : 'sedan');
+  var img = CAR_IMAGES[t] || '';
+  var d = CAR_DIMS[t] || {w:751,h:976};
+  return '<svg id="carSvg" viewBox="0 0 '+d.w+' '+d.h+'" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'+
+    '<image href="'+img+'" xlink:href="'+img+'" x="0" y="0" width="'+d.w+'" height="'+d.h+'"/>'+
+    '<g id="oldMarkerLayer"></g><g id="markerLayer"></g></svg>';
+}
+function setDefect(k){
+  activeDefect=k;
+  Array.prototype.forEach.call(document.querySelectorAll('#defectBar button'), function(b){
+    var on = b.getAttribute('data-k')===k;
+    b.style.borderColor = on ? DEFECTS[k].color : 'var(--line)';
+  });
+}
+function diagramTap(ev){
+  var svg=$('carSvg'); if(!svg) return;
+  var pt=svg.createSVGPoint();
+  var touch = ev.touches ? ev.touches[0] : ev;
+  pt.x=touch.clientX; pt.y=touch.clientY;
+  var ctm=svg.getScreenCTM(); if(!ctm) return;
+  var loc=pt.matrixTransform(ctm.inverse());
+  D.defects.push({ x:Math.round(loc.x), y:Math.round(loc.y), code:activeDefect });
+  renderMarkers();
+}
+function renderMarkers(){
+  var layer=$('markerLayer'); if(!layer) return;
+  var oldLayer=$('oldMarkerLayer');
+  if(oldLayer){
+    /* on a return, show the delivery's damage faded so the driver only marks what's new */
+    if(INFO && INFO.stage==='in' && INFO.begin_defects){
+      oldLayer.innerHTML = (INFO.begin_defects||[]).map(function(m){
+        return '<g opacity="0.35"><circle cx="'+m.x+'" cy="'+m.y+'" r="13" fill="#888" stroke="#fff" stroke-width="2"/>'+
+          '<text x="'+m.x+'" y="'+(m.y+4)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">'+m.code+'</text></g>';
+      }).join('');
+    } else oldLayer.innerHTML='';
+  }
+  layer.innerHTML = D.defects.map(function(m){
+    var col=(DEFECTS[m.code]||{}).color||'#e0322f';
+    return '<g><circle cx="'+m.x+'" cy="'+m.y+'" r="13" fill="'+col+'" stroke="#fff" stroke-width="2"/>'+
+      '<text x="'+m.x+'" y="'+(m.y+4)+'" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">'+m.code+'</text></g>';
+  }).join('');
+  var mc=$('markerCount');
+  if(mc) mc.textContent = D.defects.length
+    ? (D.defects.length+' mark'+(D.defects.length>1?'s':''))
+    : (INFO&&INFO.stage==='in' ? 'No new damage marked' : 'No damage marked');
+}
+function undoDefect(){ D.defects.pop(); renderMarkers(); }
+function clearDefects(){ D.defects=[]; renderMarkers(); }
+
+/* ---------- photos & video ---------- */
+function compressImage(file){
+  return new Promise(function(resolve){
+    var img=new Image(), url=URL.createObjectURL(file);
+    img.onload=function(){
+      var w=img.width, h=img.height, s=Math.min(1, MAX_PHOTO_PX/Math.max(w,h));
+      var c=document.createElement('canvas'); c.width=Math.round(w*s); c.height=Math.round(h*s);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(function(b){ resolve(b||file); }, 'image/jpeg', PHOTO_QUALITY);
+    };
+    img.onerror=function(){ URL.revokeObjectURL(url); resolve(file); };
+    img.src=url;
+  });
+}
+/* collect-keyed-by-index then commit once — the fix for the bulk-photo race */
+async function addPhotos(input, bucket, label){
+  var files = Array.prototype.slice.call(input.files||[]);
+  if(!files.length) return;
+  input.value='';
+  toast('Compressing '+files.length+' photo'+(files.length>1?'s':'')+'…');
+  var slots = new Array(files.length);
+  await Promise.all(files.map(function(f,i){
+    return compressImage(f).then(function(b){ slots[i]={ blob:b, label:label||'', name:f.name }; });
+  }));
+  slots.forEach(function(s){ if(s) D[bucket].push(s); });
+  renderThumbs(bucket);
+  toast(files.length+' photo'+(files.length>1?'s':'')+' added');
+}
+function addVideo(input){
+  var f=(input.files||[])[0]; if(!f) return;
+  input.value='';
+  var mb=f.size/1048576;
+  if(mb > VIDEO_COMPRESS_OVER_MB){
+    toast('Video is '+mb.toFixed(0)+'MB — compressing, please wait…', 6000);
+    compressVideo(f).then(function(b){ D.videos.push({blob:b,name:'walkaround.webm'}); renderThumbs('videos'); toast('Video ready'); })
+                    .catch(function(){ D.videos.push({blob:f,name:f.name}); renderThumbs('videos'); toast('Could not compress — using original'); });
+  } else {
+    D.videos.push({blob:f,name:f.name}); renderThumbs('videos'); toast('Video added');
+  }
+}
+/* re-encode by playing the clip into a canvas — same trick the checklist app uses */
+function compressVideo(file){
+  return new Promise(function(resolve,reject){
+    var v=document.createElement('video'); v.muted=true; v.playsInline=true;
+    v.src=URL.createObjectURL(file);
+    v.onloadedmetadata=function(){
+      var s=Math.min(1, VIDEO_MAX_PX/Math.max(v.videoWidth,v.videoHeight));
+      var c=document.createElement('canvas');
+      c.width=Math.round(v.videoWidth*s); c.height=Math.round(v.videoHeight*s);
+      var ctx=c.getContext('2d');
+      var stream=c.captureStream(24), chunks=[];
+      var mr;
+      try{ mr=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8',videoBitsPerSecond:VIDEO_BITRATE}); }
+      catch(e){ reject(e); return; }
+      mr.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
+      mr.onstop=function(){ URL.revokeObjectURL(v.src); resolve(new Blob(chunks,{type:'video/webm'})); };
+      mr.start();
+      v.play();
+      (function draw(){ if(v.ended||v.paused){ try{mr.stop();}catch(e){} return; }
+        ctx.drawImage(v,0,0,c.width,c.height); requestAnimationFrame(draw); })();
+      v.onended=function(){ try{mr.stop();}catch(e){} };
+    };
+    v.onerror=function(){ reject(new Error('video load failed')); };
+  });
+}
+function renderThumbs(bucket){
+  var el=$('th_'+bucket); if(!el) return;
+  el.innerHTML = D[bucket].map(function(p,i){
+    var url=URL.createObjectURL(p.blob);
+    var media = bucket==='videos'
+      ? '<video src="'+url+'" muted playsinline></video>'
+      : '<img src="'+url+'">';
+    return '<div class="thumb">'+media+'<button class="x" onclick="dropItem(\''+bucket+'\','+i+')">×</button></div>';
+  }).join('');
+}
+function dropItem(bucket,i){ D[bucket].splice(i,1); renderThumbs(bucket); }
+
+/* ---------- signatures ---------- */
+function initSig(id){
+  var cv=$(id); if(!cv) return;
+  var r=cv.getBoundingClientRect();
+  cv.width=r.width*2; cv.height=r.height*2;
+  var ctx=cv.getContext('2d'); ctx.scale(2,2);
+  ctx.lineWidth=2; ctx.lineCap='round'; ctx.strokeStyle='#111';
+  var drawing=false;
+  function pos(e){ var b=cv.getBoundingClientRect(); var t=e.touches?e.touches[0]:e;
+    return {x:t.clientX-b.left, y:t.clientY-b.top}; }
+  function down(e){ drawing=true; var p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); }
+  function move(e){ if(!drawing) return; var p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); cv.dataset.has='1'; e.preventDefault(); }
+  function up(){ drawing=false; }
+  cv.onmousedown=down; cv.onmousemove=move; window.addEventListener('mouseup',up);
+  cv.ontouchstart=down; cv.ontouchmove=move; cv.ontouchend=up;
+}
+function clearSig(id){ var cv=$(id); if(!cv) return;
+  cv.getContext('2d').clearRect(0,0,cv.width,cv.height); cv.dataset.has=''; }
+function sigData(id){ var cv=$(id); return (cv&&cv.dataset.has) ? cv.toDataURL('image/png') : ''; }
+
+/* ---------- Drive ---------- */
+
+/* Render the marked-up car to a PNG for the PDF.
+   The car is drawn onto the canvas first and only the dots are overlaid from
+   the SVG: an <image> embedded in an SVG will not rasterise reliably, which
+   is why this is done in two passes rather than one. */
+function renderDiagramPng(){
+  return new Promise(function(resolve){
+    var svg = $('carSvg'); if(!svg){ resolve(''); return; }
+    var t = (INFO && CAR_DIMS[INFO.car_type]) ? INFO.car_type : 'sedan';
+    var d = CAR_DIMS[t] || {w:751,h:976};
+    var scale = 1000 / d.h;
+    var cw = Math.round(d.w*scale), ch = Math.round(d.h*scale);
+
+    var cv = document.createElement('canvas'); cv.width=cw; cv.height=ch;
+    var ctx = cv.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch);
+
+    var carImg = new Image();
+    carImg.onload = function(){
+      ctx.drawImage(carImg,0,0,cw,ch);
+      var xml = new XMLSerializer().serializeToString(svg);
+      xml = xml.replace(/<image[^>]*>(<\/image>)?/gi,'');   // car already painted; keep only the dots
+      var svg64 = 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(xml)));
+      var dots = new Image();
+      dots.onload  = function(){ ctx.drawImage(dots,0,0,cw,ch); resolve(cv.toDataURL('image/jpeg',0.82)); };
+      dots.onerror = function(){ resolve(cv.toDataURL('image/jpeg',0.82)); };  // car at least
+      dots.src = svg64;
+    };
+    carImg.onerror = function(){ resolve(''); };
+    carImg.src = CAR_IMAGES[t] || CAR_IMAGES.sedan || '';
+  });
+}
+
+function yn(v){ return v===true ? 'YES' : (v===false ? 'NO' : ''); }
+
+/* Build the payload the Apps Script template expects, hand it over, and
+   store whatever links come back. Best-effort by design: the QC is already
+   saved in the database by this point, so a Drive problem must never read
+   to the driver as "the QC failed". */
+async function saveToDrive(uploaded){
+  var stage = INFO.stage;
+  var isReturn = stage === 'in';
+  var diagram = '';
+  try { diagram = await renderDiagramPng(); } catch(e){ diagram = ''; }
+
+  var payload = {
+    id: INFO.id,
+    plan: 'lease', plan_name: 'Car Leasing',
+    stage: stage, stage_name: isReturn ? 'RETURN' : 'DELIVERY',
+    customer_name: INFO.customer_name || '', customer_contact: INFO.customer_contact || '',
+    car_model: INFO.car_model || '', car_plate: INFO.car_plate || '',
+    car_type: INFO.car_type || 'sedan',
+    date: nowDate(), time: nowTime(),
+    mileage: $('d_mileage').value.trim(), petrol: $('d_petrol').value,
+    fuel_type: INFO.fuel_type || '',
+    lease_from: INFO.lease_from || '', lease_to: INFO.lease_to || '',
+    mileage_given: INFO.mileage_given || '', per_km: INFO.per_km || '',
+    /* the folder is keyed to the JOB, so a car delivered in Nov and returned
+       in Dec still files under one folder */
+    job_start: INFO.lease_from || '',
+    car_diagram: diagram,
+    sig_inspector: sigData('sig_inspector'), sig_customer: sigData('sig_customer'),
+    photo_urls: uploaded,          // Apps Script fetches these from storage
+    created_by: INFO.driver || 'driver'
+  };
+
+  if(!isReturn){
+    payload.chk_inspection = yn(D.checks.inspection);
+    payload.chk_features   = yn(D.checks.features);
+    payload.chk_bluetooth  = yn(D.checks.bluetooth);
+    payload.chk_smoking    = yn(D.checks.smoking);
+    payload.chk_fuel       = yn(D.checks.fuel);
+  } else {
+    var endKm = parseFloat($('d_mileage').value) || 0;
+    var begKm = parseFloat(INFO.begin_mileage) || 0;
+    payload.begin_mileage = INFO.begin_mileage || '';
+    payload.end_mileage   = $('d_mileage').value.trim();
+    payload.distance_used = (endKm > begKm) ? ((endKm-begKm).toLocaleString()+' km') : '';
+    payload.begin_petrol  = String(INFO.begin_petrol || '');
+    payload.end_petrol    = String($('d_petrol').value || '');
+    payload.chk_new_damage = D.defects.length ? 'YES' : 'NO';
+  }
+
+  var r = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  var out = await r.json();
+  if(!out || !out.ok) throw new Error((out && out.error) || ('HTTP '+r.status));
+
+  try { await rpc('qc_set_pdf', { p_token: TOKEN, p_pdf: out.url || '', p_photos: out.photos || '' }); }
+  catch(e){ /* the PDF is filed either way */ }
+  return out;
+}
+
+/* ---------- upload + submit ---------- */
+async function stUpload(path, blob, contentType){
+  var r = await fetch(sbBase()+'/storage/v1/object/checkins/'+path, {
+    method:'PUT',
+    headers:{ 'apikey':SB_KEY, 'Authorization':'Bearer '+SB_KEY,
+              'Content-Type':contentType||'image/jpeg', 'x-upsert':'true', 'cache-control':'3600' },
+    body: blob
+  });
+  if(!r.ok){ var t=''; try{ t=await r.text(); }catch(e){} throw new Error('upload '+r.status+' '+t.slice(0,120)); }
+  return sbBase()+'/storage/v1/object/public/checkins/'+path;
+}
+async function uploadAll(bucket, stage, kind){
+  var out=[];
+  for(var i=0;i<D[bucket].length;i++){
+    var p=D[bucket][i];
+    var ext = bucket==='videos' ? 'webm' : 'jpg';
+    var ct  = bucket==='videos' ? 'video/webm' : 'image/jpeg';
+    var path = INFO.id+'/'+stage+'_'+kind+'_'+(i+1)+'_'+Date.now()+'.'+ext;
+    $('mainBtn').textContent = 'Uploading '+kind+' '+(i+1)+'/'+D[bucket].length+'…';
+    var url = await stUpload(path, p.blob, ct);
+    out.push(p.label ? { label:p.label, url:url } : { url:url });
+  }
+  return out;
+}
+
+async function driverSubmit(){
+  var btn=$('mainBtn');
+  if(!$('d_mileage').value.trim()){ toast('Enter the current mileage'); $('d_mileage').focus(); return; }
+  if(!sigData('sig_customer') && !confirm('No customer signature. Submit anyway?')) return;
+
+  btn.disabled=true;
+  var stage = INFO.stage;
+  try{
+    HANDOVER.forEach(function(h){
+      if(!h[2]) return;
+      var el=$('x_'+h[0]); if(!el) return;
+      var val=String(el.value||'').trim();
+      if(val) D.items[h[0]+'_'+(h[2]==='qty'?'qty':'balance')] = val;
+    });
+    var clean=$('d_clean'); if(clean && clean.value) D.items.cleanliness = clean.value;
+
+    var photos   = await uploadAll('photos', stage, 'photo');
+    var interior = await uploadAll('interior_photos', stage, 'interior');
+    var defectPh = await uploadAll('defect_photos', stage, 'defect');
+    var videos   = await uploadAll('videos', stage, 'video');
+
+    /* one flat list for Drive, each with a name that means something
+       in the folder rather than a storage key */
+    var forDrive = []
+      .concat(photos.map(function(p,i){   return { label: p.label || ('photo_'+(i+1)), url: p.url }; }))
+      .concat(interior.map(function(p,i){ return { label: 'interior_'+(i+1), url: p.url }; }))
+      .concat(defectPh.map(function(p,i){ return { label: 'damage_'+(i+1),   url: p.url }; }))
+      .concat(videos.map(function(p,i){   return { label: 'walkaround_'+(i+1), url: p.url }; }));
+
+    btn.textContent='Saving…';
+    var svg=$('carSvg');
+    var vb = svg ? (svg.getAttribute('viewBox')||'0 0 751 976').split(' ') : ['0','0','751','976'];
+
+    var res = await rpc('qc_submit', { p_token: TOKEN, p: {
+      date: nowDate(), time: nowTime(),
+      mileage: $('d_mileage').value.trim(),
+      petrol: $('d_petrol').value,
+      defects: D.defects, checks: D.checks, items: D.items,
+      photos: photos, interior_photos: interior, defect_photos: defectPh, videos: videos,
+      sig_inspector: sigData('sig_inspector'), sig_customer: sigData('sig_customer'),
+      driver: INFO.driver || '', remark: $('d_remark').value.trim(),
+      diagram_w: vb[2], diagram_h: vb[3]
+    }});
+    if(!res || !res.ok) throw new Error((res&&res.error)||'save failed');
+
+    /* QC is safely in the database from here on. Drive is a bonus, so it
+       gets its own try/catch and never blocks the driver from finishing. */
+    var drive = null;
+    try{
+      btn.textContent = 'Saving to Drive…';
+      drive = await saveToDrive(forDrive);
+    }catch(e){
+      console.error('drive save failed', e);
+      toast('QC saved. Drive copy failed — ops can retry.', 5000);
+    }
+
+    driverDone(photos.length+interior.length+defectPh.length, videos.length, drive);
+  }catch(e){
+    toast('Failed: '+e.message, 6000);
+    btn.disabled=false; btn.textContent='Submit QC';
+  }
+}
+
+function driverDone(photoCount, videoCount, drive){
+  var isReturn = INFO.stage==='in';
+  var label = isReturn ? 'QC RETURN' : 'QC DELIVERY';
+  var newDamage = D.defects.length;
+  var noItems = HANDOVER.filter(function(h){ return D.items[h[0]]===false; })
+                        .map(function(h){ return h[1]; });
+
+  var msg =
+    '*'+label+' DONE*\n'+
+    (INFO.car_model||'')+(INFO.car_plate?(' ('+INFO.car_plate+')'):'')+'\n'+
+    (INFO.customer_name?('Customer: '+INFO.customer_name+'\n'):'')+
+    'Actual time: '+prettyWhen()+'\n'+
+    'Mileage: '+$('d_mileage').value.trim()+' km\n'+
+    'Petrol: '+$('d_petrol').value+'/5\n'+
+    (isReturn&&INFO.begin_mileage
+      ? ('Used: '+Math.max(0,(parseFloat($('d_mileage').value)||0)-parseFloat(INFO.begin_mileage))+' km\n') : '')+
+    (newDamage ? ((isReturn?'New damage: ':'Damage marked: ')+newDamage+'\n') : (isReturn?'No new damage\n':'')) +
+    (noItems.length ? ('Missing: '+noItems.join(', ')+'\n') : '')+
+    'Photos: '+photoCount+(videoCount?(' · Video: '+videoCount):'')+'\n'+
+    ($('d_remark').value.trim() ? ('Remark: '+$('d_remark').value.trim()+'\n') : '')+
+    ((drive && drive.url) ? ('\nPDF: '+drive.url+'\n') : '')+
+    '\nRef: '+INFO.id;
+
+  $('app').innerHTML = `
+    <div class="card center" style="border-left:3px solid var(--green)">
+      <h3 style="color:var(--green)">QC submitted ✓</h3>
+      <div class="hint" style="margin:8px 0 14px">
+        ${esc(INFO.car_model||'')} ${INFO.car_plate?('('+esc(INFO.car_plate)+')'):''}<br>
+        ${prettyWhen()} · ${photoCount} photo${photoCount===1?'':'s'}${videoCount?(' · '+videoCount+' video'):''}
+      </div>
+      <button class="btn wa" onclick="driverSend()">Send to ops on WhatsApp</button>
+      ${(drive&&drive.url)?`<a class="btn sec" style="margin-top:8px;display:block;text-decoration:none;line-height:1.4" href="${esc(drive.url)}" target="_blank">Open the PDF in Drive</a>`:
+        `<div class="hint" style="margin-top:10px;color:var(--gold-soft)">Saved to the database. The Drive copy did not go through — ops can regenerate it.</div>`}
+      <div class="hint" style="margin-top:12px">You can close this page after sending.</div>
+    </div>`;
+  $('stickyBar').style.display='none';
+  window._waMsg = msg;
+  if(INFO.customer_contact) window._custNum = String(INFO.customer_contact).replace(/[^0-9]/g,'');
+}
+function driverSend(){ window.open('https://wa.me/?text='+encodeURIComponent(window._waMsg||''), '_blank'); }
+
+/* ---------- boot ---------- */
+(function(){
+  if(!SB_URL || !SB_KEY){
+    $('app').innerHTML='<div class="card err">supa.js did not load — SUPABASE_URL / ANON_KEY missing.</div>';
+    return;
+  }
+  if(MODE==='ops') opsScreen(); else driverScreen();
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('gp-qc-sw.js').catch(function(){ /* fine without it */ });
+  }
+})();
+</script>
+</body>
+</html>
