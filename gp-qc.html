@@ -252,8 +252,12 @@ function fmtWhen(iso){
 
 /* what the card shows: where this car actually is in the cycle */
 function jobState(j){
-  if(j.in_actual_at)  return { key:'done',  label:'Returned '+fmtWhen(j.in_actual_at),  color:'var(--grey)'  };
+  /* Order matters. A return draft sits on a row that already has
+     out_actual_at set, so the pending checks come first. */
+  if(j.in_actual_at)  return { key:'done',  label:'Returned '+fmtWhen(j.in_actual_at),   color:'var(--grey)'  };
+  if(j.in_draft_at)   return { key:'pend',  label:'Pending return · saved '+fmtWhen(j.in_draft_at),   color:'var(--red)' };
   if(j.out_actual_at) return { key:'out',   label:'Delivered '+fmtWhen(j.out_actual_at), color:'var(--green)' };
+  if(j.out_draft_at)  return { key:'pend',  label:'Pending · saved '+fmtWhen(j.out_draft_at),         color:'var(--red)' };
   if(j.has_out_link)  return { key:'wait',  label:'Waiting for driver',                  color:'var(--gold)'  };
   return { key:'new', label:'Not sent', color:'var(--grey)' };
 }
@@ -514,6 +518,12 @@ async function driverScreen(){
   D.defects = INFO.defects || [];
   D.checks  = INFO.checks  || {};
   D.items   = INFO.items   || {};
+  /* Photos and video come back as the URLs they were uploaded under, not as
+     files. uploadAll sends those straight through on the final submit. */
+  D.photos          = (INFO.photos          || []).slice();
+  D.interior_photos = (INFO.interior_photos || []).slice();
+  D.defect_photos   = (INFO.defect_photos   || []).slice();
+  D.videos          = (INFO.videos          || []).slice();
 
   $('modeLabel').textContent = isReturn ? 'Return checklist' : 'Delivery checklist';
   $('stagePill').style.display='inline-block';
@@ -568,9 +578,13 @@ async function driverScreen(){
 
     <div class="card">
       <h3>Walkaround video</h3>
-      <input type="file" accept="video/*" capture="environment" onchange="addVideo(this)">
+      <!-- No capture="environment" here on purpose: that attribute makes iOS open
+           the camera straight away and hides the photo library, so a clip already
+           filmed could not be picked. Without it the driver gets the choice. -->
+      <input type="file" accept="video/*" onchange="addVideo(this)">
+      <div id="vidProg" class="hint" style="display:none;margin-top:8px;color:var(--gold);font-weight:600"></div>
       <div class="thumbs" id="th_videos"></div>
-      <div class="hint">Clips over ${VIDEO_COMPRESS_OVER_MB}MB are compressed automatically.</div>
+      <div class="hint">Record now or pick a clip already on the phone. Clips over ${VIDEO_COMPRESS_OVER_MB}MB are compressed automatically.</div>
       <div class="hint" style="margin-top:6px;color:var(--gold-soft)">
         If the video will not upload — bad signal in a basement, or the clip is very long —
         submit the QC anyway and send the video to GP Operation on WhatsApp.
@@ -605,14 +619,49 @@ async function driverScreen(){
     </div>`;
 
   $('stickyBar').style.display='block';
-  $('mainBtn').textContent='Submit QC';
+  $('stickyBar').innerHTML =
+    '<div style="display:flex;gap:8px">' +
+      '<button class="btn sec" id="saveBtn" style="flex:0 0 38%">Save</button>' +
+      '<button class="btn" id="mainBtn" style="flex:1">Submit QC</button>' +
+    '</div>';
   $('mainBtn').onclick = driverSubmit;
+  $('saveBtn').onclick = driverSave;
 
   renderMarkers(); setDefect('D'); paintYN();
   if(INFO.items && INFO.items.cleanliness) $('d_clean').value = INFO.items.cleanliness;
+
+  /* everything else the driver had already typed */
+  if(INFO.mileage != null && INFO.mileage !== '') $('d_mileage').value = INFO.mileage;
+  if(INFO.petrol) $('d_petrol').value = INFO.petrol;
+  if(INFO.remark) $('d_remark').value = INFO.remark;
+  HANDOVER.forEach(function(h){
+    if(!h[2]) return;
+    var el=$('x_'+h[0]); if(!el) return;
+    var k = h[0]+'_'+(h[2]==='qty'?'qty':'balance');
+    if(D.items[k] != null) el.value = D.items[k];
+  });
+  ['photos','interior_photos','defect_photos','videos'].forEach(renderThumbs);
+
   var svg=$('carSvg');
   if(svg){ svg.addEventListener('click', diagramTap); svg.addEventListener('touchstart', diagramTap, {passive:true}); }
   initSig('sig_inspector'); initSig('sig_customer');
+  restoreSig('sig_inspector', INFO.sig_inspector);
+  restoreSig('sig_customer',  INFO.sig_customer);
+
+  if(INFO.draft_at && !INFO.done_at)
+    toast('Picking up where you left off — saved '+fmtWhen(INFO.draft_at), 6000);
+}
+
+/* Paint a saved signature back onto its pad and mark it filled, so a draft
+   that is submitted without re-signing still carries the signature. */
+function restoreSig(id, dataUrl){
+  if(!dataUrl) return;
+  var cv=$(id); if(!cv) return;
+  var img=new Image();
+  img.onload=function(){
+    try{ cv.getContext('2d').drawImage(img,0,0,cv.width/2,cv.height/2); cv.dataset.has='1'; }catch(e){}
+  };
+  img.src=dataUrl;
 }
 
 /* ---------- yes / no rows ---------- */
@@ -726,43 +775,129 @@ function addVideo(input){
   var f=(input.files||[])[0]; if(!f) return;
   input.value='';
   var mb=f.size/1048576;
-  if(mb > VIDEO_COMPRESS_OVER_MB){
-    toast('Video is '+mb.toFixed(0)+'MB — compressing, please wait…', 6000);
-    compressVideo(f).then(function(b){ D.videos.push({blob:b,name:'walkaround.webm'}); renderThumbs('videos'); toast('Video ready'); })
-                    .catch(function(){ D.videos.push({blob:f,name:f.name}); renderThumbs('videos'); toast('Could not compress — using original'); });
-  } else {
+
+  if(mb <= VIDEO_COMPRESS_OVER_MB){
     D.videos.push({blob:f,name:f.name}); renderThumbs('videos'); toast('Video added');
+    return;
+  }
+
+  /* Re-encoding plays the clip through at 1x, so the wait is the length of
+     the video. Say so before it starts, then count up, or it looks frozen. */
+  var secs = 0;
+  var probe = document.createElement('video');
+  probe.preload='metadata'; probe.src=URL.createObjectURL(f);
+  probe.onloadedmetadata = function(){
+    secs = Math.round(probe.duration||0);
+    URL.revokeObjectURL(probe.src);
+    run();
+  };
+  probe.onerror = function(){ run(); };
+
+  function run(){
+    var mins = secs ? Math.max(1, Math.round(secs/60)) : 0;
+    toast('Video is '+mb.toFixed(0)+'MB — shrinking it'+
+          (mins ? ' (about '+mins+' min, same as the clip)' : '')+
+          '. Keep this screen open.', 8000);
+
+    var box = $('vidProg');
+    if(box){ box.style.display='block'; box.textContent='Shrinking video… 0%'; }
+
+    compressVideo(f, function(pct){
+      if(box) box.textContent = 'Shrinking video… '+pct+'%';
+    }).then(function(b){
+      if(box) box.style.display='none';
+      D.videos.push({ blob:b, name:'walkaround.'+(b._ext||'webm') });
+      renderThumbs('videos');
+      toast('Video ready — '+(b.size/1048576).toFixed(1)+'MB (was '+mb.toFixed(0)+'MB)', 5000);
+    }).catch(function(e){
+      if(box) box.style.display='none';
+      console.error('compress failed', e);
+      D.videos.push({blob:f,name:f.name}); renderThumbs('videos');
+      /* Still usable, just heavy — say so plainly so the driver knows the
+         upload will be slow and can shoot a shorter clip instead. */
+      toast('Could not shrink it — sending the original '+mb.toFixed(0)+'MB. '+
+            'Upload will be slow; a shorter clip would help.', 8000);
+    });
   }
 }
 /* re-encode by playing the clip into a canvas — same trick the checklist app uses */
-function compressVideo(file){
+/* Pick a container the phone can actually record.
+   This used to ask for webm/vp8 outright. Safari on iPhone has no webm
+   encoder, so the constructor threw, the caller fell back to the untouched
+   original, and a 4K iPhone clip went up at full size over mobile data.
+   Safari records mp4/h264; Chrome and Firefox prefer webm. Ask in that
+   order and take the first one the phone admits to. */
+function pickVideoType(){
+  var types = ['video/mp4;codecs=avc1.42E01E', 'video/mp4',
+               'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  if(typeof MediaRecorder === 'undefined') return null;
+  for(var i=0;i<types.length;i++){
+    try{ if(MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(types[i])) return types[i]; }
+    catch(e){}
+  }
+  return '';   // '' = let the browser choose its own default
+}
+
+/* Re-encode smaller. This runs at playback speed — a 2 minute clip takes
+   about 2 minutes — so onProgress is called as it goes and the caller shows
+   a percentage. Audio is dropped on purpose; a walkaround does not need it. */
+function compressVideo(file, onProgress){
   return new Promise(function(resolve,reject){
+    var type = pickVideoType();
+    if(type === null){ reject(new Error('no MediaRecorder')); return; }
+
     var v=document.createElement('video'); v.muted=true; v.playsInline=true;
     v.src=URL.createObjectURL(file);
+    var done=false;
+    function fail(e){ if(done) return; done=true; try{URL.revokeObjectURL(v.src);}catch(x){} reject(e); }
+
     v.onloadedmetadata=function(){
       var s=Math.min(1, VIDEO_MAX_PX/Math.max(v.videoWidth,v.videoHeight));
       var c=document.createElement('canvas');
-      c.width=Math.round(v.videoWidth*s); c.height=Math.round(v.videoHeight*s);
+      c.width =Math.round(v.videoWidth *s/2)*2;   // even dimensions: h264 requires them
+      c.height=Math.round(v.videoHeight*s/2)*2;
       var ctx=c.getContext('2d');
-      var stream=c.captureStream(24), chunks=[];
-      var mr;
-      try{ mr=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8',videoBitsPerSecond:VIDEO_BITRATE}); }
-      catch(e){ reject(e); return; }
+      var stream, mr, chunks=[];
+      try{
+        stream=c.captureStream(24);
+        var opt={ videoBitsPerSecond: VIDEO_BITRATE };
+        if(type) opt.mimeType=type;
+        mr=new MediaRecorder(stream, opt);
+      }catch(e){ fail(e); return; }
+
+      var ext = (type && type.indexOf('mp4')>-1) ? 'mp4' : 'webm';
       mr.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
-      mr.onstop=function(){ URL.revokeObjectURL(v.src); resolve(new Blob(chunks,{type:'video/webm'})); };
-      mr.start();
-      v.play();
-      (function draw(){ if(v.ended||v.paused){ try{mr.stop();}catch(e){} return; }
-        ctx.drawImage(v,0,0,c.width,c.height); requestAnimationFrame(draw); })();
+      mr.onerror=function(e){ fail(e.error||new Error('recorder failed')); };
+      mr.onstop=function(){
+        if(done) return;
+        try{URL.revokeObjectURL(v.src);}catch(x){}
+        if(!chunks.length){ fail(new Error('nothing recorded')); return; }
+        done=true;
+        var blob=new Blob(chunks,{type: mr.mimeType || type || 'video/webm'});
+        blob._ext = ext;
+        resolve(blob);
+      };
+
+      try{ mr.start(1000); }catch(e){ fail(e); return; }
+      var p=v.play();
+      if(p && p.catch) p.catch(fail);
+
+      (function draw(){
+        if(done) return;
+        if(v.ended||v.paused){ try{mr.stop();}catch(e){} return; }
+        ctx.drawImage(v,0,0,c.width,c.height);
+        if(onProgress && v.duration) onProgress(Math.min(99, Math.round(v.currentTime/v.duration*100)));
+        requestAnimationFrame(draw);
+      })();
       v.onended=function(){ try{mr.stop();}catch(e){} };
     };
-    v.onerror=function(){ reject(new Error('video load failed')); };
+    v.onerror=function(){ fail(new Error('video load failed')); };
   });
 }
 function renderThumbs(bucket){
   var el=$('th_'+bucket); if(!el) return;
   el.innerHTML = D[bucket].map(function(p,i){
-    var url=URL.createObjectURL(p.blob);
+    var url = p.blob ? URL.createObjectURL(p.blob) : (p.url||'');
     var media = bucket==='videos'
       ? '<video src="'+url+'" muted playsinline></video>'
       : '<img src="'+url+'">';
@@ -898,18 +1033,92 @@ async function stUpload(path, blob, contentType){
   if(!r.ok){ var t=''; try{ t=await r.text(); }catch(e){} throw new Error('upload '+r.status+' '+t.slice(0,120)); }
   return sbBase()+'/storage/v1/object/public/checkins/'+path;
 }
+/* The stored extension has to match what the file really is: Apps Script
+   names the Drive copy from the URL, so a .webm holding mp4 lands in the
+   job folder unplayable. Trust the blob's own type, then its filename. */
+function blobKind(blob, name){
+  var t=(blob&&blob.type||'').toLowerCase();
+  if(t.indexOf('mp4')>-1)        return ['mp4','video/mp4'];
+  if(t.indexOf('quicktime')>-1)  return ['mov','video/quicktime'];
+  if(t.indexOf('webm')>-1)       return ['webm','video/webm'];
+  var m=/\.([a-z0-9]{2,4})$/i.exec(name||'');
+  var e=m?m[1].toLowerCase():'mp4';
+  return [e, t || ('video/'+(e==='mov'?'quicktime':e))];
+}
+
 async function uploadAll(bucket, stage, kind){
   var out=[];
   for(var i=0;i<D[bucket].length;i++){
     var p=D[bucket][i];
-    var ext = bucket==='videos' ? 'webm' : 'jpg';
-    var ct  = bucket==='videos' ? 'video/webm' : 'image/jpeg';
+    /* Restored from a saved draft: it is already in storage, so send the
+       URL straight through rather than uploading the same file twice. */
+    if(p.url && !p.blob){ out.push(p.label ? {label:p.label, url:p.url} : {url:p.url}); continue; }
+    var ext='jpg', ct='image/jpeg';
+    if(bucket==='videos'){ var k=blobKind(p.blob,p.name); ext=k[0]; ct=k[1]; }
     var path = INFO.id+'/'+stage+'_'+kind+'_'+(i+1)+'_'+Date.now()+'.'+ext;
     $('mainBtn').textContent = 'Uploading '+kind+' '+(i+1)+'/'+D[bucket].length+'…';
     var url = await stUpload(path, p.blob, ct);
     out.push(p.label ? { label:p.label, url:url } : { url:url });
   }
   return out;
+}
+
+/* Pull the handover quantities and cleanliness out of the inputs into
+   D.items. Both Save and Submit need it, so it lives in one place. */
+function collectItems(){
+  HANDOVER.forEach(function(h){
+    if(!h[2]) return;
+    var el=$('x_'+h[0]); if(!el) return;
+    var val=String(el.value||'').trim();
+    if(val) D.items[h[0]+'_'+(h[2]==='qty'?'qty':'balance')] = val;
+  });
+  var clean=$('d_clean'); if(clean && clean.value) D.items.cleanliness = clean.value;
+}
+
+/* Save without finishing. Everything goes up, photos and video included,
+   so the driver can close the phone and come back to the same link later.
+   Deliberately not a submit: no actual_at, no PDF, no WhatsApp — ops just
+   sees the job turn Pending. */
+async function driverSave(){
+  var btn=$('saveBtn'), main=$('mainBtn');
+  btn.disabled=true; main.disabled=true;
+  var stage=INFO.stage, oldTxt=btn.textContent;
+  try{
+    collectItems();
+
+    btn.textContent='Saving…';
+    var photos   = await uploadAll('photos', stage, 'photo');
+    var interior = await uploadAll('interior_photos', stage, 'interior');
+    var defectPh = await uploadAll('defect_photos', stage, 'defect');
+    var videos=[], videoFailed=false;
+    try{ videos = await uploadAll('videos', stage, 'video'); }
+    catch(e){ videoFailed = D.videos.length>0; console.error('video upload failed', e); }
+
+    var res = await rpc('qc_save_draft', { p_token: TOKEN, p: {
+      mileage: $('d_mileage').value.trim(),
+      petrol: $('d_petrol').value,
+      defects: D.defects, checks: D.checks, items: D.items,
+      photos: photos, interior_photos: interior, defect_photos: defectPh, videos: videos,
+      sig_inspector: sigData('sig_inspector'), sig_customer: sigData('sig_customer'),
+      driver: INFO.driver || '', remark: $('d_remark').value.trim()
+    }});
+    if(!res || !res.ok) throw new Error((res&&res.error)||'save failed');
+
+    /* Swap the local files for the URLs they now live at, so a second save
+       or the final submit does not upload the same pictures again. */
+    D.photos = photos; D.interior_photos = interior;
+    D.defect_photos = defectPh; D.videos = videos;
+    ['photos','interior_photos','defect_photos','videos'].forEach(renderThumbs);
+
+    toast(videoFailed
+      ? 'Saved — but the video did not upload. Send it to GP Operation on WhatsApp.'
+      : 'Saved. You can close this and open the same link later to finish.', 7000);
+  }catch(e){
+    console.error(e);
+    toast('Could not save — '+e.message, 7000);
+  }finally{
+    btn.disabled=false; main.disabled=false; btn.textContent=oldTxt||'Save';
+  }
 }
 
 async function driverSubmit(){
@@ -920,13 +1129,7 @@ async function driverSubmit(){
   btn.disabled=true;
   var stage = INFO.stage;
   try{
-    HANDOVER.forEach(function(h){
-      if(!h[2]) return;
-      var el=$('x_'+h[0]); if(!el) return;
-      var val=String(el.value||'').trim();
-      if(val) D.items[h[0]+'_'+(h[2]==='qty'?'qty':'balance')] = val;
-    });
-    var clean=$('d_clean'); if(clean && clean.value) D.items.cleanliness = clean.value;
+    collectItems();
 
     var photos   = await uploadAll('photos', stage, 'photo');
     var interior = await uploadAll('interior_photos', stage, 'interior');
