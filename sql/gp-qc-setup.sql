@@ -38,8 +38,11 @@ alter table gp_checklists add column if not exists drive_folder_url text;      -
 create unique index if not exists gp_checklists_out_token_idx on gp_checklists (out_share_token) where out_share_token is not null;
 create unique index if not exists gp_checklists_in_token_idx  on gp_checklists (in_share_token)  where in_share_token  is not null;
 
--- pgcrypto gives us gen_random_bytes for the tokens.
-create extension if not exists pgcrypto;
+/* Tokens come from gen_random_uuid(), which is Postgres core (13+) and lives
+   in pg_catalog, so it is visible whatever search_path a function pins.
+   NOT pgcrypto's gen_random_bytes: on a self-hosted Supabase that extension
+   installs into the "extensions" schema, while these functions pin
+   search_path = public, so the call fails at runtime with 42883. */
 
 
 -- ---------- 2. ops creates a QC link ----------
@@ -55,7 +58,7 @@ as $$
 declare
   v_stage text := coalesce(p->>'stage','out');
   v_id    text := coalesce(nullif(p->>'checklist_id',''), null);
-  v_tok   text := encode(gen_random_bytes(16),'hex');
+  v_tok   text := replace(gen_random_uuid()::text,'-','');   -- 32 hex chars
 begin
   if v_stage not in ('out','in') then
     return jsonb_build_object('ok', false, 'error', 'stage must be out or in');
