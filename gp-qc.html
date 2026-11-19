@@ -251,6 +251,47 @@ function fmtWhen(iso){
 }
 
 /* what the card shows: where this car actually is in the cycle */
+/* Malaysian numbers get keyed in every which way — 012-345 6789, 0123456789,
+   +60 12 345 6789. WhatsApp wants digits only with the country code, so
+   normalise here rather than asking ops to retype anything. */
+function waNumber(raw){
+  var n = String(raw||'').replace(/[^0-9]/g,'');
+  if(!n) return '';
+  if(n.indexOf('60') === 0) return n;          // already 60...
+  if(n.indexOf('0')  === 0) return '60'+n.slice(1);
+  return n;                                    // some other country, sent as given
+}
+
+/* One tap: opens WhatsApp to the customer with the car, the date and the
+   Drive link already written. The PDF is shared as anyone-with-the-link by
+   the Apps Script, so they can open it without a Google account. */
+function sendPdfToCustomer(id, stage){
+  var j = JOBS.filter(function(x){ return x.id === id; })[0];
+  if(!j){ toast('Job not found'); return; }
+
+  var url = stage === 'in' ? j.in_pdf_url : j.out_pdf_url;
+  if(!url){ toast('No PDF for this one yet'); return; }
+
+  var num = waNumber(j.customer_contact);
+  if(!num) toast('No customer number saved — WhatsApp will ask which chat', 5000);
+
+  var when = stage === 'in' ? j.in_actual_at : j.out_actual_at;
+  var msg =
+    'Hi'+(j.customer_name?(' '+titleCase(j.customer_name)):'')+', thank you for renting with Grandpride.\n\n'+
+    (stage === 'in' ? 'Return' : 'Delivery')+' inspection report for '+
+    (j.car_model||'')+(j.car_plate?(' ('+j.car_plate+')'):'')+
+    (when?(' on '+fmtWhen(when)):'')+':\n'+url+'\n\n'+
+    'It lists the mileage, fuel level and the condition of the car, with photos. '+
+    'Please let us know if anything looks wrong.';
+
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg), '_blank');
+}
+
+/* Names are stored upper case for the PDF; a WhatsApp greeting should not shout. */
+function titleCase(s){
+  return String(s||'').toLowerCase().replace(/\b([a-z])/g, function(m,c){ return c.toUpperCase(); });
+}
+
 function jobState(j){
   /* Order matters. A return draft sits on a row that already has
      out_actual_at set, so the pending checks come first. */
@@ -342,7 +383,8 @@ function opsJob(i){
         ? `<div class="rowline"><span class="muted">Done</span><b style="color:var(--green)">${fmtWhen(j.out_actual_at)}</b></div>
            <div class="rowline"><span class="muted">Mileage</span><span>${j.out_mileage?Number(j.out_mileage).toLocaleString()+' km':'-'}</span></div>
            <div class="rowline"><span class="muted">Damage marked</span><span>${j.out_marks||0}</span></div>
-           ${j.out_pdf_url?`<a class="btn sec" style="margin-top:9px;display:block;text-decoration:none" href="${esc(j.out_pdf_url)}" target="_blank">Open delivery PDF</a>`:''}`
+           ${j.out_pdf_url?`<a class="btn sec" style="margin-top:9px;display:block;text-decoration:none" href="${esc(j.out_pdf_url)}" target="_blank">Open delivery PDF</a>
+             <button class="btn wa" style="margin-top:8px" onclick="sendPdfToCustomer('${esc(j.id)}','out')">Send to customer on WhatsApp</button>`:''}`
         : `<div class="hint">Not done yet${j.has_out_link?' — link already sent to the driver.':'.'}</div>
            <button class="btn sec" style="margin-top:9px" onclick="opsRelink('${esc(j.id)}','out')">
              ${j.has_out_link?'Resend delivery link':'Create delivery link'}</button>`}
@@ -355,7 +397,8 @@ function opsJob(i){
            <div class="rowline"><span class="muted">Mileage</span><span>${j.in_mileage?Number(j.in_mileage).toLocaleString()+' km':'-'}</span></div>
            ${(j.out_mileage&&j.in_mileage)?`<div class="rowline"><span class="muted">Used</span><b>${(Number(j.in_mileage)-Number(j.out_mileage)).toLocaleString()} km</b></div>`:''}
            <div class="rowline"><span class="muted">New damage</span><span>${j.in_marks||0}</span></div>
-           ${j.in_pdf_url?`<a class="btn sec" style="margin-top:9px;display:block;text-decoration:none" href="${esc(j.in_pdf_url)}" target="_blank">Open return PDF</a>`:''}`
+           ${j.in_pdf_url?`<a class="btn sec" style="margin-top:9px;display:block;text-decoration:none" href="${esc(j.in_pdf_url)}" target="_blank">Open return PDF</a>
+             <button class="btn wa" style="margin-top:8px" onclick="sendPdfToCustomer('${esc(j.id)}','in')">Send to customer on WhatsApp</button>`:''}`
         : canReturn
           ? `<div class="hint">Car is out. When it comes back, send the driver a return link.</div>
              <button class="btn" style="margin-top:9px" onclick="opsRelink('${esc(j.id)}','in')">
