@@ -292,6 +292,14 @@ function titleCase(s){
   return String(s||'').toLowerCase().replace(/\b([a-z])/g, function(m,c){ return c.toUpperCase(); });
 }
 
+/* Ops doing the QC themselves — at the counter, or when they are the one
+   handing the car over. Opens the same link on this phone instead of making
+   them WhatsApp it to their own number first. Same form, same record. */
+function opsDoItHere(){
+  if(!window._link){ toast('No link yet'); return; }
+  location.href = window._link;
+}
+
 function jobState(j){
   /* Order matters. A return draft sits on a row that already has
      out_actual_at set, so the pending checks come first. */
@@ -528,6 +536,7 @@ function showLink(res, stage, info){
       <div class="rowline"><span class="muted">Checklist ID</span><b style="font-size:12px">${esc(res.id)}</b></div>
       <div class="linkbox">${esc(link)}</div>
       <button class="btn wa" style="margin-top:10px" onclick="opsSend()">Send to driver on WhatsApp</button>
+      <button class="btn" style="margin-top:8px" onclick="opsDoItHere()">Do this QC myself now</button>
       <button class="btn sec" style="margin-top:8px" onclick="opsCopy()">Copy link</button>
       <button class="btn sec" style="margin-top:8px" onclick="opsScreen()">Back to list</button>
     </div>`;
