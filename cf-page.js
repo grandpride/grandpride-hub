@@ -180,7 +180,7 @@
      replacement exists, send the customer straight to the Hub's gp-checkin-view.html (same photos and details,
      but no WhatsApp photo preview). When the Worker route is live, set CHECKIN_SHARE_BASE to it, e.g.
      'https://gl-api.jimmykuek94.workers.dev/gp/public/checkin-share?t=' (one line). */
-  var CHECKIN_SHARE_BASE = '';
+  var CHECKIN_SHARE_BASE = (function () { try { return client.apiBase() + '/gp/public/checkin-share?t='; } catch (e) { return ''; } })();
   function checkinShareLink(token) {
     if (CHECKIN_SHARE_BASE) return CHECKIN_SHARE_BASE + encodeURIComponent(token);
     try { return new URL('gp-checkin-view.html?t=' + encodeURIComponent(token), g.location.href).href; } catch (e) { return 'gp-checkin-view.html?t=' + encodeURIComponent(token); }

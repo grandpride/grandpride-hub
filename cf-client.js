@@ -828,7 +828,17 @@
       storage: { from: bucketApi, publicUpload: publicUpload, cachedSignedUrl: function (bucket, path) { return signed[String(bucket) + '/' + cleanPath(path)] || null; } },
       // extension: the new server routes that replace Supabase edge functions / open sign-up
       gp: gpApi,
-      functions: { invoke: function (n) { return Promise.resolve({ data: null, error: unsupportedError('functions.invoke("' + n + '")') }); } },
+      functions: { invoke: function (n, o) {
+        // job-agreement -> POST /{tenant}/api/fn/job-agreement (gl-api step 6); same {data,error} shape as supabase-js
+        if (n !== 'job-agreement') return Promise.resolve({ data: null, error: unsupportedError('functions.invoke("' + n + '")') });
+        var h = { 'Content-Type': 'application/json' }; var t = token(); if (t) h.Authorization = 'Bearer ' + t;
+        return Promise.resolve().then(function () {
+          return doFetch(apiBase() + '/' + tenant + '/api/fn/' + n, { method: 'POST', headers: h, body: JSON.stringify((o && o.body) || {}), credentials: 'omit' });
+        }).then(function (res) {
+          if (res.ok) return res.json().catch(function () { return null; }).then(function (j) { return { data: j, error: null }; });
+          return { data: null, error: { name: 'FunctionsHttpError', message: 'Edge Function returned a non-2xx status code', context: res } };
+        }, function (e) { return { data: null, error: { name: 'FunctionsFetchError', message: String(e && e.message || e), context: e } }; });
+      } },
       apiBase: apiBase
     };
     return client;

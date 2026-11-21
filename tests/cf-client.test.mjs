@@ -668,3 +668,30 @@ test('REST: functions/v1 is left alone (null); unsupported shapes -> 400 CF_UNSU
 });
 
 test.after(() => { console.warn = realWarn; });
+
+/* =================== functions.invoke('job-agreement') -> gl-api step 6 =================== */
+test('functions.invoke(job-agreement) posts to /gp/api/fn/job-agreement with Bearer', async () => {
+  const sb = fresh();
+  localStorage.setItem('gp_ba_token', 'tokA');
+  reply({ ok: true, pdf_url: 'https://x/y.pdf' });
+  const r = await sb.functions.invoke('job-agreement', { body: { job_id: 'J1', force: false } });
+  assert.equal(calls[0].url, API + '/gp/api/fn/job-agreement');
+  assert.equal(calls[0].init.headers.Authorization, 'Bearer tokA');
+  assert.deepEqual(calls[0].body, { job_id: 'J1', force: false });
+  assert.equal(r.error, null);
+  assert.equal(r.data.pdf_url, 'https://x/y.pdf');
+});
+test('functions.invoke(job-agreement) non-2xx -> FunctionsHttpError like supabase-js', async () => {
+  const sb = fresh();
+  reply({ error: 'already' }, 409);
+  const r = await sb.functions.invoke('job-agreement', { body: { job_id: 'J1' } });
+  assert.equal(r.data, null);
+  assert.equal(r.error.name, 'FunctionsHttpError');
+  assert.equal(r.error.message, 'Edge Function returned a non-2xx status code');
+});
+test('functions.invoke(other) stays unsupported and sends nothing', async () => {
+  const sb = fresh();
+  const r = await sb.functions.invoke('telegram-agreement', { body: {} });
+  assert.equal(calls.length, 0);
+  assert.ok(r.error);
+});
