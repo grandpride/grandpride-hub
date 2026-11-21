@@ -267,6 +267,8 @@
 
 <div class="flash" id="flash"></div>
 
+<script>/* backend switch (docs/cf-migration.md): ONLY when localStorage.gp_backend==="cf" load cf-client.js + cf-page.js. Off = nothing else happens. */
+(function(){try{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}if(localStorage.getItem('gp_backend')==='cf'){window.GPCF_PAGE_CFG={page:'gp-minigames',public:false};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script>
 /* ============= CONFIG ============= */
 const SUPABASE_URL="https://gpdb.grandlab.com.my";

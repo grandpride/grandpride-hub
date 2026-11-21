@@ -647,5 +647,7 @@ async function setChauffeurOutside(username, note){
 $('le_start') && $('le_start').addEventListener('change',updateDuration);
 $('le_end') && $('le_end').addEventListener('change',updateDuration);
 </script>
+<script>/* backend switch note (docs/cf-migration.md): this page is NOT on the new backend yet. Only when localStorage.gp_backend==="cf" show a notice; off = nothing happens. */
+(function(){try{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}if(localStorage.getItem('gp_backend')!=='cf')return;var d=document.createElement('div');d.id='gpcf-note';d.setAttribute('role','status');d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483000;background:#b45309;color:#fff;padding:8px 34px 8px 12px;text-align:center;font:600 12px/1.4 -apple-system,Segoe UI,Roboto,sans-serif';d.appendChild(document.createTextNode('This page is not on the new system yet \u2014 it still uses the current system. '));var a=document.createElement('a');var u=new URL(location.href);u.searchParams.set('backend','sb');a.href=u.href;a.textContent='Switch this phone back (?backend=sb)';a.style.color='#fff';d.appendChild(a);var x=document.createElement('button');x.textContent='\u00d7';x.setAttribute('aria-label','Close');x.style.cssText='position:absolute;right:6px;top:4px;background:none;border:0;color:#fff;font-size:18px;cursor:pointer';x.onclick=function(){d.remove();};d.appendChild(x);document.body.appendChild(d);}catch(e){}})();</script>
 </body>
 </html>

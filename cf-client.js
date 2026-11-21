@@ -11,8 +11,13 @@
                    getSession, getUser, signOut, onAuthStateChange
      client.from(table)  select/insert/update/upsert/delete + filters  -> POST /{tenant}/api/db
      client.rpc(name, args)                                            -> POST /{tenant}/api/rpc/:name
+     client.storage.from(bucket)  upload/update/download/remove/list/createSignedUrl(s)/getPublicUrl
+                                                                       -> POST /{tenant}/api/storage/* (docs/storage-contract.md)
+   GPCF.handleSupabaseFetch(client, url, init): translates a direct fetch() to Supabase REST
+     (/rest/v1/<table>, /rest/v1/rpc/<fn>, /storage/v1/object/<bucket>/<path>) into the calls above.
+     Used by cf-page.js on pages that call Supabase REST without supabase-js.
    Not supported yet (fail soft: console.warn + {error:{code:"CF_UNSUPPORTED"}}):
-     realtime channels, storage, edge functions, embedded selects, see GPCF.UNSUPPORTED.
+     realtime channels, edge functions, embedded selects, see GPCF.UNSUPPORTED.
 
    Plain browser JS, no build step, no CDN.
    ============================================================ */
@@ -54,7 +59,8 @@
   // Features this client does not provide yet (documented in docs/cf-migration.md)
   var UNSUPPORTED = [
     'realtime: client.channel(), removeChannel(), removeAllChannels()',
-    'storage: client.storage.from(bucket).upload/download/remove/list/createSignedUrl (getPublicUrl returns publicUrl "")',
+    'storage: move, copy, createSignedUploadUrl, uploadToSignedUrl, upload(FormData), list({search} or sortBy other than name asc), download/createSignedUrl with {transform|download}',
+    'direct Supabase REST (handleSupabaseFetch): or/and/not.<op> other than not.is, offset without limit, filters on insert, Prefer resolution=ignore-duplicates, GET rpc, Request objects, /auth/v1, public storage GETs',
     'edge functions: client.functions.invoke()',
     'client.schema() (non-public schemas)',
     'embedded selects / joins / aliases in select(): "rel(*)", "a:b", "x!inner(..)"',
@@ -537,13 +543,157 @@
       };
       return ch;
     }
-    function fakeBucket(bucket) {
+    /* ---------- storage (docs/storage-contract.md) ----------
+       POST /{tenant}/api/storage/{upload|sign|sign-many|remove|list|download}, Bearer login.
+       Signed URLs from the server (/gp/files/<key>?exp=&sig=) are passed through untouched. */
+    var SIGN_DEFAULT_S = 7 * 24 * 3600;     // 7 days (server max)
+    var signed = {};                        // 'bucket/path' -> signed URL (filled by upload / createSignedUrl(s))
+    var lazySigning = {};
+    // server errors: {data:null, error:{message, statusCode:"4xx", error:"Duplicate"|...}} (HTTP 400/403/404/409/413/415)
+    function storageErr(status, json, fallback) {
+      var e = json && json.error && typeof json.error === 'object' ? json.error : (json || {});
+      var msg = e.message || (json && typeof json.error === 'string' ? json.error : null) || fallback || ('HTTP ' + status);
+      var sc = e.statusCode || String(status);
+      return { name: 'StorageApiError', message: msg, status: status, statusCode: String(sc), error: e.error || (json && typeof json.error === 'string' ? json.error : null) };
+    }
+    function capTtl(n) { n = Number(n); return Math.max(1, Math.min(isFinite(n) && n > 0 ? Math.floor(n) : SIGN_DEFAULT_S, SIGN_DEFAULT_S)); }
+    // same limits as the server (GP_BUCKETS); checked here too so a phone does not send 60 MB just to get a 413
+    var BUCKET_MAX = { checkins: 50 * 1048576, 'emp-docs': 50 * 1048576 };
+    function bodySize(b) { if (!b) return 0; if (typeof b.size === 'number') return b.size; if (typeof b.byteLength === 'number') return b.byteLength; if (typeof b === 'string') return b.length; return 0; }
+    function apiRequest(path, init) {
+      init = init || {};
+      var headers = init.headers || {};
+      var t = token(); if (t) headers.Authorization = 'Bearer ' + t;
+      init.headers = headers;
+      init.credentials = 'omit';
+      return Promise.resolve().then(function () { return doFetch(apiBase() + '/' + tenant + '/api' + path, init); }).then(function (res) {
+        if (res.status === 401 && t) { setToken(null); cache = null; emit('SIGNED_OUT', null); }
+        return res;
+      });
+    }
+    function storageJSON(op, body) {
+      return apiRequest('/storage/' + op, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (res) {
+        return res.json().catch(function () { return null; }).then(function (json) {
+          if (res.status === 401) return { data: null, error: storageErr(401, null, 'Not signed in (new backend). Please log in again.') };
+          if (!res.ok) return { data: null, error: storageErr(res.status, json) };
+          json = json || {};
+          if (json.error) return { data: null, error: storageErr(res.status === 200 ? 400 : res.status, json) };
+          return { data: json.data === undefined ? null : json.data, error: null };
+        });
+      }, function (e) {
+        return { data: null, error: { name: 'StorageUnknownError', message: 'Network error: ' + (e && e.message ? e.message : String(e)), status: 0, statusCode: '0' } };
+      });
+    }
+    // same normalisation as storage-js: no leading/trailing slash, no empty folders
+    function cleanPath(p) { return String(p == null ? '' : p).replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/'); }
+    function encPath(p) { return cleanPath(p).split('/').map(encodeURIComponent).join('/'); }
+
+    function bucketApi(bucket) {
+      bucket = String(bucket);
+      var badBucket = !/^[A-Za-z0-9_.-]+$/.test(bucket);
       var no = function (what) { return function () { return Promise.resolve({ data: null, error: unsupportedError('storage.' + what + ' (bucket ' + bucket + ')') }); }; };
+      function ck(p) { return bucket + '/' + cleanPath(p); }
+      function upload(path, body, o, forceUpsert) {
+        o = o || {};
+        if (badBucket) return no('bucket name')();
+        if (typeof FormData !== 'undefined' && body instanceof FormData) return no('upload(FormData)')();
+        var p = cleanPath(path);
+        if (!p) return Promise.resolve({ data: null, error: storageErr(400, { message: 'Empty path' }) });
+        var ctype = o.contentType || (body && body.type) || 'application/octet-stream';
+        var max = BUCKET_MAX[bucket] || 10 * 1048576;
+        if (bodySize(body) > max) return Promise.resolve({ data: null, error: storageErr(413, { message: 'The object exceeded the maximum allowed size (' + (max / 1048576) + ' MB)', statusCode: '413', error: 'Payload too large' }) });
+        // server decodes x-path (encodeURIComponent keeps non-ASCII names legal in a header)
+        var headers = { 'x-bucket': bucket, 'x-path': encodeURIComponent(p), 'x-upsert': (forceUpsert || o.upsert) ? 'true' : 'false', 'Content-Type': ctype };
+        return apiRequest('/storage/upload', { method: 'POST', headers: headers, body: body }).then(function (res) {
+          return res.json().catch(function () { return null; }).then(function (json) {
+            if (res.status === 401) return { data: null, error: storageErr(401, null, 'Not signed in (new backend). Please log in again.') };
+            if (!res.ok || (json && json.error)) return { data: null, error: storageErr(res.ok ? 400 : res.status, json) };
+            var d = (json && json.data) || {};
+            var out = { path: d.path || p, fullPath: d.fullPath || (bucket + '/' + p) };
+            if (d.id) out.id = d.id;
+            delete signed[ck(p)];
+            // so getPublicUrl() right after upload is correct: use the server's signed URL, or ask for one now
+            if (d.signedUrl) { signed[ck(p)] = d.signedUrl; return { data: out, error: null }; }
+            return storageJSON('sign', { bucket: bucket, path: p, expiresIn: SIGN_DEFAULT_S }).then(function (s) {
+              if (!s.error && s.data && s.data.signedUrl) signed[ck(p)] = s.data.signedUrl;
+              return { data: out, error: null };
+            });
+          });
+        }, function (e) {
+          return { data: null, error: { name: 'StorageUnknownError', message: 'Network error: ' + (e && e.message ? e.message : String(e)), status: 0, statusCode: '0' } };
+        });
+      }
       return {
-        upload: no('upload'), update: no('update'), download: no('download'), remove: no('remove'), list: no('list'),
-        move: no('move'), copy: no('copy'), createSignedUrl: no('createSignedUrl'), createSignedUrls: no('createSignedUrls'),
-        createSignedUploadUrl: no('createSignedUploadUrl'), uploadToSignedUrl: no('uploadToSignedUrl'),
-        getPublicUrl: function () { warnOnce('storage.getPublicUrl (bucket ' + bucket + ')'); return { data: { publicUrl: '' } }; }
+        upload: function (path, body, o) { return upload(path, body, o, false); },
+        update: function (path, body, o) { return upload(path, body, o, true); },
+        download: function (path, o) {
+          o = o || {};
+          if (badBucket) return no('bucket name')();
+          if (o.transform) return no('download({transform})')();
+          return apiRequest('/storage/download', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bucket: bucket, path: cleanPath(path) }) }).then(function (res) {
+            var ct = (res.headers && res.headers.get && res.headers.get('content-type')) || '';
+            if (!res.ok || /application\/json/i.test(ct)) {
+              return res.json().catch(function () { return null; }).then(function (json) {
+                return { data: null, error: storageErr(res.ok ? 400 : res.status, json) };
+              });
+            }
+            return res.blob().then(function (b) { return { data: b, error: null }; });
+          }, function (e) {
+            return { data: null, error: { name: 'StorageUnknownError', message: 'Network error: ' + (e && e.message ? e.message : String(e)), status: 0, statusCode: '0' } };
+          });
+        },
+        remove: function (paths) {
+          if (badBucket) return no('bucket name')();
+          var ps = (Array.isArray(paths) ? paths : [paths]).map(cleanPath);
+          ps.forEach(function (p) { delete signed[ck(p)]; });
+          return storageJSON('remove', { bucket: bucket, paths: ps });
+        },
+        list: function (prefix, o) {
+          o = o || {};
+          if (badBucket) return no('bucket name')();
+          if (o.search) return no('list({search})')();
+          if (o.sortBy && !((o.sortBy.column || 'name') === 'name' && (o.sortBy.order || 'asc') === 'asc')) return no('list({sortBy} other than name asc)')();
+          return storageJSON('list', { bucket: bucket, prefix: cleanPath(prefix), limit: o.limit != null ? o.limit : 100, offset: o.offset || 0 });
+        },
+        createSignedUrl: function (path, expiresIn, o) {
+          o = o || {};
+          if (badBucket) return no('bucket name')();
+          if (o.download || o.transform) return no('createSignedUrl({download|transform})')();
+          var p = cleanPath(path);
+          return storageJSON('sign', { bucket: bucket, path: p, expiresIn: capTtl(expiresIn) }).then(function (r) {
+            if (!r.error && r.data && r.data.signedUrl) signed[ck(p)] = r.data.signedUrl;
+            return r;
+          });
+        },
+        createSignedUrls: function (paths, expiresIn, o) {
+          o = o || {};
+          if (badBucket) return no('bucket name')();
+          if (o.download) return no('createSignedUrls({download})')();
+          var ps = (paths || []).map(cleanPath);
+          return storageJSON('sign-many', { bucket: bucket, paths: ps, expiresIn: capTtl(expiresIn) }).then(function (r) {
+            (Array.isArray(r.data) ? r.data : []).forEach(function (x) { if (x && x.signedUrl && !x.error) signed[ck(x.path)] = x.signedUrl; });
+            return r;
+          });
+        },
+        // Sync. Correct after upload()/createSignedUrl(s) in this page (signed URL, valid 7 days).
+        // Otherwise returns <api>/<tenant>/files/gp/storage/<bucket>/<path> (no signature: only works if the server
+        // serves that bucket publicly) and asks /sign in the background so the NEXT call is correct.
+        getPublicUrl: function (path, o) {
+          var p = cleanPath(path);
+          var hit = signed[ck(p)];
+          if (hit) return { data: { publicUrl: hit } };
+          warnOnce('storage.getPublicUrl before upload/sign (bucket ' + bucket + ') — returned an unsigned URL');
+          if (!badBucket && token() && !lazySigning[ck(p)]) {
+            lazySigning[ck(p)] = true;
+            storageJSON('sign', { bucket: bucket, path: p, expiresIn: SIGN_DEFAULT_S }).then(function (r) {
+              if (!r.error && r.data && r.data.signedUrl) signed[ck(p)] = r.data.signedUrl;
+              delete lazySigning[ck(p)];
+            });
+          }
+          return { data: { publicUrl: apiBase() + '/' + tenant + '/files/gp/storage/' + encodeURIComponent(bucket) + '/' + encPath(p) } };
+        },
+        move: no('move'), copy: no('copy'),
+        createSignedUploadUrl: no('createSignedUploadUrl'), uploadToSignedUrl: no('uploadToSignedUrl')
       };
     }
 
@@ -561,21 +711,230 @@
       removeChannel: function () { return Promise.resolve('ok'); },
       removeAllChannels: function () { return Promise.resolve([]); },
       getChannels: function () { return []; },
-      storage: { from: fakeBucket },
+      // cachedSignedUrl: extension (not supabase-js) used by handleSupabaseFetch / cf-page
+      storage: { from: bucketApi, cachedSignedUrl: function (bucket, path) { return signed[String(bucket) + '/' + cleanPath(path)] || null; } },
       functions: { invoke: function (n) { return Promise.resolve({ data: null, error: unsupportedError('functions.invoke("' + n + '")') }); } },
       apiBase: apiBase
     };
     return client;
   }
 
+  /* ============================================================
+     handleSupabaseFetch(client, url, init)
+     For pages that call Supabase REST with fetch() directly (gp-agreement, gp-checklist, gp-qc, gp-sign,
+     gp-minigames). Covers exactly the PostgREST shapes those pages use:
+       GET    /rest/v1/<t>?select=..&<col>=eq.|neq.|gt.|gte.|lt.|lte.|like.|ilike.|in.(..)|is.|not.is.<v>&order=c.asc|desc[.nullsfirst|.nullslast]&limit=&offset=
+       POST   /rest/v1/<t>[?on_conflict=c]  Prefer resolution=merge-duplicates -> upsert, else insert
+       PATCH  /rest/v1/<t>?<filters>         -> update        DELETE /rest/v1/<t>?<filters> -> delete
+              Prefer return=representation -> rows back (else 201/204 with no body, like PostgREST)
+       POST   /rest/v1/rpc/<fn>              -> client.rpc(fn, body)
+       PUT|POST /storage/v1/object/<bucket>/<path> (x-upsert, Content-Type) -> client.storage upload
+     /functions/v1/* returns null (caller lets it go to the network unchanged). Anything else -> 400
+     CF_UNSUPPORTED Response, no network. Values stay strings (PostgREST style), except is.null/true/false.
+     ============================================================ */
+  var REST_OPS = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'in', 'is'];
+  function lowerHeaders(h) {
+    var out = {};
+    if (!h) return out;
+    if (typeof h.forEach === 'function' && typeof h.get === 'function') { h.forEach(function (v, k) { out[String(k).toLowerCase()] = v; }); return out; }
+    if (Array.isArray(h)) { h.forEach(function (kv) { out[String(kv[0]).toLowerCase()] = kv[1]; }); return out; }
+    Object.keys(h).forEach(function (k) { out[k.toLowerCase()] = h[k]; });
+    return out;
+  }
+  function mkResponse(status, body) {
+    var R = g.Response;
+    var noBody = status === 204 || status === 205 || status === 304;
+    var text = noBody ? null : (body === undefined ? '' : (typeof body === 'string' ? body : JSON.stringify(body)));
+    var headers = { 'Content-Type': 'application/json; charset=utf-8' };
+    if (R) return new R(text, { status: status, headers: headers });
+    // minimal stand-in (no Response class): enough for ok/status/json()/text()
+    return { ok: status >= 200 && status < 300, status: status, statusText: '', headers: { get: function (k) { return /content-type/i.test(k) ? headers['Content-Type'] : null; } },
+      text: function () { return Promise.resolve(text || ''); }, json: function () { return Promise.resolve(JSON.parse(text || 'null')); } };
+  }
+  function errResponse(err, status) {
+    var e = err || {};
+    var st = status || (e.code === '401' ? 401 : 400);
+    return mkResponse(st, { code: e.code || String(st), message: e.message || 'error', details: e.details || null, hint: e.hint || null });
+  }
+  function restUnsupported(what) { return Promise.resolve(errResponse(unsupportedError('Supabase REST ' + what), 400)); }
+
+  function parseRestValue(op, raw) {
+    if (op === 'in') {
+      var inner = raw.replace(/^\(/, '').replace(/\)$/, '');
+      if (inner === '') return [];
+      // PostgREST list: a,b,"c,d","e\"f"  (double quotes protect commas; backslash escapes)
+      var out = [], cur = '', q = false;
+      for (var i = 0; i < inner.length; i++) {
+        var ch = inner.charAt(i);
+        if (q && ch === '\\' && i + 1 < inner.length) { cur += inner.charAt(++i); continue; }
+        if (ch === '"') { q = !q; continue; }
+        if (ch === ',' && !q) { out.push(cur); cur = ''; continue; }
+        cur += ch;
+      }
+      out.push(cur);
+      return out;
+    }
+    if (op === 'is') {
+      if (raw === 'null') return null;
+      if (raw === 'true') return true;
+      if (raw === 'false') return false;
+      return undefined;            // unknown -> unsupported
+    }
+    if (op === 'like' || op === 'ilike') return raw.replace(/\*/g, '%');   // PostgREST allows * for %
+    return raw;
+  }
+
+  /* Old-style Supabase public storage links that gp-checklist / gp-qc BUILD themselves:
+       https://gpdb.grandlab.com.my/storage/v1/object/public/<bucket>/<path>
+     - in data written to the new API (whole JSON string values only) -> bare key gp/storage/<bucket>/<path>;
+       the server signs such keys on every read (same key the cutover copies the old files to).
+     - in other outgoing bodies (Apps Script PDF, needs a fetchable link) -> the signed URL from the upload just
+       made in this page, if known; otherwise left as is. */
+  var SUPABASE_ORIGIN = 'https://gpdb.grandlab.com.my';
+  function decSegs(p) { return p.split('/').map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } }).join('/').replace(/^\/+|\/+$/g, '').replace(/\/+/g, '/'); }
+  function sbPublicRe(quoted) {
+    var o = SUPABASE_ORIGIN.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+    return quoted ? new RegExp('"' + o + '\\/storage\\/v1\\/object\\/public\\/([A-Za-z0-9_.-]+)\\/([^"?#\\\\]+)"', 'g')
+                  : new RegExp(o + '\\/storage\\/v1\\/object\\/public\\/([A-Za-z0-9_.-]+)\\/([^"\'\\s?#\\\\<>]+)', 'g');
+  }
+  function storageUrlsToKeys(text) {
+    if (typeof text !== 'string' || text.indexOf('/storage/v1/object/public/') < 0) return text;
+    return text.replace(sbPublicRe(true), function (m, b, p) { return JSON.stringify('gp/storage/' + b + '/' + decSegs(p)); });
+  }
+  function storageUrlsToSigned(client, text) {
+    if (typeof text !== 'string' || text.indexOf('/storage/v1/object/public/') < 0) return text;
+    return text.replace(sbPublicRe(false), function (m, b, p) {
+      var u = client.storage.cachedSignedUrl ? client.storage.cachedSignedUrl(b, decSegs(p)) : null;
+      return u || m;
+    });
+  }
+
+  function handleSupabaseFetch(client, url, init) {
+    init = init || {};
+    var u;
+    try { u = new URL(String(url)); } catch (e) { return null; }
+    var path = u.pathname;
+    var method = String(init.method || 'GET').toUpperCase();
+    var h = lowerHeaders(init.headers);
+    var prefer = String(h.prefer || '');
+
+    if (path.indexOf('/functions/v1/') === 0) return null;   // edge functions: unchanged
+
+    /* ---- storage upload ---- */
+    var sm = /^\/storage\/v1\/object\/(?!public\/|sign\/|authenticated\/|info\/|list\/)([^/]+)\/(.+)$/.exec(path);
+    if (sm && (method === 'PUT' || method === 'POST')) {
+      var bucket = decodeURIComponent(sm[1]);
+      var objPath = sm[2].split('/').map(function (s) { return decodeURIComponent(s); }).join('/');
+      var body = init.body;
+      if (typeof FormData !== 'undefined' && body instanceof FormData) return restUnsupported('storage upload with FormData');
+      var upsert = String(h['x-upsert'] || '') === 'true' || method === 'PUT';   // storage-api: PUT = replace
+      return client.storage.from(bucket).upload(objPath, body, { contentType: h['content-type'] || (body && body.type) || undefined, upsert: upsert }).then(function (r) {
+        if (r.error) {
+          var st = r.error.status === 401 ? 401 : (Number(r.error.status) >= 400 ? Number(r.error.status) : 400);
+          return mkResponse(st, { statusCode: r.error.statusCode || String(st), error: r.error.name || 'Error', message: r.error.message });
+        }
+        return mkResponse(200, { Key: bucket + '/' + r.data.path });
+      });
+    }
+    if (path.indexOf('/storage/v1/') === 0) return restUnsupported(method + ' ' + path.replace(/\/[^/]+$/, '/…'));
+    if (path.indexOf('/rest/v1/') !== 0) return restUnsupported(method + ' ' + path);
+
+    /* ---- body ---- */
+    var values;
+    if (init.body != null) {
+      if (typeof init.body !== 'string') return restUnsupported('non-JSON body');
+      try { values = JSON.parse(storageUrlsToKeys(init.body)); } catch (e) { return restUnsupported('body that is not JSON'); }
+    }
+
+    /* ---- rpc ---- */
+    var rm = /^\/rest\/v1\/rpc\/([A-Za-z0-9_]+)$/.exec(path);
+    if (rm) {
+      if (method !== 'POST') return restUnsupported(method + ' rpc');
+      if (Array.from(u.searchParams.keys()).length) return restUnsupported('rpc with query params');
+      var rq = client.rpc(rm[1], values || {});
+      if (init.signal) rq.abortSignal(init.signal);
+      return rq.then(function (r) {
+        if (r.error) return errResponse(r.error, r.status === 401 ? 401 : null);
+        return mkResponse(200, r.data === undefined ? null : r.data);
+      });
+    }
+
+    /* ---- table ---- */
+    var tm = /^\/rest\/v1\/([A-Za-z0-9_]+)\/?$/.exec(path);
+    if (!tm) return restUnsupported(method + ' ' + path);
+    var table = tm[1];
+    var select = null, order = [], limit = null, offset = null, onConflict = null, filters = [], bad = [];
+    u.searchParams.forEach(function (v, k) {
+      if (k === 'select') select = v;
+      else if (k === 'order') {
+        v.split(',').forEach(function (part) {
+          var bits = part.split('.');
+          var col = bits.shift(); var o = {};
+          bits.forEach(function (b) {
+            if (b === 'asc') o.ascending = true; else if (b === 'desc') o.ascending = false;
+            else if (b === 'nullsfirst') o.nullsFirst = true; else if (b === 'nullslast') o.nullsFirst = false;
+            else bad.push('order modifier "' + b + '"');
+          });
+          if (col) order.push([col, o]);
+        });
+      }
+      else if (k === 'limit') limit = Number(v);
+      else if (k === 'offset') offset = Number(v);
+      else if (k === 'on_conflict') onConflict = v;
+      else if (k === 'or' || k === 'and' || k === 'columns') bad.push('"' + k + '=" param');
+      else {
+        var fm = /^(not\.)?([a-z]+)\.([\s\S]*)$/.exec(v);
+        if (!fm || REST_OPS.indexOf(fm[2]) < 0) { bad.push('filter ' + k + '=' + String(v).split('.')[0] + '.…'); return; }
+        if (fm[1] && fm[2] !== 'is') { bad.push('filter not.' + fm[2]); return; }
+        var val = parseRestValue(fm[2], fm[3]);
+        if (val === undefined) { bad.push('filter ' + k + '=is.' + fm[3]); return; }
+        filters.push([k, (fm[1] ? 'not.' : '') + fm[2], val]);
+      }
+    });
+    if (offset != null && limit == null) bad.push('offset without limit');
+    if (/resolution=ignore-duplicates/.test(prefer)) bad.push('Prefer resolution=ignore-duplicates');
+    if (bad.length) return restUnsupported(bad.join('; ') + ' (table ' + table + ')');
+
+    var q = client.from(table);
+    var wantRows = /return=representation/.test(prefer);
+    var kind;
+    if (method === 'GET' || method === 'HEAD') { kind = 'select'; q = q.select(select || '*'); }
+    else if (method === 'POST') {
+      if (filters.length) return restUnsupported('filters on insert (table ' + table + ')');
+      if (/resolution=merge-duplicates/.test(prefer)) { kind = 'upsert'; q = q.upsert(values, onConflict ? { onConflict: onConflict } : undefined); }
+      else { kind = 'insert'; q = q.insert(values); }
+    }
+    else if (method === 'PATCH') { kind = 'update'; q = q.update(values); }
+    else if (method === 'DELETE') { kind = 'delete'; q = q['delete'](); }
+    else return restUnsupported(method + ' (table ' + table + ')');
+    filters.forEach(function (f) {
+      if (f[1] === 'not.is') q = q.not(f[0], 'is', f[2]);
+      else q = q[f[1]](f[0], f[2]);
+    });
+    order.forEach(function (o) { q = q.order(o[0], o[1]); });
+    if (limit != null) { if (offset != null) q = q.range(offset, offset + limit - 1); else q = q.limit(limit); }
+    if (kind !== 'select' && wantRows) q = q.select(select || '*');
+    if (init.signal) q = q.abortSignal(init.signal);
+    return q.then(function (r) {
+      if (r.error) return errResponse(r.error, r.status === 401 ? 401 : null);
+      if (kind === 'select') return mkResponse(200, method === 'HEAD' ? '' : (r.data == null ? [] : r.data));
+      if (wantRows) { var rows = r.data == null ? [] : (Array.isArray(r.data) ? r.data : [r.data]); return mkResponse(kind === 'insert' || kind === 'upsert' ? 201 : 200, rows); }
+      return mkResponse(kind === 'insert' || kind === 'upsert' ? 201 : 204);
+    });
+  }
+
   var GPCF = {
-    version: '1.0.0',
+    version: '1.1.0',
     DEFAULT_API: DEFAULT_API,
     SWITCH_KEY: SWITCH_KEY,
     UNSUPPORTED: UNSUPPORTED,
     enabled: enabled,
     applyUrlSwitch: applyUrlSwitch,
-    createClient: createClient
+    createClient: createClient,
+    handleSupabaseFetch: handleSupabaseFetch,
+    storageUrlsToKeys: storageUrlsToKeys,
+    storageUrlsToSigned: storageUrlsToSigned,
+    SUPABASE_ORIGIN: SUPABASE_ORIGIN
   };
   g.GPCF = GPCF;
   if (typeof module !== 'undefined' && module.exports) module.exports = GPCF;
