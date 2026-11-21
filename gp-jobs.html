@@ -126,7 +126,7 @@ a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
 <div id="toast" class="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="gp-backend-config.js"></script>
+<script src="gp-backend-config.js?v=live1"></script>
 <script>/* backend switch (docs/cf-migration.md): ONLY when the switch is on (gp-backend-config.js: ?backend=cf on this device, or GP_BACKEND_DEFAULT="cf") load cf-client.js + cf-page.js. Off = nothing else happens. */
 (function(){try{var on;if(typeof GP_BACKEND_PICK==='function'){on=GP_BACKEND_PICK()==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}on=localStorage.getItem('gp_backend')==='cf';}if(on){window.GPCF_PAGE_CFG={page:'gp-jobs',public:false};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script src="gp-cars.js"></script>

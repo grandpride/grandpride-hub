@@ -49,16 +49,16 @@ function fresh() {
 const CONFIG_SRC = readFileSync(new URL('../gp-backend-config.js', import.meta.url), 'utf8');
 function loadConfig(search, def) {
   const win = { location: { search }, localStorage: globalThis.localStorage };
-  const src = def ? CONFIG_SRC.replace('window.GP_BACKEND_DEFAULT = "sb";', 'window.GP_BACKEND_DEFAULT = "' + def + '";') : CONFIG_SRC;
+  const src = def ? CONFIG_SRC.replace(/^window\.GP_BACKEND_DEFAULT = "(sb|cf)";/m, 'window.GP_BACKEND_DEFAULT = "' + def + '";') : CONFIG_SRC;
   vm.runInNewContext(src, { window: win });
   return win;
 }
-test('config: the file ships with GP_BACKEND_DEFAULT = "sb" (today)', () => {
-  assert.match(CONFIG_SRC, /^window\.GP_BACKEND_DEFAULT = "sb";$/m);
+test('config: the file is LIVE: GP_BACKEND_DEFAULT = "cf" (since 21 Nov 2026)', () => {
+  assert.match(CONFIG_SRC, /^window\.GP_BACKEND_DEFAULT = "cf";/m);
   store.clear();
   const w = loadConfig('', null);
-  assert.equal(w.GP_BACKEND_DEFAULT, 'sb');
-  assert.equal(w.GP_BACKEND_PICK(), 'sb');
+  assert.equal(w.GP_BACKEND_DEFAULT, 'cf');
+  assert.equal(w.GP_BACKEND_PICK(), 'cf');
   assert.equal(w.GP_BACKEND_SOURCE(), 'default');
   assert.equal(store.has('gp_backend'), false);
 });

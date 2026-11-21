@@ -2,6 +2,7 @@
    "sb" = everyone stays on the current system (Supabase) unless a device chose ?backend=cf
    "cf" = everyone uses the new system unless a device chose ?backend=sb (emergency fallback)
    Switch-over day: change the next line to "cf" (one-word commit). Going back: change it to "sb". */
+/* When changing the line below, also bump ?v=live1 in every page (search: gp-backend-config.js?v=) so phones and home-screen apps load it at once. */
 window.GP_BACKEND_DEFAULT = "cf";   // LIVE on Cloudflare since 21 Nov 2026 night. Emergency: change back to "sb".
 
 /* ---- do not change below (shared by every Hub page, supa.js and the Employee app) ----
