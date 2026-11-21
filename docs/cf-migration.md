@@ -1,42 +1,112 @@
 # Moving the Hub to the new backend (Cloudflare) — the switch
 
-The Hub still runs on Supabase. The new backend (gl-api on Cloudflare Workers + D1, Better Auth login) is only used
-on a phone or PC where **the switch is on**. With the switch off nothing changes: `cf-client.js` and `cf-page.js` are not
-even downloaded (each page only has a 2-line inline check of `localStorage.gp_backend`).
+The Hub still runs on Supabase. The new backend (gl-api on Cloudflare Workers + D1, Better Auth login) is used on a
+phone or PC where **the switch is on**: either that device chose it (`?backend=cf`), or — after go-live — the central
+default in `gp-backend-config.js` says `"cf"`. With the switch off nothing changes: `cf-client.js` and `cf-page.js` are
+not even downloaded (each page loads the tiny `gp-backend-config.js` and runs a 2-line inline check).
 
-## Turn it on / off
+## The go-live switch (one line, `gp-backend-config.js`)
+
+```js
+window.GP_BACKEND_DEFAULT = "sb";   // today: everyone on Supabase unless a device chose ?backend=cf
+```
+
+| Setting | Device has no choice stored | Device opened `?backend=cf` | Device opened `?backend=sb` |
+|---|---|---|---|
+| `"sb"` (today) | current system | new system | current system (choice cleared, as before) |
+| `"cf"` (go-live) | **new system** | new system | **current system, remembered** (emergency fallback) |
+
+- `?backend=auto` forgets the device choice (follows the default again).
+- Every page honours it: `supa.js` pages (Hub, Staff Manager, Stock, Set password, gp-agreement/checklist/qc/sign), the
+  Employee app (`../gp-backend-config.js`), every `gp-*` page with its own client, and the customer / driver links
+  (gp-sign, gp-qc driver, gp-damage, gp-checkin-view) — customers' phones never chose anything, so they follow the default.
+- If `gp-backend-config.js` cannot load (offline, first visit), pages fall back to the old rule (`localStorage.gp_backend === "cf"`).
+- `?backend=sb` while the default is `"sb"` still just clears the device choice (exactly as before). Only while the
+  default is `"cf"` does it store `"sb"`, so a device that switched back during testing is NOT stuck on Supabase after go-live.
+
+## Go-live procedure (switch-over day)
+
+1. Server ready (lead): Worker deployed with data cut over (incl. `gp_push_subs`, `gp/storage/checkins/*`), Cron Triggers on,
+   the 4 Supabase pg_cron jobs off, VAPID keys = the Supabase ones, CORS fix for `x-bucket/x-path/x-upsert` (see below).
+2. Flip: in `gp-backend-config.js` change `"sb"` → `"cf"`. Commit + push (GitHub Pages). Nothing else changes.
+3. It reaches phones on their next online page load (all service workers are network-first; GitHub Pages may cache the file
+   up to 10 minutes). No `APP_BUILD` bump is needed for the flip itself (only `gp-backend-config.js` changes). When THIS
+   change set is deployed (before Monday), do the usual Employee app `APP_BUILD` bump (its file changed) and gp-checklist's.
+4. Check on one phone with no `?backend`: Hub console shows `[supa] using the NEW backend (Cloudflare)`; log in; open
+   gp-fleet / Employee app; open a customer sign link from a checklist on a phone that never used the Hub.
+5. Staff log in once (sessions are not moved). Send the WhatsApp message below.
+
+**Emergency fallback**
+- One phone: open `https://grandpride.github.io/grandpride-hub/index.html?backend=sb` — that phone stays on the current
+  system (remembered) until it opens `?backend=auto` or `?backend=cf`.
+- Everyone: change the line back to `"sb"` and push. Devices that chose `?backend=cf` by hand stay on the new system
+  (open `?backend=auto` on them). Data written to the new system meanwhile is NOT copied back to Supabase.
+
+## Monday-morning message to staff (WhatsApp)
+
+> Good morning team 👋 From today the Hub runs on our NEW system.
+> 1. Open the Hub as usual: https://grandpride.github.io/grandpride-hub/
+> 2. Log in again with your username + password (one time only).
+> 3. Password not working / first time? Tap *"First time? / Forgot password?"*, enter your email, key in the 6-digit code from your email, set a new password.
+> 4. Employee app: same — log in once more.
+> 5. Notifications: if the Hub asks, tap *Allow* again.
+> Anything not loading? Screenshot it and send to Jimmy. Thank you! 🙏
+
+## Turn it on / off by hand (testing)
 
 | What | How |
 |---|---|
 | Turn ON (this browser only) | open any Hub page with `?backend=cf`, e.g. `https://grandpride.github.io/grandpride-hub/index.html?backend=cf` |
 | Turn OFF | open any Hub page with `?backend=sb` |
-| Check | browser console shows `[supa] using the NEW backend (Cloudflare)`; or `localStorage.gp_backend` is `"cf"` |
-| Manual | `localStorage.setItem('gp_backend','cf')` / `localStorage.removeItem('gp_backend')` |
+| Follow the default again | `?backend=auto` |
+| Check | browser console shows `[supa] using the NEW backend (Cloudflare)`; `GP_BACKEND_PICK()` in the console |
 | Test against a local Worker | `localStorage.setItem('gp_api_base','http://localhost:8787')` (remove it to go back to the default) |
 
 - The switch is per browser (localStorage on `grandpride.github.io`). Hub pages and the Employee app share it.
-- Default API: `https://gl-api.jimmykuek94.workers.dev`, tenant `gp` (`/gp/auth/*`, `/gp/api/db`, `/gp/api/rpc/:name`).
+- Default API: `https://gl-api.jimmykuek94.workers.dev`, tenant `gp` (`/gp/auth/*`, `/gp/api/*`, `/gp/public/*`).
 - Login token: localStorage key `gp_ba_token` (Better Auth bearer token from the `set-auth-token` header). The old
   Supabase login (`sb-…-auth-token`) is not touched, so switching back to `sb` keeps the old login.
 - Everyone signs in once after switching on (sessions are not moved).
+- Status UI: a small blue "NEW SYSTEM · switch back" tag only on a device switched **by hand**; after go-live nobody sees it.
+  Staff pages show an orange "not signed in" bar when there is no new-system login. Customer / driver links show nothing extra.
 
 ## Which pages follow the switch
 
-| Page | Follows switch? | How |
-|---|---|---|
-| `index.html` (Hub) | yes | `supa.js` → `SUPA.client()` is the cf client |
-| `set-password.html` | yes | `supa.js` |
-| `staff-manager.html` | yes (except Invite) | `supa.js` |
-| `stock-report.html` | yes | `supa.js` |
-| `employee/index.html` (attendance, **Daily Task Log**, leave, …) | yes | small guarded hook in `initSupabase()` |
-| `gp-fleet.html`, `gp-jobs.html`, `gp-chauffeur.html`, `gp-chauffeur-hod.html`, `gp-marketing.html` | yes | own `supabase.createClient(...)`; guard snippet loads `cf-client.js` + `cf-page.js`, which makes `createClient` return the cf client |
-| `gp-agreement.html`, `gp-checklist.html`, `gp-qc.html`, `gp-sign.html`, `gp-minigames.html` | yes | direct `fetch` to Supabase REST / storage; `cf-page.js` answers those fetches through `GPCF.handleSupabaseFetch` (no network to Supabase) |
-| `gp-booking.html`, `gp-damage.html`, `gp-checkin-view.html` | **no** (still Supabase) | no-login customer pages; with the switch on they only show a dismissible "not on the new system yet" note |
-| other `gp-*` pages (appointment, daily-update, deposit-return, record-summary, vehicle-fleet, vehicle-use), `grandlab_jobcard.html` | **no** — untouched | direct Supabase REST; not in this step |
-| `daily-task-log.html` | n/a | has no database at all (localStorage + Google Sheet + WhatsApp). The database Daily Task Log is inside `employee/index.html` (table `gp_emp_daylog`) |
+| Page | How |
+|---|---|
+| `index.html`, `set-password.html`, `staff-manager.html`, `stock-report.html` | `supa.js` → `SUPA.client()` is the cf client |
+| `employee/index.html` | guarded hook in `initSupabase()` + small `sb._cf` branches (sign-up, invite, push, approve/reject, staff-email check) |
+| `gp-fleet`, `gp-jobs`, `gp-chauffeur`, `gp-chauffeur-hod`, `gp-marketing` | own `supabase.createClient(...)`; guard loads `cf-client.js` + `cf-page.js`, `createClient` returns the cf client |
+| `gp-agreement`, `gp-checklist`, `gp-minigames`, `gp-booking`, `gp-appointment`, `gp-daily-update`, `gp-deposit-return`, `gp-record-summary`, `gp-vehicle-fleet`, `gp-vehicle-use` | direct `fetch` to Supabase REST / storage / push-send; `cf-page.js` answers them (`GPCF.handleSupabaseFetch`, `handleFunctionFetch`) |
+| `gp-sign`, `gp-qc` (driver `?t=`), `gp-damage`, `gp-checkin-view` | no-login links (`GPCF_PAGE_CFG.public`): public RPCs + `GPCF.handlePublicFetch` → `/gp/public/*` |
+| `daily-task-log.html`, `grandlab_jobcard.html` | n/a — no Supabase (localStorage / Google Sheet / Apps Script) |
 
-Note: on a "no" page the user is still signed in to Supabase only if they also logged in there before; with the switch on,
-the Hub login no longer creates a Supabase session.
+## Per page status (switch on)
+
+| Page | Status | Notes |
+|---|---|---|
+| `index.html` (Hub) | works | login (username/email), First time / Forgot password (email code), push subscribe (`gp_push_subs`), push send → `/gp/api/push/send` |
+| `set-password.html` | works (n/a) | only for old Supabase email links; on the new system it tells staff to use "First time / Forgot password" on the Hub |
+| `staff-manager.html` | works | Invite → `/gp/api/admin/invite` (flat profile fields sent as `profile`); invitee gets a 6-digit code, not a link |
+| `stock-report.html` | works | |
+| `employee/index.html` | works | login, forgot password, **self sign-up** (`/gp/public/signup/start` → code sign-in → `/gp/api/signup/submit` with the password) + approve/reject (`/gp/api/admin/signups/*`), invite, push, Daily Task Log, docs/check photos (storage) |
+| `gp-fleet.html` | works | reminder push → `/gp/api/push/send` |
+| `gp-jobs.html` | partial | **Agreement PDF** (`functions.invoke('job-agreement')`) not on the Worker → "not supported" toast. Customer check-in link → `gp-checkin-view.html?t=` (no WhatsApp photo preview until `checkin-share` is on the Worker; then set `CHECKIN_SHARE_BASE` in `cf-page.js`) |
+| `gp-chauffeur.html`, `gp-chauffeur-hod.html` | works | |
+| `gp-marketing.html` | works | composite `onConflict` (server step 6) |
+| `gp-minigames.html` | works | source label still says "Team · Supabase" (cosmetic) |
+| `gp-agreement.html` | works | Apps Script PDF unchanged |
+| `gp-checklist.html` | works | customer sign link → gp-sign (new route); check-in link as gp-jobs (no WhatsApp preview yet); uploaded photos/videos shown from the new storage |
+| `gp-booking.html` | works | staff login (no public route by design); assign chauffeur = `gp_staff` chauffeur columns (server step 6 policy) |
+| `gp-appointment`, `gp-daily-update`, `gp-deposit-return`, `gp-record-summary`, `gp-vehicle-fleet`, `gp-vehicle-use` | works | now on the switch (were untouched); need the Hub login like the other staff pages; vehicle-use push → `/gp/api/push/send` |
+| `gp-qc.html` | works | ops: `qc_*` RPCs with the Hub login; driver link `?t=`: `qc_load/save_draft/submit/set_pdf` on `/gp/public/rpc`, photos/videos → `/gp/public/storage/upload?t=&path=` (no overwrite; names are unique); the page keeps the upload's signed link (thumbnails, Apps Script, saved draft) |
+| `gp-sign.html` | works | `gp_sign_load` / `gp_sign_submit` (no login); signs **once** — second visit / second submit shows "Already signed" |
+| `gp-damage.html` | works | `get_damage_approval` / `submit_damage_approval` (no login); one time |
+| `gp-checkin-view.html` | works | `get_checkin` (no login), signed photo links |
+| `daily-task-log.html`, `grandlab_jobcard.html` | n/a | no database |
+
+Still not on the new system: the `job-agreement` PDF (gp-jobs) and the `checkin-share` WhatsApp preview page (agent E).
+Public routes are limited to 10 calls / minute / IP (uploads 60): a driver pressing Save many times quickly sees "Too many requests".
 
 ## What `cf-client.js` supports
 
@@ -51,6 +121,26 @@ is sent explicitly: ascending → `nullsFirst:false`, descending → `nullsFirst
 Only keys that are set are sent (e.g. no `filters` key when there are no filters).
 
 **RPC**: `rpc(name, args)` → `POST /gp/api/rpc/:name` with `args` as the body.
+`email_for_username`, `staff_email_exists` always go to `/gp/public/rpc/:name` (before login). The no-login link RPCs
+(`qc_load, qc_save_draft, qc_submit, qc_set_pdf, get_checkin, get_damage_approval, submit_damage_approval, gp_sign_load,
+gp_sign_submit`) go to `/gp/public/rpc/:name` without a login and `/gp/api/rpc/:name` with one (a 401 there is retried once
+on `/public`). Public route errors (`429` etc.) come back as `{data:null, error:{code, message}}`.
+
+**Server routes** (`client.gp.*`, extension, answers `{ok, data|error, status}`):
+
+| Call | Route |
+|---|---|
+| `inviteStaff(payload)` (also `SUPA.inviteStaff`, fetch to `/functions/v1/invite-staff`) | `POST /gp/api/admin/invite` — keys other than `email, username, name, role, existing, profile` are moved into `profile` |
+| `pushSend({title, body, target})` (also fetch to `/functions/v1/push-send`) | `POST /gp/api/push/send` (target default `all`) |
+| `signupStart(email)` (also `signInWithOtp({shouldCreateUser:true})`) | `POST /gp/public/signup/start` |
+| `signupSubmit({name, phone, company, role_req, password})` | `POST /gp/api/signup/submit` |
+| `signupApprove({id, username, title, level, reports_to, join, company})` / `signupReject({id, note})` | `POST /gp/api/admin/signups/approve` / `reject` |
+| `storage.publicUpload(qcToken, path, blob, {contentType})` | `POST /gp/public/storage/upload?t=&path=` (raw body; keeps the signed link) |
+
+`GPCF.handleFunctionFetch(client, url, init)`: page `fetch` to `/functions/v1/push-send` / `invite-staff` → the routes above
+(other functions → `null`, sent unchanged). `GPCF.handlePublicFetch(client, url, init, {page, mode, qcToken})`: gp-sign
+`GET /rest/v1/gp_checklists?id=eq.X` → `gp_sign_load` → `[row]`/`[]`; `PATCH` with `<out|in>_sig_customer` → `gp_sign_submit`
+→ `204` / `409 already_signed` / `404` / `400`; gp-qc driver `PUT /storage/v1/object/checkins/<path>` (not signed in) → public upload.
 
 **Storage** (`docs/storage-contract.md`, server: gl-platform `docs/step5/files.md`), Bearer login, `POST /gp/api/storage/*`:
 
@@ -89,6 +179,7 @@ other request body (Apps Script PDF payload) to the signed URL of the upload mad
 |---|---|
 | `signInWithPassword({email,password})` | `POST /sign-in/email`, stores `set-auth-token` |
 | `signInWithOtp({email, options:{shouldCreateUser:false}})` (first time / forgot password) | `POST /email-otp/request-password-reset` (sends a 6-digit code) |
+| `signInWithOtp({email, options:{shouldCreateUser:true}})` (employee sign-up) | `POST /gp/public/signup/start`; the next `verifyOtp` for that email → `POST /sign-in/email-otp {email, otp}` (stores the token) |
 | `verifyOtp({email, token, type:'email'})` | `POST /email-otp/check-verification-otp` with `type:"forget-password"` (checks the code, does not use it up) |
 | `updateUser({password})` right after `verifyOtp` | `POST /email-otp/reset-password`, then signs in with the new password (so the page has a session, like Supabase) |
 | `updateUser({password, currentPassword})` while signed in | `POST /change-password` (extension: Better Auth needs the current password) |
@@ -109,47 +200,14 @@ Unsupported calls never throw and never send a partial query (a filter is never 
   on and no polling fallback was added. If realtime is added later: HOD board 60 s, chauffeur job list 60 s, while visible.
 - Storage: `move`, `copy`, `createSignedUploadUrl`, `uploadToSignedUrl`, `upload(FormData)`, `list({search})`
   or `sortBy` other than name asc, `download/createSignedUrl` with `transform`/`download`.
-- Edge functions: `functions.invoke()`. Direct `fetch` to Supabase functions is not changed (see per page).
+- Edge functions: `functions.invoke()`; direct `fetch` to functions other than `push-send` / `invite-staff` is not changed.
 - Embedded selects / joins / aliases: `select('*, rel(*)')`, `'a:b'`, `'x!inner(...)'`. None found in Hub pages today.
 - Filters: `contains`, `containedBy`, `overlaps`, `textSearch`, `range*`, `like/ilikeAllOf/AnyOf`, `not()` with any op except `is`.
 - More than one `or()`; `or/order/limit` on a foreign table; `upsert({ignoreDuplicates:true})`; `csv()`, `explain()`.
 - Filters or modifiers chained after `rpc()`; `schema('other')`.
-- Auth: `signUp`, sign-up by email code (`shouldCreateUser:true`, `verifyOtp type:'signup'`), phone OTP,
-  Supabase email links (invite / recovery / magic link: `#access_token=…`, `?code=…`), `resetPasswordForEmail`,
-  `updateUser` for anything but the password, `setSession`, admin API.
-
-### Per page (switch on)
-
-**Status with the switch on, signed in on the new system** (works / partial / not yet):
-
-| Page | Status | What does not work yet |
-|---|---|---|
-| `gp-fleet.html` | works | Reminder push still goes to the Supabase `push-send` function (unchanged; uses the old `gp_push_subs`). |
-| `gp-jobs.html` | partial | **Agreement PDF** (`functions.invoke('job-agreement')` → "not supported" toast). **Check-in share link** for the customer points to the Supabase `checkin-share` function, which cannot see check-ins saved in the new database. |
-| `gp-chauffeur.html` | works | — (GPS ping, attendance, trip status all via `/api/db`) |
-| `gp-chauffeur-hod.html` | works | — (manual refresh, as today) |
-| `gp-marketing.html` | works | needs composite `onConflict` (`ym,bucket`; `campaign_name,period_start,period_end`) on the server |
-| `gp-minigames.html` | works | not signed in → scores fall back to "Local device" (as today offline). The source label still says "Team · Supabase" (cosmetic). |
-| `gp-agreement.html` | works | Apps Script PDF unchanged. |
-| `gp-checklist.html` | partial | Data, photos, videos and Apps Script PDF work. **Customer sign link** (`gp-sign.html?id=`) and **check-in share link** (`/functions/v1/checkin-share`) are opened by customers on the current system, which cannot see checklists saved in the new database. |
-| `gp-qc.html` | not yet | Needs RPCs `qc_list, qc_relink, qc_create, qc_load, qc_save_draft, qc_submit, qc_set_pdf` on the server; driver links are no-login → full-screen "not on the new system yet" notice. Uploads already go to new storage. |
-| `gp-sign.html` | not yet (customers) / works (signed-in staff) | No-login → full-screen notice with "Open on current system". |
-| `gp-booking.html`, `gp-damage.html`, `gp-checkin-view.html` | not yet | Not on the switch at all; still Supabase; note shown when the switch is on. |
-
-Not signed in on the new system: no-login pages (`gp-sign`, `gp-qc`) show a full-screen notice ("This page is not on the
-new system yet — Open on current system (?backend=sb)"); staff pages show an orange bar ("New system: not signed in…")
-and their own login/gate as before. Signed in: a small blue "NEW SYSTEM · switch back" tag bottom-left.
-
-**Other features that do not work with the switch on:**
-
-| Page | Feature that does NOT work with the switch on |
-|---|---|
-| `index.html` | Invite / recovery **email links** (set-password screen only appears from the email-code flow now). Before login it reads `gp_staff` (staff list) and, if that read fails, tries to re-seed `gp_staff` with upserts — these will fail with 401 unless the server allows them (harmless, but noisy). Push sending still goes to the Supabase `push-send` function. |
-| `set-password.html` | Whole page (it only works from Supabase invite/recovery links). Staff use "First time / Forgot password" on the Hub instead. |
-| `staff-manager.html` | **Invite staff** (Supabase `invite-staff` function) → shows "not available on the new backend yet". |
-| `stock-report.html` | nothing known. |
-| `employee/index.html` | **Sign up** for new staff (email code with `shouldCreateUser:true`); **Documents & SOP** files and **checks photos** (storage buckets `emp-docs`, `emp-checks`); **Invite** (direct fetch to Supabase `invite-staff` with the session token → fails); push still goes to Supabase `push-send`. Daily Task Log itself: supported (see below). |
-| `daily-task-log.html` | nothing to switch (no database). |
+- Auth: `signUp`, phone OTP, Supabase email links (invite / recovery / magic link: `#access_token=…`, `?code=…`),
+  `resetPasswordForEmail`, `updateUser` for anything but the password (and not right after a sign-up code: the password
+  goes with `client.gp.signupSubmit`), `setSession`, admin API.
 
 ## What the server (gl-api) must provide for the switch-on pages
 
@@ -183,48 +241,58 @@ For the **pages added in this step** (shapes in `tests/cf-client.test.mjs`):
 10. Values from the REST pages arrive as strings (`id=eq.5` → `"5"`): compare with column affinity (D1 does this for typed columns).
 11. RPCs for gp-qc: `qc_list, qc_relink, qc_create, qc_load, qc_save_draft, qc_submit, qc_set_pdf` (photo links inside
     their args arrive as bare `gp/storage/checkins/...` keys).
-12. **Public (no-login) routes** — until these exist the customer/driver links must stay on Supabase: checklist by id + customer
-    signature (gp-sign), token-scoped QC (gp-qc driver), check-in share page (`checkin-share`), damage approval, check-in view, booking.
-13. Edge functions: `job-agreement` (gp-jobs), `push-send` + `gp_push_subs`, `checkin-share`.
+12. **Public (no-login) routes** — done in gl-platform step 6 (`docs/step6/gaps.md`) and wired here. gp-booking is a staff page (login).
+13. Edge functions: `push-send` + `invite-staff` — done (step 5, wired here). Still missing: `job-agreement` (gp-jobs PDF),
+    `checkin-share` (WhatsApp preview page; until then the Hub sends customers to `gp-checkin-view.html?t=`).
 14. Storage: done by Agent A (`x-path` decoded, `data.signedUrl` in the upload answer, own signed links → key on write).
     Also accept the bare `gp/storage/<bucket>/<path>` keys this client writes for old-style links (doc says keys in any
     column / JSON are signed on read).
+15. **CORS (blocking for staff uploads)**: the Worker's `allowHeaders` must include `x-bucket`, `x-path`, `x-upsert`, or the
+    browser refuses every signed-in storage upload (gp-checklist, gp-jobs check-in, gp-fleet docs, employee docs / checks).
+    Public upload (gp-qc driver) uses query parameters and is not affected. Also `exposeHeaders: set-auth-token`.
+16. Data cut-over must include `gp_push_subs` (same VAPID key pair) so phones keep getting notifications without re-subscribing.
+17. Tables now used by the newly switched pages: `gp_appointments`, `gp_records`, `gp_places`, `gp_fleet_maint_log`,
+    `gp_vehicle_use`, `gp_chauffeur_log`, `gp_bookings` (all in `src/gp/policies.ts`).
 
 Note: the chauffeur service worker (`gp-chauffeur-sw.js`) caches every GET except `supabase.co` hosts (network-first), so
 `GET /gp/auth/get-session` can be served from cache when offline. Harmless today; exclude the API host when the SW is next bumped.
 
 ## Tests
 
-- `node --test tests/cf-client.test.mjs` — no packages. Mocks `fetch`; checks the exact JSON for every query shape the
-  Daily Task Log and the login pages use, the auth/token flow, and that unsupported calls fail soft without a request.
-  Added: storage (upload headers/raw body, signedUrl kept, /sign fallback, 409/415/401 errors, 7-day cap, size limits,
-  sign/sign-many/remove/list/download, lazy getPublicUrl) and every direct-REST shape of gp-agreement, gp-checklist,
-  gp-qc, gp-sign, gp-minigames (select/upsert/insert/update/delete/rpc/storage upload, return=minimal vs representation,
-  AbortSignal, error mapping, old storage links → keys / signed), plus unsupported REST shapes. 53 tests.
-- Headless Chromium, switch OFF, all external hosts blocked: the 10 changed pages (+ gp-qc `?t=`, gp-sign `?id=` and
-  `?backend=sb`) and booking/damage/check-in view, untouched copy vs this branch: identical console messages, page errors,
-  requested URLs, localStorage keys and page text; `cf-client.js` / `cf-page.js` never requested.
-- Headless Chromium, switch ON, Worker mocked: every page reaches `/gp/api/*` with `Bearer`, never Supabase; supabase-js
-  `createClient` (stubbed as a frozen namespace) is replaced; gp-checklist upload → `/storage/upload` and the saved link
-  becomes a key; no-login gp-sign / gp-qc show the notice and send nothing; booking/damage/check-in view show the note.
-- Headless Chromium (switch OFF) loaded every changed page and every page that loads `supa.js` on `origin/main` and on this
-  branch with Supabase/Cloudflare blocked: identical console-error lists, and `cf-client.js` is not loaded.
-- Headless Chromium (switch ON, Worker mocked): Hub username login reaches the Hub screen with a `gp_ba_token`;
-  the employee app loads, `loadDayLog()` and `dlSave()` send the expected `gp_emp_daylog` requests with `Authorization: Bearer`.
+- `node --test tests/cf-client.test.mjs tests/cf-golive.test.mjs` — no packages, fetch mocked (75 tests).
+  `cf-client.test.mjs` (53): every query shape of the Daily Task Log / login pages, auth/token flow, storage, all direct-REST
+  shapes of the REST pages, unsupported calls fail soft. `cf-golive.test.mjs` (22): `gp-backend-config.js` (ships `"sb"`;
+  default sb/cf; `?backend=sb` emergency; `?backend=auto`), public vs logged-in RPC routing + 401 retry + 429, gp-checkin-view /
+  gp-damage RPCs, gp-sign load/submit (204, 409 already_signed, 404), gp-qc public upload (URL, headers, raw body, 409/403/429/415,
+  size, signed link kept), push-send + invite-staff (flat → profile), other functions untouched, sign-up start / code sign-in /
+  submit / approve / reject, forgot-password still uses the reset code.
+- `python3 tests/pw_golive.py <hub dir> <untouched copy>` — headless Chromium, every host mocked (99 checks):
+  1. switch OFF, 34 page/URL variants (all changed pages, customer links with ids, `?backend=sb`): untouched copy vs this
+     version → same console messages, page errors, requests (except the new `gp-backend-config.js`), localStorage, page text;
+     `cf-client.js` / `cf-page.js` never requested.
+  2. switch ON, Worker mocked: gp-sign sign once → "Already signed" on revisit and on a second submit; gp-qc driver load +
+     photo upload (public) + save draft, no request to Supabase; gp-qc ops without login → bar; check-in view; damage sign +
+     "Already agreed"; Staff Manager invite; employee invite / push / approve / reject; Hub, gp-fleet, gp-vehicle-use push;
+     gp-booking load + assign chauffeur; set-password message; employee self sign-up end to end; employee + Hub forgot
+     password; and every staff page (20) loads with only `/gp/*` calls (Bearer), no "not supported", no errors.
+  3. `GP_BACKEND_DEFAULT = "cf"`: gp-fleet, Hub, Employee app, Staff Manager, gp-sign, gp-damage use the new backend with
+     no `?backend=cf`; `?backend=sb` wins and is remembered; `?backend=auto` returns to the default.
 
 ## Files
 
-- `cf-client.js` — the client (new file). Loaded only when the switch is on.
-- `supa.js` — adds the switch (`GP_BACKEND`), `SUPA.backend()`, loads `cf-client.js` in `init()` when on; Invite returns a clear message when on. Off = unchanged.
-- `employee/index.html` — `gpUseCf()` + 6 lines at the top of `initSupabase()`. Off = unchanged. (Remember the
-  usual `APP_BUILD` bump when deploying the employee app.)
-- `cf-page.js` — new. Glue for the non-`supa.js` pages: `createClient` → cf client, fetch adapter, status tag / bar / notice.
-  Loaded only when the switch is on.
-- `gp-fleet`, `gp-jobs`, `gp-chauffeur`, `gp-chauffeur-hod`, `gp-marketing`, `gp-minigames`, `gp-agreement`, `gp-checklist`,
-  `gp-qc`, `gp-sign` (`.html`) — one inline guard `<script>` each (after the supabase-js / `supa.js` tag; gp-minigames before
-  its script): reads `?backend=` and `localStorage.gp_backend`; only when `"cf"` it `document.write`s `cf-client.js` +
-  `cf-page.js`. `GPCF_PAGE_CFG.public` is true for gp-qc and gp-sign. Off = nothing else runs.
-- `gp-booking`, `gp-damage`, `gp-checkin-view` (`.html`) — one inline `<script>` before `</body>`: when the switch is on,
-  a dismissible note "not on the new system yet". Off = nothing happens.
+- `gp-backend-config.js` — **new**: the go-live line `GP_BACKEND_DEFAULT` + `GP_BACKEND_PICK()` / `GP_BACKEND_SOURCE()`.
+  Loaded with a plain `<script>` before `supa.js` / the guard on every page that has a database.
+- `cf-client.js` — the client. Loaded only when the switch is on. New: public RPC routing, `client.gp.*` routes, sign-up auth,
+  `storage.publicUpload`, `GPCF.handleFunctionFetch`, `GPCF.handlePublicFetch`; `enabled()` follows the config file.
+- `cf-page.js` — glue for non-`supa.js` pages. New: public pages use the public routes (no full-screen notice), push/invite
+  function fetches, photos built for the old storage shown from the new one, `checkinShareLink`, tag only when switched by hand.
+- `supa.js` — `GP_BACKEND` uses `GP_BACKEND_PICK()` when present; Invite → `/gp/api/admin/invite` when on. Off = unchanged.
+- `employee/index.html` — loads `../gp-backend-config.js`; `gpUseCf()` uses it; `sb._cf` branches (see status). Off = unchanged.
+- Guard pages (`gp-agreement, gp-chauffeur(-hod), gp-checklist, gp-fleet, gp-jobs, gp-marketing, gp-minigames, gp-qc, gp-sign`):
+  guard now asks `GP_BACKEND_PICK()` (old inline rule as fallback); gp-qc is "public" only with `?t=`.
+- `gp-booking, gp-damage, gp-checkin-view`: the "not on the new system yet" note is replaced by the real guard (before the page script).
+- `gp-appointment, gp-daily-update, gp-deposit-return, gp-record-summary, gp-vehicle-fleet, gp-vehicle-use`: guard added.
+- Small page changes, active only on the new backend: `gp-sign` ("Already signed"), `gp-qc` (`stUpload` returns the signed
+  link), `gp-jobs` / `gp-checklist` (check-in link), `index.html` (`pushNotify`), `set-password.html` (message).
 - Deploy note: gp-checklist has `APP_BUILD` / remote `app_version`; gp-qc and gp-chauffeur have their own service workers
-  (network-first, so the new files arrive on next online load).
+  (network-first, so the new files arrive on next online load). `gp-chauffeur-sw.js` caches GETs incl. the API host (see note above).

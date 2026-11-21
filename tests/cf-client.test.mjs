@@ -365,10 +365,8 @@ test('wrong OTP -> error, and updateUser then refuses (no reset sent)', async ()
   assert.equal(u.error.code, 'CF_UNSUPPORTED');
   assert.equal(calls.length, 1);
 });
-test('sign-up by OTP and verifyOtp(type signup) fail soft without network', async () => {
+test('verifyOtp(type signup) without a started sign-up fails soft without network (sign-up flow: tests/cf-golive.test.mjs)', async () => {
   const sb = fresh();
-  const a = await sb.auth.signInWithOtp({ email: 'new@x.com', options: { shouldCreateUser: true } });
-  assert.equal(a.error.code, 'CF_UNSUPPORTED');
   const b = await sb.auth.verifyOtp({ email: 'new@x.com', token: '1', type: 'signup' });
   assert.equal(b.error.code, 'CF_UNSUPPORTED');
   assert.equal(calls.length, 0);

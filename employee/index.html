@@ -567,6 +567,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
 <input type="file" id="photoInput" accept="image/*" class="hidden">
 <div class="toast" id="toast"></div>
 
+<script src="../gp-backend-config.js"></script>
 <script>
 /* Android Chrome "Desktop site" mode ignores the viewport tag and lays the page out ~980px wide,
    so everything looks tiny. Detect it on touch phones and zoom the page back to phone size. */
@@ -587,7 +588,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 25;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 26;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -672,9 +673,11 @@ function loadScript(src, ms){
     document.head.appendChild(s);
   });
 }
-/* Backend switch (additive; default = Supabase). ON only when localStorage.gp_backend==="cf"
-   (?backend=cf turns it on, ?backend=sb off). ON = use ../cf-client.js. See ../docs/cf-migration.md */
+/* Backend switch (additive; default = Supabase). ON when ../gp-backend-config.js says so (this device chose
+   ?backend=cf, or GP_BACKEND_DEFAULT="cf" after go-live; ?backend=sb = current system). ON = use ../cf-client.js.
+   See ../docs/cf-migration.md */
 function gpUseCf(){
+  try{ if(typeof window.GP_BACKEND_PICK==='function') return window.GP_BACKEND_PICK()==='cf'; }catch(e){}
   try{
     const m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search||'');
     if(m){ if(m[1]==='cf') localStorage.setItem('gp_backend','cf'); else localStorage.removeItem('gp_backend'); }
@@ -933,6 +936,7 @@ function syncLeaveSheet(staff, r){
 /* ============================ push ============================ */
 function pushNotify(title, body, target){
   try{
+    if(sb && sb._cf){ sb.gp.pushSend({title, body, target:target||'all'}).catch(()=>{}); return; }   // new backend: /gp/api/push/send
     fetch(PUSH_FN_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SB_KEY,'apikey':SB_KEY},
       body:JSON.stringify({title, body, target:target||'all'})}).catch(()=>{});
   }catch(e){}
@@ -1041,6 +1045,7 @@ function rateLimitMsg(msg, btn, label){
   return true;
 }
 async function emailIsStaff(email){
+  if(sb && sb._cf){ try{ const x=await sb.rpc('staff_email_exists',{p_email:email}); return x.data===true; }catch(e){ return false; } }
   try{ const r=await sb.from('gp_staff').select('username').ilike('email',email).limit(1); return !!(r.data&&r.data.length); }catch(e){ return false; }
 }
 
@@ -1081,6 +1086,7 @@ function bindAuth(){
     if(!phone){ suErr('Enter your phone number.'); return; }
     if(p1.length<6){ suErr('Password must be at least 6 characters.'); return; }
     if(p1!==p2){ suErr('Passwords do not match.'); return; }
+    if(sb && sb._cf){ SU.pass=p1; showSignup(4); return; }   // new backend: password is sent with the request (step 4)
     const btn=$('suNext3'); btn.disabled=true; btn.textContent='Saving…';
     const r=await sb.auth.updateUser({ password:p1 });
     btn.disabled=false; btn.textContent='Next';
@@ -1095,6 +1101,15 @@ function bindAuth(){
     const { data:{ user } } = await sb.auth.getUser();
     if(!user){ suErr('Session expired — please start again.'); return; }
     const btn=$('suSubmit'); btn.disabled=true; btn.textContent='Submitting…';
+    if(sb && sb._cf){
+      // new backend: POST /gp/api/signup/submit saves the request (+ password) and pushes the approver itself
+      const sr=await sb.gp.signupSubmit({ name:$('suName').value.trim(), phone:$('suPhone').value.trim(), company:$('suCompany').value, role_req:SU.role, password:SU.pass||undefined });
+      btn.disabled=false; btn.textContent='Submit for approval';
+      if(!sr.ok){ suErr('Could not submit: '+sr.error); return; }
+      SU.pass='';
+      renderPending((sr.data&&sr.data.signup)||{ id:user.id, email:(user.email||SU.email).toLowerCase(), name:$('suName').value.trim(), phone:$('suPhone').value.trim(), company:$('suCompany').value, role_req:SU.role, status:'pending' });
+      return;
+    }
     const row={ id:user.id, email:(user.email||SU.email).toLowerCase(), name:$('suName').value.trim(), phone:$('suPhone').value.trim(),
       company:$('suCompany').value, role_req:SU.role, status:'pending', updated_at:new Date().toISOString() };
     const r=await sb.from('gp_emp_signups').upsert(row,{onConflict:'id'});
@@ -2206,6 +2221,17 @@ async function approveSignup(id){
   const ch=p.role_req==='chauffeur';
   const reports=[rep]; if(rep!==ME.username) reports.push(ME.username);
   const level=($('sgL_'+id)&&$('sgL_'+id).value)||'Staff';
+  if(sb && sb._cf){
+    // new backend: POST /gp/api/admin/signups/approve creates the staff row + login role + join date (+ set-password email)
+    await sb.from('gp_emp_signups').update({role_req:p.role_req, updated_at:new Date().toISOString()}).eq('id',id);   // Staff/Chauffeur picked on this card
+    const ar=await sb.gp.signupApprove({ id, username, title, level, reports_to:reports, join:join||undefined, company:p.company||'Grandpride' });
+    if(!ar.ok){ toast('Could not approve: '+ar.error, 4000); return; }
+    if(join){ SET.hr=Object.assign({}, SET.hr||{}); SET.hr[username]=Object.assign({}, SET.hr[username]||{}, {join}); }
+    STAFF.push({ username, email:p.email, name:p.name, role:level, company:p.company||'Grandpride', title, phone:p.phone||null, auth_id:(ar.data&&ar.data.auth_id)||p.id, is_chauffeur:ch, reports_to:JSON.stringify(reports), apps:['attendance','tasklog'] });
+    if(rep!==ME.username) pushNotify('👋 New team member', p.name+' joined as '+title+' and reports to you', rep);
+    toast(p.name+' approved ✓'); openApprovals();
+    return;
+  }
   const row={ username, email:p.email, name:p.name, role:level, company:p.company||'Grandpride', title, phone:p.phone||null,
     auth_id:p.id, is_chauffeur:ch, reports_to:JSON.stringify(reports), apps:['attendance','tasklog'], updated_at:new Date().toISOString() };
   const ins=await sb.from('gp_staff').insert(row);
@@ -2220,6 +2246,7 @@ async function rejectSignup(id){
   const p=PENDING_SIGNUPS.find(x=>x.id===id); if(!p) return;
   const note=prompt('Reason for rejecting '+p.name+'? (they will see this)','');
   if(note===null) return;
+  if(sb && sb._cf){ const rr=await sb.gp.signupReject({ id, note }); if(!rr.ok){ toast('Failed: '+rr.error); return; } toast('Rejected'); openApprovals(); return; }
   const r=await sb.from('gp_emp_signups').update({status:'rejected', note, decided_by:ME.name, decided_at:new Date().toISOString(), updated_at:new Date().toISOString()}).eq('id',id);
   if(r.error){ toast('Failed: '+r.error.message); return; }
   toast('Rejected'); openApprovals();
@@ -2762,6 +2789,7 @@ function openStaffForm(u){
   if($('smInv')) $('smInv').onclick=()=>inviteStaffLogin(s);
 }
 async function callInvite(payload){
+  if(sb && sb._cf){ const r=await sb.gp.inviteStaff(payload); return r.ok ? { ok:true, data:r.data } : { ok:false, error:r.error }; }   // new backend: /gp/api/admin/invite
   const { data:{ session } } = await sb.auth.getSession();
   if(!session) return { ok:false, error:'Not signed in' };
   try{

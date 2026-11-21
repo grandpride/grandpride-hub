@@ -431,6 +431,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="gp-backend-config.js"></script>
 <script src="supa.js"></script>
 <script src="staff.js"></script>
 <script>
@@ -1148,6 +1149,8 @@ async function enablePush(){
 /* fire-and-forget push send via the Edge Function */
 function pushNotify(title, body, target){
   try{
+    // new backend (switch on): POST /gp/api/push/send with the Hub login
+    if(window.SUPA && SUPA.backend && SUPA.backend()==='cf'){ var c=SUPA.client(); if(c && c.gp) c.gp.pushSend({ title:title, body:body, target:target||'all' }).catch(function(){}); return; }
     if(!PUSH_FN_URL || PUSH_FN_URL.indexOf('http') !== 0) return; // not configured yet
     var KEY = (typeof SUPABASE_ANON_KEY!=='undefined' && SUPABASE_ANON_KEY) ||
               (typeof SUPABASE_KEY!=='undefined' && SUPABASE_KEY) ||

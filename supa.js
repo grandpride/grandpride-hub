@@ -31,6 +31,8 @@ var _capturedInviteType = (function(){
    ON : localStorage.gp_backend === "cf"  -> pages get the new Cloudflare client (cf-client.js)
    ?backend=cf on any page turns it on, ?backend=sb turns it off. See docs/cf-migration.md */
 var GP_BACKEND = (function(){
+  // central go-live setting (gp-backend-config.js, loaded before this file): device choice, else GP_BACKEND_DEFAULT
+  try{ if(typeof window.GP_BACKEND_PICK==='function') return window.GP_BACKEND_PICK()==='cf' ? 'cf' : 'sb'; }catch(e){}
   try{
     var m = /[?&]backend=(cf|sb)(?:&|$)/.exec(window.location.search || '');
     if(m){ if(m[1]==='cf') localStorage.setItem('gp_backend','cf'); else localStorage.removeItem('gp_backend'); }
@@ -264,8 +266,12 @@ var SUPA = (function(){
      The service key is NEVER in this file. */
   var INVITE_FN_URL = SUPABASE_URL + '/functions/v1/invite-staff';
   async function inviteStaff(payload){
-    if(GP_BACKEND==='cf') return { ok:false, error:'Invite is not available on the new backend yet. Open this page with ?backend=sb to use the current system.' };
     if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
+    // new backend: POST /gp/api/admin/invite (same payload; staff gets a 6-digit "set your password" code by email)
+    if(GP_BACKEND==='cf'){
+      if(!client || !client.gp) return { ok:false, error:'Invite: new backend client not loaded' };
+      return client.gp.inviteStaff(payload);
+    }
     try{
       // Need the admin's REAL login session token (not the anon key) so the
       // Edge Function can verify admin rights. Retry briefly in case the session

@@ -72,9 +72,10 @@
 </div>
 <div id="toast" class="toast"></div>
 
+<script src="gp-backend-config.js"></script>
 <script src="supa.js"></script>
-<script>/* backend switch (docs/cf-migration.md): ONLY when localStorage.gp_backend==="cf" load cf-client.js + cf-page.js. Off = nothing else happens. */
-(function(){try{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}if(localStorage.getItem('gp_backend')==='cf'){window.GPCF_PAGE_CFG={page:'gp-sign',public:true};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
+<script>/* backend switch (docs/cf-migration.md): ONLY when the switch is on (gp-backend-config.js: ?backend=cf on this device, or GP_BACKEND_DEFAULT="cf") load cf-client.js + cf-page.js. Off = nothing else happens. */
+(function(){try{var on;if(typeof GP_BACKEND_PICK==='function'){on=GP_BACKEND_PICK()==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}on=localStorage.getItem('gp_backend')==='cf';}if(on){window.GPCF_PAGE_CFG={page:'gp-sign',public:true};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script>
 var SB_URL=(typeof SUPABASE_URL!=='undefined'&&SUPABASE_URL)||'https://gpdb.grandlab.com.my';
 var SB_KEY=(typeof SUPABASE_ANON_KEY!=='undefined'&&SUPABASE_ANON_KEY)||(typeof SUPABASE_KEY!=='undefined'&&SUPABASE_KEY)||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
@@ -97,6 +98,7 @@ async function load(){
     var arr=await r.json();
     if(!arr||!arr.length){ throw new Error('not found'); }
     CHECK=arr[0];
+    if(CHECK.already_signed===true){ showAlreadySigned(CHECK.customer_signed_at); return; }   // new backend only (gp_sign_load)
     renderDetails();
     $('loading').classList.add('hidden');
     $('content').classList.remove('hidden');
@@ -135,6 +137,15 @@ function renderDetails(){
   if(h) h.textContent = isReturn ? 'Return / handover — please sign' : 'Delivery — please sign';
 }
 
+/* new backend only: the server says this stage was already signed (one signature per stage) */
+function showAlreadySigned(at){
+  $('loading').classList.add('hidden');
+  var v=$('doneView'); v.querySelector('h2').textContent='Already signed';
+  var when=''; try{ if(at) when=' on '+new Date(at).toLocaleString(); }catch(e){}
+  v.querySelector('.sub').textContent='This checklist was already signed'+when+'. You may close this page.';
+  v.classList.remove('hidden'); window.scrollTo(0,0);
+}
+
 /* signature pad */
 var pad,ctx,drawing=false,last=null,hasInk=false;
 function initPad(){
@@ -161,6 +172,7 @@ async function submitSign(){
     var r=await fetch(base()+'/rest/v1/gp_checklists?id=eq.'+encodeURIComponent(ID), {
       method:'PATCH', headers:hdr({'Prefer':'return=minimal'}), body:JSON.stringify(body)
     });
+    if(r.status===409){ $('content').classList.add('hidden'); showAlreadySigned(); return; }   // new backend: signs once
     if(!r.ok) throw new Error('save failed');
     $('content').classList.add('hidden');
     $('doneView').classList.remove('hidden');

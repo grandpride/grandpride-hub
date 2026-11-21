@@ -134,9 +134,10 @@ a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
 </div>
 <div id="toast"></div>
 
+<script src="gp-backend-config.js"></script>
 <script src="supa.js"></script>
-<script>/* backend switch (docs/cf-migration.md): ONLY when localStorage.gp_backend==="cf" load cf-client.js + cf-page.js. Off = nothing else happens. */
-(function(){try{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}if(localStorage.getItem('gp_backend')==='cf'){window.GPCF_PAGE_CFG={page:'gp-checklist',public:false};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
+<script>/* backend switch (docs/cf-migration.md): ONLY when the switch is on (gp-backend-config.js: ?backend=cf on this device, or GP_BACKEND_DEFAULT="cf") load cf-client.js + cf-page.js. Off = nothing else happens. */
+(function(){try{var on;if(typeof GP_BACKEND_PICK==='function'){on=GP_BACKEND_PICK()==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}on=localStorage.getItem('gp_backend')==='cf';}if(on){window.GPCF_PAGE_CFG={page:'gp-checklist',public:false};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script src="gp-cars.js"></script>
 <script>
 /* ============ GP CHECKLIST ============ */
@@ -1639,7 +1640,7 @@ async function sendChecklistToGroup(){
   STATE.current[stageLabel==='delivery'?'out_share_token':(stageLabel==='intake'?'intake_share_token':'in_share_token')]=token;
   try{ await saveChecklist(true); }catch(e){}
   // share the Edge Function link so WhatsApp shows the car's front-view photo as the preview
-  const link=sbBase()+'/functions/v1/checkin-share?t='+token;
+  const link=(window.GPCF_PAGE&&GPCF_PAGE.checkinShareLink) ? GPCF_PAGE.checkinShareLink(token) : sbBase()+'/functions/v1/checkin-share?t='+token;   // new backend: see cf-page.js
   const now=new Date().toLocaleString('en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
   const stageUp = st==='out'?'DELIVERY':(st==='intake'?'INTAKE':'RETURN');
   const car=((a.car_model||'')+(a.car_plate?(' ('+a.car_plate+')'):'')).trim();

@@ -3,8 +3,9 @@
    (gp-fleet, gp-jobs, gp-chauffeur, gp-chauffeur-hod, gp-marketing, gp-minigames,
     gp-agreement, gp-checklist, gp-qc, gp-sign).
 
-   LOADED ONLY WHEN THE SWITCH IS ON (localStorage.gp_backend === "cf"), by the small guard
-   <script> in each page, right after cf-client.js. Switch off = this file is never downloaded.
+   LOADED ONLY WHEN THE SWITCH IS ON (gp-backend-config.js: device choice ?backend=cf, or
+   GP_BACKEND_DEFAULT = "cf" after go-live), by the small guard <script> in each page, right after
+   cf-client.js. Switch off = this file is never downloaded.
 
    What it does (switch on only):
    1. supabase.createClient(<Supabase URL>, ...) returns the cf-client instead (pages keep their sb.* code).
@@ -13,9 +14,11 @@
       Photo links the page builds for the OLD storage (…/storage/v1/object/public/<bucket>/<path>) become the
       bare key gp/storage/<bucket>/<path> in data sent to the new API (server signs keys on read), and the
       signed URL of this page's upload in any other request body (Apps Script PDF).
-   3. Shows who is on what: a small "NEW SYSTEM" tag; a bar when not signed in on the new system;
-      on no-login pages (window.GPCF_PAGE_CFG.public) a full-screen notice, because the new server
-      has no public (no-login) data route yet.
+      /functions/v1/push-send and /functions/v1/invite-staff go to the new server routes; other functions unchanged.
+      No-login pages (window.GPCF_PAGE_CFG.public: gp-sign, gp-qc driver link, gp-damage, gp-checkin-view) use the
+      server's public routes when not signed in (GPCF.handlePublicFetch + public RPCs).
+   3. Shows who is on what: a small "NEW SYSTEM" tag (only on a device switched by hand, ?backend=cf);
+      a bar on staff pages when not signed in on the new system. Customers on public pages see nothing extra.
    Realtime: none of these pages subscribes to realtime today, so no polling fallback is needed.
    ============================================================ */
 (function (g) {
@@ -71,9 +74,17 @@
       if (url != null && isSupabaseUrl(url)) {
         var path = '';
         try { path = new URL(url).pathname; } catch (e) {}
-        if (path.indexOf('/functions/v1/') !== 0) {
+        if (path.indexOf('/functions/v1/') === 0) {
+          // push-send / invite-staff -> new server routes; any other edge function still goes to Supabase
+          var fp = g.GPCF.handleFunctionFetch ? g.GPCF.handleFunctionFetch(client, url, init) : null;
+          if (fp) { announce('fetch adapter'); return fp; }
+        } else {
           announce('fetch adapter');
-          if (!client.auth.token()) return json400('401', 'Not signed in (new backend). Log in on the Hub first, or use ?backend=sb', 401);
+          if (CFG.public && g.GPCF.handlePublicFetch) {
+            var pp = g.GPCF.handlePublicFetch(client, url, init, publicCtx());
+            if (pp) return pp;
+          }
+          if (!client.auth.token() && !CFG.public) return json400('401', 'Not signed in (new backend). Log in on the Hub first, or use ?backend=sb', 401);
           var p = g.GPCF.handleSupabaseFetch(client, url, init);
           if (p) return p;
         }
@@ -87,10 +98,16 @@
     };
   }
 
+  function qp(k) { try { return new URL(g.location.href).searchParams.get(k) || ''; } catch (e) { return ''; } }
+  function publicCtx() { return { page: CFG.page || '', mode: qp('mode') || 'delivery', qcToken: CFG.page === 'gp-qc' ? qp('t') : '' }; }
+  // "device" = switched by hand on this phone (?backend=cf); "default" = everyone after go-live (GP_BACKEND_DEFAULT)
+  function source() { try { return typeof g.GP_BACKEND_SOURCE === 'function' ? g.GP_BACKEND_SOURCE() : 'device'; } catch (e) { return 'device'; } }
+
   /* ---- 3. status UI ---- */
   function backUrl() {
     try { var u = new URL(g.location.href); u.searchParams.set('backend', 'sb'); return u.href; } catch (e) { return '?backend=sb'; }
   }
+  function hubUrl() { try { return new URL('index.html', g.location.href).href; } catch (e) { return 'index.html'; } }
   function el(html) { var d = g.document.createElement('div'); d.innerHTML = html; return d.firstChild; }
   var bar = null, pill = null, block = null;
   function clear() { [bar, pill, block].forEach(function (x) { if (x && x.parentNode) x.parentNode.removeChild(x); }); bar = pill = block = null; }
@@ -99,18 +116,16 @@
     var d = g.document; if (!d || !d.body) return;
     clear();
     var signedIn = !!client.auth.token();
+    var byHand = source() !== 'default';
+    if (CFG.public && !signedIn) return;          // customer / driver link: nothing extra on screen
     if (signedIn) {
+      if (!byHand) return;                        // after go-live everyone is on it: no tag
       pill = el('<div id="gpcf-pill" style="position:fixed;left:8px;bottom:8px;z-index:2147483000;' + FONT + ';font-size:11px;background:#1d4ed8;color:#fff;border-radius:999px;padding:4px 10px;opacity:.9;box-shadow:0 1px 4px rgba(0,0,0,.3)">NEW SYSTEM · <a href="' + backUrl() + '" style="color:#fff;text-decoration:underline">switch back</a></div>');
       d.body.appendChild(pill);
-    } else if (CFG.public) {
-      block = el('<div id="gpcf-block" role="alertdialog" style="position:fixed;inset:0;z-index:2147483000;background:rgba(10,10,10,.94);color:#fff;display:flex;align-items:center;justify-content:center;padding:24px;' + FONT + '">' +
-        '<div style="max-width:420px;text-align:center"><div style="font-size:18px;font-weight:800;margin-bottom:10px">This page is not on the new system yet</div>' +
-        '<div style="font-weight:400;opacity:.85;margin-bottom:18px">This phone is switched to the new (test) system, which cannot open this link without a login yet. Open it on the current system instead.</div>' +
-        '<a href="' + backUrl() + '" style="display:inline-block;background:#d8bd78;color:#111;border-radius:10px;padding:12px 18px;text-decoration:none;font-weight:800">Open on current system (?backend=sb)</a></div></div>');
-      d.body.appendChild(block);
     } else {
       bar = el('<div id="gpcf-bar" role="status" style="position:fixed;left:0;right:0;top:0;z-index:2147483000;background:#b45309;color:#fff;padding:8px 12px;text-align:center;' + FONT + '">' +
-        'New system: not signed in. Log in on the Hub first, or <a href="' + backUrl() + '" style="color:#fff;text-decoration:underline">use the current system (?backend=sb)</a></div>');
+        (byHand ? 'New system: not signed in. Log in on the Hub first, or <a href="' + backUrl() + '" style="color:#fff;text-decoration:underline">use the current system (?backend=sb)</a>'
+                : 'Not signed in. Please <a href="' + hubUrl() + '" style="color:#fff;text-decoration:underline">log in on the Hub</a> first, then open this page again.') + '</div>');
       d.body.appendChild(bar);
     }
   }
@@ -123,5 +138,53 @@
   var lastTok = client.auth.token();
   setInterval(function () { var t = client.auth.token(); if (t !== lastTok) { lastTok = t; render(); } }, 1500);
 
-  g.GPCF_PAGE = { client: client, cfg: CFG, isSupabaseUrl: isSupabaseUrl, render: render };
+  /* ---- 4. photos / videos the page shows with links it built for the OLD storage ----
+     gp-qc / gp-checklist show what they just uploaded as <img|video src=".../storage/v1/object/public/<bucket>/<path>">.
+     Those files are in the new storage now: swap in the signed link of this page's upload (or ask /sign when signed in). */
+  var PUB = SB_ORIGIN + '/storage/v1/object/public/';
+  var asking = {};
+  function fixMedia(node) {
+    if (!node || node.nodeType !== 1) return;
+    var list = [node];
+    if (node.querySelectorAll) { var q = node.querySelectorAll('img[src],video[src],source[src],a[href]'); for (var i = 0; i < q.length; i++) list.push(q[i]); }
+    list.forEach(function (el) {
+      var attr = el.tagName === 'A' ? 'href' : 'src';
+      var v = el.getAttribute && el.getAttribute(attr);
+      if (!v || v.indexOf(PUB) !== 0) return;
+      var nv = g.GPCF.storageUrlsToSigned(client, v);
+      if (nv !== v) { el.setAttribute(attr, nv); return; }
+      var m = /^([^/]+)\/([^?#]+)/.exec(v.slice(PUB.length));
+      if (!m || !client.auth.token() || asking[v]) return;
+      asking[v] = true;
+      var path = m[2].split('/').map(function (x) { try { return decodeURIComponent(x); } catch (e) { return x; } }).join('/');
+      client.storage.from(m[1]).createSignedUrl(path, 7 * 24 * 3600).then(function (r) {
+        if (r && r.data && r.data.signedUrl && el.getAttribute(attr) === v) el.setAttribute(attr, r.data.signedUrl);
+      });
+    });
+  }
+  try {
+    var mo = new g.MutationObserver(function (recs) {
+      recs.forEach(function (r) {
+        if (r.type === 'attributes') fixMedia(r.target);
+        else for (var i = 0; i < r.addedNodes.length; i++) fixMedia(r.addedNodes[i]);
+      });
+    });
+    onReady(function () {
+      mo.observe(g.document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['src', 'href'] });
+      fixMedia(g.document.body);
+    });
+  } catch (e) {}
+
+  /* ---- 5. customer check-in share link (gp-jobs, gp-checklist) ----
+     The Supabase edge function checkin-share cannot see check-ins saved in the new database. Until its Worker
+     replacement exists, send the customer straight to the Hub's gp-checkin-view.html (same photos and details,
+     but no WhatsApp photo preview). When the Worker route is live, set CHECKIN_SHARE_BASE to it, e.g.
+     'https://gl-api.jimmykuek94.workers.dev/gp/public/checkin-share?t=' (one line). */
+  var CHECKIN_SHARE_BASE = '';
+  function checkinShareLink(token) {
+    if (CHECKIN_SHARE_BASE) return CHECKIN_SHARE_BASE + encodeURIComponent(token);
+    try { return new URL('gp-checkin-view.html?t=' + encodeURIComponent(token), g.location.href).href; } catch (e) { return 'gp-checkin-view.html?t=' + encodeURIComponent(token); }
+  }
+
+  g.GPCF_PAGE = { client: client, cfg: CFG, isSupabaseUrl: isSupabaseUrl, render: render, checkinShareLink: checkinShareLink };
 })(window);

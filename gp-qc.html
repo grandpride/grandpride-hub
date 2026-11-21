@@ -113,9 +113,10 @@ input[type="time"]::-webkit-calendar-picker-indicator{opacity:.45;filter:invert(
 <div id="stickyBar" style="display:none"><button class="btn" id="mainBtn">Save</button></div>
 <div id="toast"></div>
 
+<script src="gp-backend-config.js"></script>
 <script src="supa.js"></script>
-<script>/* backend switch (docs/cf-migration.md): ONLY when localStorage.gp_backend==="cf" load cf-client.js + cf-page.js. Off = nothing else happens. */
-(function(){try{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}if(localStorage.getItem('gp_backend')==='cf'){window.GPCF_PAGE_CFG={page:'gp-qc',public:true};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
+<script>/* backend switch (docs/cf-migration.md): ONLY when the switch is on (gp-backend-config.js: ?backend=cf on this device, or GP_BACKEND_DEFAULT="cf") load cf-client.js + cf-page.js. Off = nothing else happens. */
+(function(){try{var on;if(typeof GP_BACKEND_PICK==='function'){on=GP_BACKEND_PICK()==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}on=localStorage.getItem('gp_backend')==='cf';}if(on){window.GPCF_PAGE_CFG={page:'gp-qc',public:/[?&]t=/.test(location.search)};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script src="gp-cars.js"></script>
 <script>
 /* ============================================================
@@ -1085,6 +1086,8 @@ async function stUpload(path, blob, contentType){
     body: blob
   });
   if(!r.ok){ var t=''; try{ t=await r.text(); }catch(e){} throw new Error('upload '+r.status+' '+t.slice(0,120)); }
+  /* new backend only (cf-page.js loaded): the signed link of this upload (works in <img>, Apps Script and qc_save_draft) */
+  if(window.GPCF_PAGE){ var su=GPCF_PAGE.client.storage.cachedSignedUrl('checkins', path); if(su) return su; }
   return sbBase()+'/storage/v1/object/public/checkins/'+path;
 }
 /* The stored extension has to match what the file really is: Apps Script
