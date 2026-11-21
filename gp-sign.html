@@ -73,6 +73,8 @@
 <div id="toast" class="toast"></div>
 
 <script src="supa.js"></script>
+<script>/* backend switch (docs/cf-migration.md): ONLY when localStorage.gp_backend==="cf" load cf-client.js + cf-page.js. Off = nothing else happens. */
+(function(){try{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}if(localStorage.getItem('gp_backend')==='cf'){window.GPCF_PAGE_CFG={page:'gp-sign',public:true};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script>
 var SB_URL=(typeof SUPABASE_URL!=='undefined'&&SUPABASE_URL)||'https://gpdb.grandlab.com.my';
 var SB_KEY=(typeof SUPABASE_ANON_KEY!=='undefined'&&SUPABASE_ANON_KEY)||(typeof SUPABASE_KEY!=='undefined'&&SUPABASE_KEY)||'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
