@@ -95,9 +95,18 @@ test('login: username -> email  rpc(email_for_username)', async () => {
   const sb = fresh();
   reply({ data: 'jimmy@x.com', error: null });
   const r = await sb.rpc('email_for_username', { p_username: 'jimmy' });
-  assert.equal(calls[0].url, API + '/gp/api/rpc/email_for_username');
+  assert.equal(calls[0].url, API + '/gp/public/rpc/email_for_username');
+  assert.equal(calls[0].init.headers.Authorization, undefined);
   assert.deepEqual(calls[0].body, { p_username: 'jimmy' });
   assert.equal(r.data, 'jimmy@x.com');
+});
+test('login: staff email check  rpc(staff_email_exists) on public route', async () => {
+  const sb = fresh();
+  reply({ data: true, error: null });
+  const r = await sb.rpc('staff_email_exists', { p_email: 'Ali@x.com' });
+  assert.equal(calls[0].url, API + '/gp/public/rpc/staff_email_exists');
+  assert.deepEqual(calls[0].body, { p_email: 'Ali@x.com' });
+  assert.equal(r.data, true);
 });
 test('login: myProfile  .select(*).eq(auth_id).limit(1)', async () => {
   const sb = fresh();

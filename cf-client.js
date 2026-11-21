@@ -281,12 +281,12 @@
     } catch (e) {}
 
     /* ---------- data: query builder ---------- */
-    function postJSON(path, body, signal) {
+    function postJSON(path, body, signal, area) {
       var headers = { 'Content-Type': 'application/json' };
-      var t = token(); if (t) headers.Authorization = 'Bearer ' + t;
+      var t = area === 'public' ? null : token(); if (t) headers.Authorization = 'Bearer ' + t;
       var init = { method: 'POST', headers: headers, body: JSON.stringify(body), credentials: 'omit' };
       if (signal) init.signal = signal;
-      return Promise.resolve().then(function () { return doFetch(apiBase() + '/' + tenant + '/api' + path, init); }).then(function (res) {
+      return Promise.resolve().then(function () { return doFetch(apiBase() + '/' + tenant + '/' + (area === 'public' ? 'public' : 'api') + path, init); }).then(function (res) {
         return res.json().catch(function () { return null; }).then(function (json) {
           if (res.status === 401) {
             if (t) { setToken(null); cache = null; emit('SIGNED_OUT', null); }
@@ -302,6 +302,9 @@
         return { data: null, error: { message: 'TypeError: ' + (e && e.message ? e.message : String(e)), code: '', details: String(e), hint: null }, count: null, status: 0, statusText: '' };
       });
     }
+
+    // RPCs that must work before login: served at /{tenant}/public/rpc/:name (no token, rate-limited)
+    var PUBLIC_RPCS = ['email_for_username', 'staff_email_exists'];
 
     var SIMPLE_OPS = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'in', 'is'];
     var NOT_OPS = ['is'];   // contract v1: only not.is
@@ -485,7 +488,7 @@
         var err = unsupportedError(this._uns.join('; ') + (this._rpc ? ' (rpc ' + this._rpc.name + ')' : ' (table ' + this._table + ')'));
         p = Promise.resolve({ data: null, error: err, count: null, status: 0, statusText: '' });
       } else if (this._rpc) {
-        p = postJSON('/rpc/' + encodeURIComponent(this._rpc.name), this._rpc.args || {}, this._signal).then(function (r) {
+        p = postJSON('/rpc/' + encodeURIComponent(this._rpc.name), this._rpc.args || {}, this._signal, PUBLIC_RPCS.indexOf(this._rpc.name) >= 0 ? 'public' : 'api').then(function (r) {
           return { data: r.data, error: r.error, count: null, status: r.status, statusText: r.statusText };
         });
       } else if (!this._op) {

@@ -230,6 +230,7 @@ var SUPA = (function(){
     if(!isReady()){ var ok = await init(); if(!ok) return false; }
     try{
       var e = String(email||'').trim();
+      if(GP_BACKEND==='cf'){ var x = await client.rpc('staff_email_exists', { p_email: e }); return x.data === true; }
       // case-insensitive match so 'Ali@x.com' and 'ali@x.com' both work
       var r = await client.from('gp_staff').select('username').ilike('email', e).limit(1);
       return !!(r.data && r.data.length);
