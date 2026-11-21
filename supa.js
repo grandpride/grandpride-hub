@@ -27,9 +27,45 @@ var _capturedInviteType = (function(){
   return null;
 })();
 
+/* ===== BACKEND SWITCH (additive; default = Supabase, nothing changes when off) =====
+   ON : localStorage.gp_backend === "cf"  -> pages get the new Cloudflare client (cf-client.js)
+   ?backend=cf on any page turns it on, ?backend=sb turns it off. See docs/cf-migration.md */
+var GP_BACKEND = (function(){
+  try{
+    var m = /[?&]backend=(cf|sb)(?:&|$)/.exec(window.location.search || '');
+    if(m){ if(m[1]==='cf') localStorage.setItem('gp_backend','cf'); else localStorage.removeItem('gp_backend'); }
+    return localStorage.getItem('gp_backend')==='cf' ? 'cf' : 'sb';
+  }catch(e){ return 'sb'; }
+})();
+var _SUPA_SRC = (function(){ try{ return (document.currentScript && document.currentScript.src) || ''; }catch(e){ return ''; } })();
+
 var SUPA = (function(){
   var client = null;
   var ready = false;
+
+  /* switch ON only: load cf-client.js (same folder as supa.js) and use it as the client */
+  function loadCfLib(){
+    return new Promise(function(resolve){
+      if(window.GPCF && window.GPCF.createClient) return resolve(true);
+      var src = 'cf-client.js';
+      try{ if(_SUPA_SRC) src = new URL('cf-client.js', _SUPA_SRC).href; }catch(e){}
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = function(){ resolve(!!(window.GPCF && window.GPCF.createClient)); };
+      s.onerror = function(){ resolve(false); };
+      document.head.appendChild(s);
+    });
+  }
+  async function initCf(){
+    var ok = await loadCfLib();
+    if(!ok){ console.warn('[supa] backend switch is ON but cf-client.js did not load'); return false; }
+    try{
+      client = window.GPCF.createClient({ tenant:'gp' });
+      ready = true;
+      console.info('[supa] using the NEW backend (Cloudflare). Turn off with ?backend=sb');
+      return true;
+    }catch(e){ ready = false; return false; }
+  }
 
   function loadOne(src, timeoutMs){
     return new Promise(function(resolve){
@@ -61,6 +97,7 @@ var SUPA = (function(){
   }
 
   async function init(){
+    if(GP_BACKEND==='cf') return initCf();
     if(!SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
     var ok = await loadLib();
     if(!ok || !window.supabase) return false;
@@ -193,6 +230,7 @@ var SUPA = (function(){
     if(!isReady()){ var ok = await init(); if(!ok) return false; }
     try{
       var e = String(email||'').trim();
+      if(GP_BACKEND==='cf'){ var x = await client.rpc('staff_email_exists', { p_email: e }); return x.data === true; }
       // case-insensitive match so 'Ali@x.com' and 'ali@x.com' both work
       var r = await client.from('gp_staff').select('username').ilike('email', e).limit(1);
       return !!(r.data && r.data.length);
@@ -226,6 +264,7 @@ var SUPA = (function(){
      The service key is NEVER in this file. */
   var INVITE_FN_URL = SUPABASE_URL + '/functions/v1/invite-staff';
   async function inviteStaff(payload){
+    if(GP_BACKEND==='cf') return { ok:false, error:'Invite is not available on the new backend yet. Open this page with ?backend=sb to use the current system.' };
     if(!isReady()){ var ok = await init(); if(!ok) return { ok:false, error:'No connection' }; }
     try{
       // Need the admin's REAL login session token (not the anon key) so the
@@ -296,7 +335,7 @@ var SUPA = (function(){
     }catch(e){ return { ok:false, error:String(e) }; }
   }
 
-  return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;},
+  return { init:init, isReady:isReady, up:up, all:all, del:del, client:function(){return client;}, backend:function(){return GP_BACKEND;},
            signInUsername:signInUsername, signInEmail:signInEmail, signIn:signIn, signOut:signOut, currentAuthUser:currentAuthUser, myProfile:myProfile,
            pendingInviteType:pendingInviteType, hasInviteSession:hasInviteSession, setMyPassword:setMyPassword, clearAuthHash:clearAuthHash,
            emailExistsInStaff:emailExistsInStaff, sendEmailOtp:sendEmailOtp, verifyEmailOtp:verifyEmailOtp, inviteStaff:inviteStaff };

@@ -672,7 +672,23 @@ function loadScript(src, ms){
     document.head.appendChild(s);
   });
 }
+/* Backend switch (additive; default = Supabase). ON only when localStorage.gp_backend==="cf"
+   (?backend=cf turns it on, ?backend=sb off). ON = use ../cf-client.js. See ../docs/cf-migration.md */
+function gpUseCf(){
+  try{
+    const m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search||'');
+    if(m){ if(m[1]==='cf') localStorage.setItem('gp_backend','cf'); else localStorage.removeItem('gp_backend'); }
+    return localStorage.getItem('gp_backend')==='cf';
+  }catch(e){ return false; }
+}
 async function initSupabase(){
+  if(gpUseCf()){
+    const ok=window.GPCF || await new Promise(res=>{ const s=document.createElement('script'); s.src='../cf-client.js'; s.onload=()=>res(!!window.GPCF); s.onerror=()=>res(false); document.head.appendChild(s); });
+    if(!ok){ console.warn('[employee] backend switch is ON but cf-client.js did not load'); return false; }
+    sb = window.GPCF.createClient({ tenant:'gp' });
+    console.info('[employee] using the NEW backend (Cloudflare). Turn off with ?backend=sb');
+    return true;
+  }
   if(!(window.supabase && window.supabase.createClient)){
     const cdns=['https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2','https://unpkg.com/@supabase/supabase-js@2'];
     let ok=false; for(const c of cdns){ ok=await loadScript(c,7000); if(ok) break; }
