@@ -13,6 +13,11 @@
      client.rpc(name, args)                                            -> POST /{tenant}/api/rpc/:name
      client.storage.from(bucket)  upload/update/download/remove/list/createSignedUrl(s)/getPublicUrl
                                                                        -> POST /{tenant}/api/storage/* (docs/storage-contract.md)
+     client.gp.inviteStaff / pushSend / signupStart / signupSubmit / signupApprove / signupReject
+                                         -> POST /{tenant}/api/admin/invite, /api/push/send, /public/signup/start, ...
+   GPCF.handleFunctionFetch(client, url, init): fetch() to the Supabase edge functions push-send / invite-staff.
+   GPCF.handlePublicFetch(client, url, init, ctx): no-login links (gp-sign table REST -> gp_sign_* RPCs,
+     gp-qc driver upload -> /public/storage/upload).
    GPCF.handleSupabaseFetch(client, url, init): translates a direct fetch() to Supabase REST
      (/rest/v1/<table>, /rest/v1/rpc/<fn>, /storage/v1/object/<bucket>/<path>) into the calls above.
      Used by cf-page.js on pages that call Supabase REST without supabase-js.
@@ -35,6 +40,7 @@
 
   /* ---------- switch ---------- */
   function applyUrlSwitch(search) {
+    if (search == null && typeof g.GP_BACKEND_PICK === 'function') return enabled();   // the config file handles ?backend=
     try {
       var s = search != null ? search : (g.location && g.location.search) || '';
       var m = /[?&]backend=(cf|sb)(?:&|$)/.exec(s);
@@ -42,7 +48,11 @@
     } catch (e) {}
     return enabled();
   }
-  function enabled() { return lsGet(SWITCH_KEY) === 'cf'; }
+  function enabled() {
+    // gp-backend-config.js (when loaded): device choice, else window.GP_BACKEND_DEFAULT
+    try { if (typeof g.GP_BACKEND_PICK === 'function') return g.GP_BACKEND_PICK() === 'cf'; } catch (e) {}
+    return lsGet(SWITCH_KEY) === 'cf';
+  }
 
   /* ---------- fail-soft helpers ---------- */
   var warned = {};
@@ -68,7 +78,8 @@
     'more than one or() per query; or()/order()/limit() with foreignTable/referencedTable',
     'upsert({ignoreDuplicates:true}); csv(); explain(); geojson()',
     'filters/modifiers chained after rpc()',
-    'auth: signUp, sign-up by OTP (signInWithOtp shouldCreateUser:true, verifyOtp type signup/invite), phone OTP, magic/invite/recovery links, resetPasswordForEmail, updateUser for anything except password, refreshSession/setSession, admin API'
+    'auth: signUp, verifyOtp type invite, phone OTP, magic/invite/recovery links, resetPasswordForEmail, updateUser for anything except password (also not right after a sign-up code: send it with client.gp.signupSubmit), setSession, admin API',
+    'edge functions other than push-send / invite-staff (job-agreement, checkin-share, telegram-agreement)'
   ];
 
   /* ---------- user / session mapping (Better Auth -> supabase-js shape) ---------- */
@@ -108,6 +119,7 @@
     var cache = null;           // { at, session, user }
     var CACHE_MS = opts.sessionCacheMs != null ? opts.sessionCacheMs : 60000;
     var pendingReset = null;    // { email, otp } between verifyOtp and updateUser({password})
+    var pendingSignup = null;   // email after signInWithOtp({shouldCreateUser:true}) -> verifyOtp signs in with the code
 
     function emit(ev, session) {
       listeners.slice().forEach(function (l) { try { l.cb(ev, session); } catch (e) {} });
@@ -178,8 +190,17 @@
         creds = creds || {};
         var o = creds.options || {};
         if (creds.phone) return Promise.resolve({ data: { user: null, session: null }, error: unsupportedError('auth.signInWithOtp({phone})') });
-        if (o.shouldCreateUser === true) return Promise.resolve({ data: { user: null, session: null }, error: unsupportedError('sign-up by email code (shouldCreateUser:true)') });
         var email = String(creds.email || '').trim().toLowerCase();
+        if (o.shouldCreateUser === true) {
+          // employee self sign-up: POST /{tenant}/public/signup/start {email} emails a sign-in code (docs step5/jobs.md)
+          pendingReset = null;
+          return gpCall('/signup/start', { email: email }, 'public').then(function (r) {
+            if (!r.ok) return { data: { user: null, session: null }, error: { name: 'AuthApiError', status: r.status, code: (r.json && r.json.code) || String(r.status), message: r.error } };
+            pendingSignup = email;
+            return { data: { user: null, session: null }, error: null };
+          });
+        }
+        pendingSignup = null;
         pendingReset = { email: email, otp: null };
         return authCall('/email-otp/request-password-reset', 'POST', { email: email }).then(function (r) {
           return { data: { user: null, session: null }, error: r.error };
@@ -191,10 +212,24 @@
         p = p || {};
         var type = p.type || 'email';
         if (p.phone || type === 'sms' || type === 'phone_change') return Promise.resolve({ data: { user: null, session: null }, error: unsupportedError('auth.verifyOtp (phone)') });
-        if (type !== 'email' && type !== 'recovery' && type !== 'magiclink') return Promise.resolve({ data: { user: null, session: null }, error: unsupportedError('auth.verifyOtp type "' + type + '"') });
         if (p.token_hash) return Promise.resolve({ data: { user: null, session: null }, error: unsupportedError('auth.verifyOtp({token_hash}) (email links)') });
         var email = String(p.email || '').trim().toLowerCase();
         var otp = String(p.token || '').trim();
+        if (pendingSignup && pendingSignup === email && (type === 'email' || type === 'signup')) {
+          // sign-up code -> Better Auth POST /sign-in/email-otp {email, otp}: a session for the new (applicant) login
+          return authCall('/sign-in/email-otp', 'POST', { email: email, otp: otp }).then(function (r) {
+            if (r.error) return { data: { user: null, session: null }, error: r.error };
+            if (!r.newToken) return { data: { user: null, session: null }, error: { name: 'AuthApiError', status: 0, code: 'no_token', message: 'Signed in but no token came back (set-auth-token header missing / not exposed by CORS).' } };
+            setToken(r.newToken);
+            var u = r.data && r.data.user;
+            var s = mapSession(r.newToken, null, u);
+            cache = u ? { at: Date.now(), session: s, user: mapUser(u) } : null;
+            pendingSignup = null;
+            emit('SIGNED_IN', s);
+            return { data: { user: mapUser(u), session: s }, error: null };
+          });
+        }
+        if (type !== 'email' && type !== 'recovery' && type !== 'magiclink') return Promise.resolve({ data: { user: null, session: null }, error: unsupportedError('auth.verifyOtp type "' + type + '"') });
         return authCall('/email-otp/check-verification-otp', 'POST', { email: email, type: 'forget-password', otp: otp }).then(function (r) {
           if (r.error) return { data: { user: null, session: null }, error: r.error };
           pendingReset = { email: email, otp: otp };
@@ -250,7 +285,7 @@
         var had = !!token();
         var p = had ? authCall('/sign-out', 'POST', {}) : Promise.resolve(null);
         return p.then(function () {
-          setToken(null); cache = null; pendingReset = null;
+          setToken(null); cache = null; pendingReset = null; pendingSignup = null;
           emit('SIGNED_OUT', null);
           return { error: null };
         });
@@ -299,7 +334,8 @@
             return { data: null, error: { message: 'Not signed in (new backend). Please log in again.', code: '401', details: null, hint: null }, count: null, status: 401, statusText: res.statusText || 'Unauthorized' };
           }
           if (!res.ok) {
-            return { data: null, error: { message: (json && (json.message || json.error)) || res.statusText || ('HTTP ' + res.status), code: (json && json.code) || String(res.status), details: null, hint: null }, count: null, status: res.status, statusText: res.statusText || '' };
+            var je = json && json.error && typeof json.error === 'object' ? json.error : null;   // e.g. public route 429 {data:null, error:{code,message}}
+            return { data: null, error: { message: (je && je.message) || (json && (json.message || (typeof json.error === 'string' ? json.error : null))) || res.statusText || ('HTTP ' + res.status), code: (je && je.code) || (json && json.code) || String(res.status), details: null, hint: null }, count: null, status: res.status, statusText: res.statusText || '' };
           }
           json = json || {};
           return { data: json.data === undefined ? null : json.data, error: json.error || null, count: json.count === undefined ? null : json.count, status: res.status, statusText: res.statusText || 'OK' };
@@ -311,6 +347,54 @@
 
     // RPCs that must work before login: served at /{tenant}/public/rpc/:name (no token, rate-limited)
     var PUBLIC_RPCS = ['email_for_username', 'staff_email_exists'];
+    // RPCs of the no-login customer / driver links (gl-platform docs/step6/gaps.md): signed in -> /api/rpc,
+    // not signed in -> /public/rpc (a stale login that gets 401 is retried once on /public/rpc)
+    var ANON_OK_RPCS = ['qc_load', 'qc_save_draft', 'qc_submit', 'qc_set_pdf', 'get_checkin', 'get_damage_approval',
+      'submit_damage_approval', 'gp_sign_load', 'gp_sign_submit'];
+
+    /* POST /{tenant}/{api|public}<path> with a JSON body (invite, push, sign-up routes: answers {ok, error?, ...}).
+       -> { ok, status, json, error: message|null }   ok = HTTP 2xx and json.ok !== false */
+    function gpCall(path, body, area) {
+      var headers = { 'Content-Type': 'application/json' };
+      var t = area === 'public' ? null : token(); if (t) headers.Authorization = 'Bearer ' + t;
+      var init = { method: 'POST', headers: headers, body: JSON.stringify(body || {}), credentials: 'omit' };
+      return Promise.resolve().then(function () { return doFetch(apiBase() + '/' + tenant + '/' + (area === 'public' ? 'public' : 'api') + path, init); }).then(function (res) {
+        return res.json().catch(function () { return null; }).then(function (json) {
+          if (res.status === 401 && t) { setToken(null); cache = null; emit('SIGNED_OUT', null); }
+          var ok = res.ok && !(json && json.ok === false);
+          var msg = ok ? null : ((json && (json.error && json.error.message ? json.error.message : (json.error || json.message))) ||
+            (res.status === 401 ? 'Not signed in (new backend). Please log in again.' : (res.statusText || ('HTTP ' + res.status))));
+          return { ok: ok, status: res.status, json: json, error: msg == null ? null : String(msg) };
+        });
+      }, function (e) {
+        return { ok: false, status: 0, json: null, error: 'Network error: ' + (e && e.message ? e.message : String(e)) };
+      });
+    }
+    // invite-staff payloads: the Hub's Staff Manager sends profile fields flat; the server reads them from .profile
+    var INVITE_TOP = ['email', 'username', 'name', 'role', 'existing', 'profile'];
+    function invitePayload(p) {
+      p = p || {};
+      var out = {}, prof = null;
+      Object.keys(p).forEach(function (k) {
+        if (INVITE_TOP.indexOf(k) >= 0) out[k] = p[k];
+        else if (p[k] !== undefined) { prof = prof || {}; prof[k] = p[k]; }
+      });
+      if (prof && !out.profile) out.profile = prof;
+      return out;
+    }
+    function wrap(r) { return r.ok ? { ok: true, data: r.json || {} } : { ok: false, error: r.error, status: r.status, data: r.json }; }
+    var gpApi = {
+      call: gpCall,
+      // Supabase edge function invite-staff -> POST /{tenant}/api/admin/invite (management login)
+      inviteStaff: function (payload) { return gpCall('/admin/invite', invitePayload(payload), 'api').then(wrap); },
+      // Supabase edge function push-send -> POST /{tenant}/api/push/send {title, body, target} (staff login)
+      pushSend: function (m) { m = m || {}; return gpCall('/push/send', { title: m.title, body: m.body == null ? '' : m.body, target: m.target || 'all' }, 'api').then(wrap); },
+      // employee self sign-up (step5/jobs.md)
+      signupStart: function (email) { return gpCall('/signup/start', { email: String(email || '').trim().toLowerCase() }, 'public').then(wrap); },
+      signupSubmit: function (b) { return gpCall('/signup/submit', b || {}, 'api').then(wrap); },
+      signupApprove: function (b) { return gpCall('/admin/signups/approve', b || {}, 'api').then(wrap); },
+      signupReject: function (b) { return gpCall('/admin/signups/reject', b || {}, 'api').then(wrap); }
+    };
 
     var SIMPLE_OPS = ['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'in', 'is'];
     var NOT_OPS = ['is'];   // contract v1: only not.is
@@ -494,7 +578,13 @@
         var err = unsupportedError(this._uns.join('; ') + (this._rpc ? ' (rpc ' + this._rpc.name + ')' : ' (table ' + this._table + ')'));
         p = Promise.resolve({ data: null, error: err, count: null, status: 0, statusText: '' });
       } else if (this._rpc) {
-        p = postJSON('/rpc/' + encodeURIComponent(this._rpc.name), this._rpc.args || {}, this._signal, PUBLIC_RPCS.indexOf(this._rpc.name) >= 0 ? 'public' : 'api').then(function (r) {
+        var rpcPath = '/rpc/' + encodeURIComponent(this._rpc.name), rpcArgs = this._rpc.args || {}, sig = this._signal;
+        var anonOk = ANON_OK_RPCS.indexOf(this._rpc.name) >= 0;
+        var area = PUBLIC_RPCS.indexOf(this._rpc.name) >= 0 || (anonOk && !token()) ? 'public' : 'api';
+        p = postJSON(rpcPath, rpcArgs, sig, area).then(function (r) {
+          if (anonOk && area === 'api' && r.status === 401) return postJSON(rpcPath, rpcArgs, sig, 'public');
+          return r;
+        }).then(function (r) {
           return { data: r.data, error: r.error, count: null, status: r.status, statusText: r.statusText };
         });
       } else if (!this._op) {
@@ -697,6 +787,29 @@
       };
     }
 
+    /* QC driver link (no login): POST /{tenant}/public/storage/upload?t=<QC token>&path=<checklist id>/<file>
+       raw body + Content-Type; no overwrite (409); answer {data:{path, fullPath, key, signedUrl}, error} */
+    function publicUpload(qcToken, path, body, o) {
+      o = o || {};
+      var bucket = 'checkins';
+      var p = cleanPath(path);
+      if (!p) return Promise.resolve({ data: null, error: storageErr(400, { message: 'Empty path' }) });
+      var max = BUCKET_MAX[bucket];
+      if (bodySize(body) > max) return Promise.resolve({ data: null, error: storageErr(413, { message: 'The object exceeded the maximum allowed size (' + (max / 1048576) + ' MB)', statusCode: '413', error: 'Payload too large' }) });
+      var url = apiBase() + '/' + tenant + '/public/storage/upload?t=' + encodeURIComponent(String(qcToken || '')) + '&path=' + encodeURIComponent(p);
+      var init = { method: 'POST', headers: { 'Content-Type': o.contentType || (body && body.type) || 'application/octet-stream' }, body: body, credentials: 'omit' };
+      return Promise.resolve().then(function () { return doFetch(url, init); }).then(function (res) {
+        return res.json().catch(function () { return null; }).then(function (json) {
+          if (!res.ok || (json && json.error)) return { data: null, error: storageErr(res.ok ? 400 : res.status, json) };
+          var d = (json && json.data) || {};
+          if (d.signedUrl) signed[bucket + '/' + p] = d.signedUrl;   // Apps Script payload gets a fetchable link
+          return { data: { path: d.path || p, fullPath: d.fullPath || (bucket + '/' + p), key: d.key || ('gp/storage/' + bucket + '/' + p), signedUrl: d.signedUrl || null }, error: null };
+        });
+      }, function (e) {
+        return { data: null, error: { name: 'StorageUnknownError', message: 'Network error: ' + (e && e.message ? e.message : String(e)), status: 0, statusCode: '0' } };
+      });
+    }
+
     var client = {
       _cf: true,
       tenant: tenant,
@@ -712,7 +825,9 @@
       removeAllChannels: function () { return Promise.resolve([]); },
       getChannels: function () { return []; },
       // cachedSignedUrl: extension (not supabase-js) used by handleSupabaseFetch / cf-page
-      storage: { from: bucketApi, cachedSignedUrl: function (bucket, path) { return signed[String(bucket) + '/' + cleanPath(path)] || null; } },
+      storage: { from: bucketApi, publicUpload: publicUpload, cachedSignedUrl: function (bucket, path) { return signed[String(bucket) + '/' + cleanPath(path)] || null; } },
+      // extension: the new server routes that replace Supabase edge functions / open sign-up
+      gp: gpApi,
       functions: { invoke: function (n) { return Promise.resolve({ data: null, error: unsupportedError('functions.invoke("' + n + '")') }); } },
       apiBase: apiBase
     };
@@ -923,8 +1038,105 @@
     });
   }
 
+  /* ============================================================
+     handleFunctionFetch(client, url, init)
+     fetch() to a Supabase edge function that the new server replaces (step5/jobs.md):
+       /functions/v1/push-send    {title, body, target}  -> POST /{tenant}/api/push/send
+       /functions/v1/invite-staff {email, username, ...}  -> POST /{tenant}/api/admin/invite
+     Answers a Response with the server's JSON and status. Any other function -> null (caller sends it unchanged).
+     ============================================================ */
+  function handleFunctionFetch(client, url, init) {
+    init = init || {};
+    var u;
+    try { u = new URL(String(url)); } catch (e) { return null; }
+    var fm = /^\/functions\/v1\/([A-Za-z0-9_-]+)\/?$/.exec(u.pathname);
+    if (!fm || String(init.method || 'GET').toUpperCase() !== 'POST') return null;
+    var fn = fm[1];
+    if (fn !== 'push-send' && fn !== 'invite-staff') return null;
+    var body = {};
+    if (init.body != null) {
+      if (typeof init.body !== 'string') return restUnsupported('function ' + fn + ' with a non-JSON body');
+      try { body = JSON.parse(init.body) || {}; } catch (e) { return restUnsupported('function ' + fn + ' with a body that is not JSON'); }
+    }
+    var p = fn === 'push-send' ? client.gp.pushSend(body) : client.gp.inviteStaff(body);
+    return p.then(function (r) {
+      var json = r.ok ? r.data : (r.data && typeof r.data === 'object' ? r.data : { ok: false, error: r.error });
+      if (!r.ok && json && !json.error) json.error = r.error;
+      return mkResponse(r.ok ? 200 : (r.status >= 400 ? r.status : 400), json);
+    });
+  }
+
+  /* ============================================================
+     handlePublicFetch(client, url, init, ctx)   (no-login customer / driver links, gl-platform docs/step6/gaps.md)
+     ctx = { page, mode, qcToken }
+       gp-sign:  GET   /rest/v1/gp_checklists?id=eq.<id>&select=..  -> rpc gp_sign_load {p_id, p_mode} -> [row] | []
+                 PATCH /rest/v1/gp_checklists?id=eq.<id>  {<out|in>_sig_customer, customer_signed_at}
+                                                         -> rpc gp_sign_submit {p_id, p_mode, p_signature}
+                                                            204 | 409 already_signed | 404 not_found | 400 no_signature
+       gp-qc driver (ctx.qcToken, not signed in):
+                 PUT|POST /storage/v1/object/checkins/<path>      -> POST /{tenant}/public/storage/upload?t=&path=
+     The RPCs themselves go to /public/rpc when not signed in (client.rpc). Anything else -> null.
+     ============================================================ */
+  function handlePublicFetch(client, url, init, ctx) {
+    init = init || {}; ctx = ctx || {};
+    var u;
+    try { u = new URL(String(url)); } catch (e) { return null; }
+    var path = u.pathname;
+    var method = String(init.method || 'GET').toUpperCase();
+    var h = lowerHeaders(init.headers);
+
+    if (ctx.qcToken && !client.auth.token()) {
+      var sm = /^\/storage\/v1\/object\/checkins\/(.+)$/.exec(path);
+      if (sm && (method === 'PUT' || method === 'POST')) {
+        if (typeof FormData !== 'undefined' && init.body instanceof FormData) return restUnsupported('storage upload with FormData');
+        var objPath = sm[1].split('/').map(function (x) { return decodeURIComponent(x); }).join('/');
+        return client.storage.publicUpload(ctx.qcToken, objPath, init.body, { contentType: h['content-type'] || undefined }).then(function (r) {
+          if (r.error) {
+            var st = Number(r.error.status) >= 400 ? Number(r.error.status) : 400;
+            return mkResponse(st, { statusCode: r.error.statusCode || String(st), error: r.error.error || r.error.name || 'Error', message: r.error.message });
+          }
+          return mkResponse(200, { Key: 'checkins/' + r.data.path });
+        });
+      }
+    }
+
+    if (ctx.page === 'gp-sign' && /^\/rest\/v1\/gp_checklists\/?$/.test(path)) {
+      var idf = u.searchParams.get('id') || '';
+      if (idf.indexOf('eq.') !== 0) return restUnsupported('gp-sign: gp_checklists without id=eq.');
+      var id = idf.slice(3);
+      var mode = ctx.mode === 'return' ? 'return' : 'delivery';
+      if (method === 'GET') {
+        var lq = client.rpc('gp_sign_load', { p_id: id, p_mode: mode });
+        if (init.signal) lq.abortSignal(init.signal);
+        return lq.then(function (r) {
+          if (r.error) return errResponse(r.error, r.status === 401 ? 401 : (r.status === 429 ? 429 : null));
+          return mkResponse(200, r.data ? [r.data] : []);
+        });
+      }
+      if (method === 'PATCH') {
+        var b;
+        try { b = JSON.parse(init.body || '{}') || {}; } catch (e) { return restUnsupported('gp-sign: body that is not JSON'); }
+        var sig = null, m2 = mode;
+        if (b.in_sig_customer != null) { sig = b.in_sig_customer; m2 = 'return'; }
+        else if (b.out_sig_customer != null) { sig = b.out_sig_customer; m2 = 'delivery'; }
+        var sq = client.rpc('gp_sign_submit', { p_id: id, p_mode: m2, p_signature: sig });
+        if (init.signal) sq.abortSignal(init.signal);
+        return sq.then(function (r) {
+          if (r.error) return errResponse(r.error, r.status === 401 ? 401 : (r.status === 429 ? 429 : null));
+          var d = r.data || {};
+          if (d.ok === true) return mkResponse(204);
+          var code = d.error || 'error';
+          var st = code === 'already_signed' ? 409 : code === 'not_found' ? 404 : 400;
+          return mkResponse(st, { code: code, message: code === 'already_signed' ? 'This checklist was already signed' : code, details: null, hint: null });
+        });
+      }
+      return restUnsupported('gp-sign: ' + method + ' gp_checklists');
+    }
+    return null;
+  }
+
   var GPCF = {
-    version: '1.1.0',
+    version: '1.2.0',
     DEFAULT_API: DEFAULT_API,
     SWITCH_KEY: SWITCH_KEY,
     UNSUPPORTED: UNSUPPORTED,
@@ -932,6 +1144,8 @@
     applyUrlSwitch: applyUrlSwitch,
     createClient: createClient,
     handleSupabaseFetch: handleSupabaseFetch,
+    handleFunctionFetch: handleFunctionFetch,
+    handlePublicFetch: handlePublicFetch,
     storageUrlsToKeys: storageUrlsToKeys,
     storageUrlsToSigned: storageUrlsToSigned,
     SUPABASE_ORIGIN: SUPABASE_ORIGIN

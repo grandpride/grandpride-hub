@@ -98,6 +98,9 @@ a, code, .no-upper, .keep-case, .email, .url{ text-transform:none !important; }
 
   <div class="toast" id="toast"></div>
 
+<script src="gp-backend-config.js"></script>
+<script>/* backend switch (docs/cf-migration.md): ONLY when the switch is on (gp-backend-config.js: ?backend=cf on this device, or GP_BACKEND_DEFAULT="cf") load cf-client.js + cf-page.js. Off = nothing else happens. */
+(function(){try{var on;if(typeof GP_BACKEND_PICK==='function'){on=GP_BACKEND_PICK()==='cf';}else{var m=/[?&]backend=(cf|sb)(?:&|$)/.exec(location.search);if(m){if(m[1]==='cf')localStorage.setItem('gp_backend','cf');else localStorage.removeItem('gp_backend');}on=localStorage.getItem('gp_backend')==='cf';}if(on){window.GPCF_PAGE_CFG={page:'gp-record-summary',public:false};document.write('<script src="cf-client.js"><\/script><script src="cf-page.js"><\/script>');}}catch(e){}})();</script>
 <script>
 var SB_URL="https://gpdb.grandlab.com.my";
 var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss";
