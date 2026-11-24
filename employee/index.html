@@ -588,7 +588,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 26;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 27;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -1044,9 +1044,11 @@ function rateLimitMsg(msg, btn, label){
   const iv=setInterval(()=>{ left--; if(left<=0){ clearInterval(iv); btn.disabled=false; btn.textContent=label; } else btn.textContent='Wait '+left+'s'; },1000);
   return true;
 }
+// Returns true (staff), false (really not staff) or null (could not reach the server / error / rate-limit / unexpected answer).
+const CANT_CONNECT_MSG='Can\'t connect to the server. Check your internet and try again.';
 async function emailIsStaff(email){
-  if(sb && sb._cf){ try{ const x=await sb.rpc('staff_email_exists',{p_email:email}); return x.data===true; }catch(e){ return false; } }
-  try{ const r=await sb.from('gp_staff').select('username').ilike('email',email).limit(1); return !!(r.data&&r.data.length); }catch(e){ return false; }
+  if(sb && sb._cf){ try{ const x=await sb.rpc('staff_email_exists',{p_email:email}); if(!x||x.error) return null; return (x.data===true||x.data===false)?x.data:null; }catch(e){ return null; } }
+  try{ const r=await sb.from('gp_staff').select('username').ilike('email',email).limit(1); if(!r||r.error||!Array.isArray(r.data)) return null; return r.data.length>0; }catch(e){ return null; }
 }
 
 function bindAuth(){
@@ -1062,7 +1064,9 @@ function bindAuth(){
     const email=$('suEmail').value.trim().toLowerCase(), btn=$('suSend');
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ suErr('Enter a valid email.'); return; }
     btn.disabled=true; btn.textContent='Checking…';
-    if(await emailIsStaff(email)){ btn.disabled=false; btn.textContent='Send code'; suErr('This email is already registered as staff. Use "First time / Forgot password" on the sign-in page.'); return; }
+    const isStaffSu=await emailIsStaff(email);
+    if(isStaffSu===null){ btn.disabled=false; btn.textContent='Send code'; suErr(CANT_CONNECT_MSG); return; }
+    if(isStaffSu){ btn.disabled=false; btn.textContent='Send code'; suErr('This email is already registered as staff. Use "First time / Forgot password" on the sign-in page.'); return; }
     btn.textContent='Sending…';
     const r=await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:true } });
     if(r.error){ if(!rateLimitMsg(r.error.message, btn, 'Send code')){ btn.disabled=false; btn.textContent='Send code'; } suErr(r.error.message); return; }
@@ -1128,7 +1132,9 @@ function bindAuth(){
     const email=$('fgEmail').value.trim().toLowerCase(), btn=$('fgSend'); $('fgErr').textContent='';
     if(email.indexOf('@')<0){ $('fgErr').textContent='Enter a valid email.'; return; }
     btn.disabled=true; btn.textContent='Sending…';
-    if(!(await emailIsStaff(email))){ btn.disabled=false; btn.textContent='Send code'; $('fgErr').textContent='Not registered as staff yet. New here? Use "Sign up".'; return; }
+    const isStaffFg=await emailIsStaff(email);
+    if(isStaffFg===null){ btn.disabled=false; btn.textContent='Send code'; $('fgErr').textContent=CANT_CONNECT_MSG; return; }
+    if(!isStaffFg){ btn.disabled=false; btn.textContent='Send code'; $('fgErr').textContent='Not registered as staff yet. New here? Use "Sign up".'; return; }
     const r=await sb.auth.signInWithOtp({ email, options:{ shouldCreateUser:false } });
     if(r.error){ if(!rateLimitMsg(r.error.message, btn, 'Send code')){ btn.disabled=false; btn.textContent='Send code'; } $('fgErr').textContent=r.error.message; return; }
     btn.disabled=false; btn.textContent='Send code'; fgEmail=email;
