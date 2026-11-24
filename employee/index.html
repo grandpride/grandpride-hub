@@ -588,7 +588,7 @@ input.inp::-webkit-date-and-time-value{text-align:left;margin:0}
    BACKEND SWITCH: change SB_URL + SB_KEY below (1 line each).
    Default = self-hosted server (same values as ../supa.js).
    ===================================================================== */
-const APP_BUILD = 27;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
+const APP_BUILD = 28;   // bump on every deploy, then bump gp_settings.emp_app_config.version to match
 const SB_URL = 'https://gpdb.grandlab.com.my';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzkzMDY5NDExLCJleHAiOjE5NTA3NDk0MTF9.ql0qv5ycO4qPDfzLZDdZvjMBqWJMxDRwS8m8HZxUuss';
 /* Cloud (old, currently paused) — to switch back, use:
@@ -729,7 +729,7 @@ window.addEventListener('online', ()=>flushQueue());
 /* ============================ state ============================ */
 let ME = null;             // gp_staff row
 let STAFF = [];            // all gp_staff rows (small table)
-let SET = { geo:null, managers:{}, approver:DEFAULT_APPROVER, appcfg:{version:1}, hr:{}, rem:null };
+let SET = { geo:null, managers:{}, approver:DEFAULT_APPROVER, appcfg:{version:1}, hr:{}, rem:null, cal:null };
 let TODAY = null;          // today's attendance rec
 let TODAY_ASSIGN = null;   // chauffeur assignment today
 let GEO = null;            // last location fix {lat,lng,acc,dist,inside}
@@ -1209,7 +1209,7 @@ function renderPending(row){
 /* ============================ ENTER APP ============================ */
 async function loadSettings(){
   try{
-    const r=await sb.from('gp_settings').select('id,data').in('id',['attendance_geo','managers','emp_signup_approver','emp_app_config','emp_hr','emp_reminders']);
+    const r=await sb.from('gp_settings').select('id,data').in('id',['attendance_geo','managers','emp_signup_approver','emp_app_config','emp_hr','emp_reminders','emp_calendar']);
     (r.data||[]).forEach(row=>{
       const d=row.data||{};
       if(row.id==='attendance_geo') SET.geo=d;
@@ -1218,6 +1218,7 @@ async function loadSettings(){
       if(row.id==='emp_app_config') SET.appcfg=d;
       if(row.id==='emp_hr') SET.hr=d;
       if(row.id==='emp_reminders') SET.rem=d;
+      if(row.id==='emp_calendar') SET.cal=d;
     });
   }catch(e){}
 }
@@ -1878,6 +1879,7 @@ function renderProfile(){
     + menuItem('hrs','Time Tracking','Weekly in-time & working hours','openTimeTracking()')
     + menuItem('leave','Leave Management','Apply, balance, approvals',"switchView('leave')")
     + menuItem('cal','Team Calendar','Who is on leave',"openTeamCal()")
+    + (SET.cal&&SET.cal.url?menuItem('cal','Customer Appointments','Add to your iPhone Calendar, with alerts','openApptCal()'):'')
     + (canTaskLog()?menuItem('edit','Daily Task Log','Plan, updates & end-of-day report','openDayLog()'):'')
     + (isLeader()||isMgmt()?menuItem('report','Team Daily Logs','Who planned & reported today'+(isMgmt()?' · Secret Box':''),'openTeamLogs()'):'')
     + (typeof ckRelevant==='function' && ckRelevant() ? menuItem('check','Closing Check',(()=>{ const n=ckMineToday().filter(x=>!x.backup && ['todo','late','notfollow'].indexOf(ckStatus(x.c,todayKey()))>=0).length, m=ckToCheck().length; return (n?n+' photo'+(n>1?'s':'')+' to send':'Reference vs today\'s photo')+(m?' · '+m+' to check':''); })(),"openChecks('today')", (ckToCheck().length?'<span class="cnt">'+ckToCheck().length+'</span>':'')) : '')
@@ -2275,8 +2277,40 @@ function openSettings(){
       +'<label class="switch"><span>Reminders on</span><input type="checkbox" id="rmOn" '+(rm.enabled!==false?'checked':'')+'></label>'
       +'<div class="btn-row"><label class="fld"><span>Not clocked in by</span><input class="inp" id="rmAm" type="time" value="'+esc(rm.morning)+'"></label><label class="fld"><span>Lunch longer than (min)</span><input class="inp" id="rmLunch" type="number" value="'+esc(rm.lunchMins)+'"></label></div>'
       +'<button class="btn" onclick="saveReminders()">Save reminders</button></div>'; })()
+    +'<div class="card"><h4>Customer appointments calendar link</h4><p class="small muted" style="margin-bottom:10px">Paste the private Grandlab calendar link. Staff then see a "Customer Appointments" item in their menu. Leave empty to hide it.</p>'
+      +'<label class="fld"><span>Calendar link</span><input class="inp" id="stCal" placeholder="webcal://... or https://..." value="'+esc((SET.cal&&SET.cal.url)||'')+'"></label>'
+      +'<button class="btn" onclick="saveCalLink()">Save link</button></div>'
     +'<div class="card"><h4>App version (auto-update)</h4><p class="small muted" style="margin-bottom:10px">This phone runs build <b>'+APP_BUILD+'</b>. Server version: <b>'+(SET.appcfg.version||1)+'</b>. After you upload a new build to GitHub, tap below so every phone reloads it.</p>'
       +'<button class="btn gold" onclick="bumpVersion()">Force everyone to update</button></div>');
+}
+/* ---- Customer appointments calendar (added 24 Nov): staff subscribe once, bookings then appear in their phone calendar with alerts.
+   The link is a private secret kept in gp_settings 'emp_calendar' (readable only after login), never written in this file. ---- */
+function calUrls(){
+  const u=String((SET.cal&&SET.cal.url)||'').trim(); if(!u) return null;
+  const rest=u.replace(/^(webcal|https?):\/\//i,'');
+  return { web:'webcal://'+rest, https:'https://'+rest };
+}
+function openApptCal(){
+  const c=calUrls(); if(!c){ toast('No calendar link set yet'); return; }
+  openSub('Customer Appointments',
+    '<div class="card"><h4>Add to your iPhone Calendar</h4>'
+    +'<p class="small muted" style="margin-bottom:10px">Tap the button and choose <b>Subscribe</b>. Every customer booking then appears in your calendar, with an alert at 6pm the day before and 1 hour before.</p>'
+    +'<a class="btn" style="display:block;text-align:center;text-decoration:none" href="'+esc(c.web)+'">Add to Calendar</a>'
+    +'<button class="btn ghost" style="margin-top:8px" onclick="copyCalLink()">Copy link</button></div>'
+    +'<div class="card"><h4>If the button does not work</h4><p class="small muted">iPhone: Settings → Calendar → Accounts → Add Account → Other → Add Subscribed Calendar → paste the copied link → Next → Save.<br><br>'
+    +'The calendar updates by itself, but your phone can take a few hours to refresh. For the live list, open GL Booking. Customer phone numbers are not shown in the calendar. Keep this link private.</p></div>');
+}
+async function copyCalLink(){
+  const c=calUrls(); if(!c) return;
+  try{ await navigator.clipboard.writeText(c.https); toast('Link copied'); }catch(e){ toast('Could not copy. Long-press the Add to Calendar button instead.'); }
+}
+async function saveCalLink(){
+  const v=String($('stCal').value||'').trim();
+  if(v && !/^(webcal|https?):\/\/\S+$/i.test(v)){ toast('Link must start with webcal:// or https://'); return; }
+  const d={ url:v };
+  const r=await sb.from('gp_settings').upsert({id:'emp_calendar',data:d,updated_at:new Date().toISOString()},{onConflict:'id'});
+  if(r.error){ toast('Failed: '+r.error.message); return; }
+  SET.cal=d; toast(v?'Calendar link saved ✓':'Calendar link removed'); renderProfile();
 }
 async function saveApprover(){
   const u=$('stApprover').value;
